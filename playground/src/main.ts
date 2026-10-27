@@ -4,6 +4,7 @@ import { setupWorker } from "msw/browser"
 import { yveAdminConfig } from "./config/yve"
 import { loadFixtureRepoFromBrowser } from "./fake-github/browser-fixture-repo"
 import { createFakeGithubHandlers, DEFAULT_TAGS } from "./fake-github/handlers"
+import { installHarness } from "./harness"
 
 /**
  * Playground host — boots MSW FakeGithub, loads the shared fixture mirror, and
@@ -11,10 +12,12 @@ import { createFakeGithubHandlers, DEFAULT_TAGS } from "./fake-github/handlers"
  */
 async function main(): Promise<void> {
   const snapshot = await loadFixtureRepoFromBrowser()
-  const worker = setupWorker(
-    ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, { requireAuth: true }),
-  )
+  const { handlers, server } = createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
+    requireAuth: true,
+  })
+  const worker = setupWorker(...handlers)
   await worker.start()
+  installHarness({ server, defaultBranch: snapshot.defaultBranch })
 
   const host = document.getElementById("app")
   if (host === null) {

@@ -18,12 +18,12 @@ const FIXTURE_ROOT = join(HERE, "..", "..", "..", "fixtures", "repo")
 const TOKEN = "github_pat_contract_fixture"
 
 let snapshot: Awaited<ReturnType<typeof loadFixtureRepoFromDisk>>
-let handlers: ReturnType<typeof createFakeGithubHandlers>
+let handlers: ReturnType<typeof createFakeGithubHandlers>["handlers"]
 const server = setupServer()
 
 beforeAll(async () => {
   snapshot = await loadFixtureRepoFromDisk(FIXTURE_ROOT)
-  handlers = createFakeGithubHandlers(snapshot)
+  handlers = createFakeGithubHandlers(snapshot).handlers
   server.listen()
 })
 
@@ -96,7 +96,8 @@ describe("FakeGithub read-side contract (P1.7/P1.14)", () => {
 
   it("survives recursive-tree truncation via subtree fallback", async () => {
     server.use(
-      ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, { chaos: { truncateTree: true } }),
+      ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, { chaos: { truncateTree: true } })
+        .handlers,
     )
     const api = backend()
     const ref = await api.getRef("fixture-branch")
@@ -111,7 +112,7 @@ describe("FakeGithub read-side contract (P1.7/P1.14)", () => {
     server.use(
       ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
         chaos: { truncateTree: true, truncateSubtrees: true },
-      }),
+      }).handlers,
     )
     const api = backend()
     const ref = await api.getRef("fixture-branch")
@@ -124,7 +125,7 @@ describe("FakeGithub read-side contract (P1.7/P1.14)", () => {
     server.use(
       ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
         chaos: { notFoundPaths: ["src/content/site.json"] },
-      }),
+      }).handlers,
     )
     await expect(
       backend().readFile("fixture-branch", "src/content/site.json", "a".repeat(40)),
@@ -133,7 +134,8 @@ describe("FakeGithub read-side contract (P1.7/P1.14)", () => {
 
   it("returns 429 quota chaos once, then recovers", async () => {
     server.use(
-      ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, { chaos: { rateLimitOnce: true } }),
+      ...createFakeGithubHandlers(snapshot, DEFAULT_TAGS, { chaos: { rateLimitOnce: true } })
+        .handlers,
     )
     await expect(backend().getRef("fixture-branch")).rejects.toMatchObject({ code: "RATE_LIMIT" })
     const ref = await backend().getRef("fixture-branch")

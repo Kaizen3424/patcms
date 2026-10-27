@@ -39,6 +39,12 @@ export interface FakeGithubOptions {
   readonly requireAuth?: boolean
 }
 
+/**
+ * Handlers + the reference server behind them. The server is returned so the
+ * playground can publish it on the e2e harness (`window.__mycmsHarness`): the
+ * fake repo's state is the only place a save can be observed, because the MSW
+ * worker resets it on reload.
+ */
 export function createFakeGithubHandlers(
   snapshot: FixtureRepoSnapshot,
   tags: FakeGithubTags = DEFAULT_TAGS,
@@ -88,7 +94,7 @@ export function createFakeGithubHandlers(
       headers: { ...rateHeaders(), ...(response.headers ?? {}) },
     })
 
-  return [
+  const handlers = [
     http.get(
       repoPath,
       guarded(() =>
@@ -315,6 +321,8 @@ export function createFakeGithubHandlers(
       }),
     ),
   ]
+
+  return { handlers, server }
 }
 
 // Handler arg types differ per verb at runtime only; the guard cares about the
