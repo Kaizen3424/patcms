@@ -2,7 +2,7 @@
 
 > **Every agent session starts here.** Read this file fully, then follow §4 Session Protocol. This file never duplicates details it can point to; it is the single tracker for project state. Agents MUST maintain §3 and the task checklists — stale docs are treated as build failures.
 
-Maintained by: agent sessions · Last updated: 2026-10-27 (P2 C.2 built ⛔ — awaiting owner mini-gate confirmation; next: C.2 gate review, then C.3 in a NEW chat)
+Maintained by: agent sessions · Last updated: 2026-10-27 (P2 C.2 ⛔ PASSED, owner-confirmed; next: C.3 in a NEW chat)
 
 ---
 
@@ -20,14 +20,14 @@ Maintained by: agent sessions · Last updated: 2026-10-27 (P2 C.2 built ⛔ — 
 |---|---|---|---|
 | P0 | Scaffold & laws | ✅ Gate passed 2026-10-27 | CI-verifiable scaffold green; ADRs 0001–0010 signed; specs runnable |
 | P1 | Config schema + read path | ✅ Gate passed 2026-10-27 (owner-confirmed) | yve fixture library browses offline; lenient parse contract green |
-| P2 | Save pipeline + editor v0 | 🟨 C.2 built ⛔ | e2e publish loop green incl. conflict + failure paths |
+| P2 | Save pipeline + editor v0 | 🟨 C.2 ⛔ PASSED (owner-confirmed) | e2e publish loop green incl. conflict + failure paths |
 | P3 | Widget system complete | ⬜ Not started | yve exact config editable on fixtures, zero code change |
 | P4 | Media system | ⬜ Not started | 9-photo slow-wifi e2e green; no-raw-URL invariant proven |
 | P5 | Founder polish & IA | ⬜ Not started | founder-cry triad simulations green; a11y checklist green |
 | P6 | yve integration cutover | ⬜ Blocked until P5 | success criteria on the real site; rollback path proven |
 | P7 | OSS publication | ⬜ Blocked until P6 | stranger completes widget exemplar unaided; release dry-run |
 
-**Current focus:** P2 checkpoint **C.2 built 2026-10-27 (⛔ awaiting owner mini-gate confirmation)** — scope: conflict invariant engine (`resolveConflictPaths`, decision matrix #1–#9) + `rebase()` field-level merge + 11 ADR properties (29 assertions) + INV-P05/06/07/08 suites; ADR-0004 appendix decision matrix landed first; ADR-0005 P2/C.2 addendum (recursive reads surface blob+commit tuples, gitlink tree-POST) recorded per the deviation rule. Evidence: core 280/280 (+40), playground 17/17, coverage gate held, typecheck+biome clean. Owner to confirm the C.2 mini-gate (INV-P05..08 + decision matrix) in chat; then C.3 (state machine + lease + drafts + editor v0) starts in a NEW chat. C.1 remains ⛔ PASSED, strictly scoped to INV-P01/02/03/09/14; A02/N01/D02 stay partial in `docs/specs/invariants.md` (finish at P2.5/P2.10). P0 remote as chosen by owner: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep stays P7.1 — working name MyCMS until then).
+**Current focus:** P2 checkpoint **C.2 ⛔ PASSED 2026-10-27 (owner-confirmed)** — scope delivered: conflict invariant engine (`resolveConflictPaths`, decision matrix #1–#9) + `rebase()` field-level merge + 11 ADR properties (29 assertions) + INV-P05/06/07/08 suites; ADR-0004 appendix decision matrix landed first; ADR-0005 P2/C.2 addendum (recursive reads surface blob+commit tuples, gitlink tree-POST) recorded per the deviation rule. Evidence of C.2: core 280/280 (+40), playground 17/17, coverage gate held, typecheck+biome clean; commits on `main`: `7915c1e` (ADRs), `fade963` (engine+tests), `5bfff37` (docs) + gate-record commit. Next slice **C.3: P2.5 state machine + lease + drafts + boot replay · P2.6 editor v0 + save bar · P2.7 sweep verdicts + advisory chips · P2.8 deploy-status service · P2.9 conflict freeze UI · P2.10 failure screens + copy composer · P2.11 recorded-fixture capture+replay · P2.12 e2e journeys** (`tasks/todo.md`). Start C.3 in a NEW chat (one slice per chat). C.1 remains ⛔ PASSED, strictly scoped to INV-P01/02/03/09/14; A02/N01/D02 stay partial in `docs/specs/invariants.md` (finish at P2.5/P2.10). P0 remote as chosen by owner: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep stays P7.1 — working name MyCMS until then).
 
 *Legend: ⬜ not started · 🟨 in progress · ✅ gate passed (date) · ⛔ blocked*
 
