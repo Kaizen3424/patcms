@@ -1,5 +1,5 @@
 /** Admin composition types — host supplies JSON-safe config + repository target. */
-import type { AdminConfig, FetchLike, TokenStore } from "@mycms/core"
+import type { AdminConfig, DraftStore, FetchLike, LeaseCarrier, TokenStore } from "@mycms/core"
 
 export interface SupportContext {
   /** The named human every founder-facing surface references — never "someone" (master-plan §7). */
@@ -23,4 +23,8 @@ export interface AdminMountOptions {
   readonly fetch?: FetchLike
   /** Injectable token store (tests / per-device fallback). Defaults to the opt-in IDB store. */
   readonly tokenStore?: TokenStore
+  /** Injectable draft store (tests). Defaults to IDB with an in-memory fallback. */
+  readonly draftStore?: DraftStore
+  /** Injectable cross-tab lease carrier (tests / hosts without BroadcastChannel). */
+  readonly leaseCarrier?: LeaseCarrier
 }

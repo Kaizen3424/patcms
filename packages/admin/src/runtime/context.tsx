@@ -3,21 +3,38 @@
  * immutable snapshot cache, and React Query as the ONLY UI cache (ADR-0001/0002/0004).
  */
 
-import type { AdminConfig, CapabilityProbeResult, FetchLike, TokenStore } from "@mycms/core"
+import type {
+  AdminConfig,
+  CapabilityProbeResult,
+  DraftStore,
+  FetchLike,
+  LeaseCarrier,
+  SaveCoordinator,
+  SaveLease,
+  TokenStore,
+} from "@mycms/core"
 import {
+  createSaveCoordinator,
+  createSaveLease,
   GithubBackend,
   MemoryTokenStore,
   PatProvider,
   probeGithubCapabilities,
   SnapshotStore,
 } from "@mycms/core"
-import { createIdbTokenStore } from "@mycms/core/web"
+import {
+  createAutoCarrier,
+  createBroadcastCarrier,
+  createIdbDraftStore,
+  createIdbTokenStore,
+} from "@mycms/core/web"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
 import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import type { AdminMountOptions, AdminRepository, SupportContext } from "../admin/types"
 import type { EntryIndex } from "./entry-index"
 import { loadEntryIndex } from "./entry-index"
+import { createMemoryDraftStore } from "./memory-draft-store"
 
 type AuthStatus = "loading" | "signedOut" | "signedIn"
 
@@ -32,6 +49,12 @@ interface RuntimeValue {
   readonly backend: GithubBackend | undefined
   readonly snapshots: SnapshotStore
   readonly epoch: number
+  /** Crash-safety store for editor drafts (IDB, or memory fallback). */
+  readonly drafts: DraftStore
+  /** Save orchestration for this backend generation (P2.6 editor). */
+  readonly coordinator: SaveCoordinator | undefined
+  /** Cross-tab UX serialization; undefined when no carrier is available. */
+  readonly lease: SaveLease | undefined
   readonly signIn: (token: string, remember: boolean) => Promise<CapabilityProbeResult>
   readonly signOut: () => Promise<void>
 }
@@ -143,6 +166,40 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     [epoch, fetchLike, repository, token],
   )
 
+  const drafts = useMemo<DraftStore>(() => {
+    if (options.draftStore !== undefined) return options.draftStore
+    try {
+      return createIdbDraftStore()
+    } catch {
+      return createMemoryDraftStore()
+    }
+  }, [options.draftStore])
+
+  // One coordinator per backend generation: a sign-out/sign-in cycle bumps
+  // `epoch`, so jobs never survive across credentials (ADR-0002 orthogonality).
+  const coordinator = useMemo<SaveCoordinator | undefined>(
+    () =>
+      backend === undefined
+        ? undefined
+        : createSaveCoordinator({
+            backend,
+            branch: repository.branch,
+            drafts,
+          }),
+    [backend, drafts, repository.branch],
+  )
+
+  const lease = useMemo<SaveLease | undefined>(() => {
+    if (backend === undefined) return undefined
+    const carrier = options.leaseCarrier ?? defaultCarrier()
+    return carrier === undefined ? undefined : createSaveLease({ carrier, now: () => Date.now() })
+  }, [backend, options.leaseCarrier])
+
+  useEffect(() => {
+    if (lease === undefined) return
+    return () => lease.dispose()
+  }, [lease])
+
   const value: RuntimeValue = {
     config: options.config,
     support: options.support,
@@ -154,6 +211,9 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     backend,
     snapshots,
     epoch,
+    drafts,
+    coordinator,
+    lease,
     signIn,
     signOut,
   }
@@ -165,6 +225,21 @@ export function useRuntime(): RuntimeValue {
   const value = useContext(RuntimeContext)
   if (value === undefined) throw new Error("useRuntime must be used inside AdminRuntimeProvider")
   return value
+}
+
+/**
+ * Lease carrier choice (ADR-0004): BroadcastChannel primary, storage-event
+ * fallback for engines without it. No carrier (SSR/exotic) degrades to
+ * single-tab editing — the CAS remains the correctness mechanism either way.
+ */
+function defaultCarrier(): LeaseCarrier | undefined {
+  try {
+    if (typeof globalThis.BroadcastChannel === "function") return createBroadcastCarrier()
+    if (typeof globalThis.localStorage !== "undefined") return createAutoCarrier()
+    return undefined
+  } catch {
+    return undefined
+  }
 }
 
 export function useSnapshot() {

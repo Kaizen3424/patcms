@@ -239,6 +239,8 @@ export type {
   SaveCoordinator,
   SaveCoordinatorOptions,
   SaveDriverInput,
+  SaveLease,
+  SaveLeaseOptions,
   SaveMachineEvent,
   SaveMachineState,
   SavePauseReason,

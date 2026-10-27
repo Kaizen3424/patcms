@@ -37,6 +37,8 @@ export interface IndexedEntry {
   readonly value: Readonly<Record<string, unknown>>
   readonly issues: readonly ParseIssue[]
   readonly untouched: Readonly<Record<string, JsonValue>>
+  /** Decoded source bytes — the editor's `baseRaw` for rebase + compose (P2.6). */
+  readonly rawText: string
   readonly blobSha: string
 }
 
@@ -234,6 +236,7 @@ async function loadSource(
     value: parsedEntry.value,
     issues: [...preIssues, ...parsedEntry.issues],
     untouched: parsedEntry.untouched,
+    rawText: text,
     blobSha: source.blobSha,
   }
 }
