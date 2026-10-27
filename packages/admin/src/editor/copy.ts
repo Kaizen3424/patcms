@@ -74,26 +74,41 @@ export const SAVE_BAR_COPY: Readonly<Record<SaveBarStatus, CopyLine>> = {
   },
 }
 
-/** The four recovery surfaces P2.6 ships (boot offer, start-over, retry, discard). */
-export const RECOVERY_COPY = {
-  restoreFound: {
-    title: "We found unsaved changes on this device.",
-    detail: "They were never published. Restore them here?",
-    confirm: "Restore changes",
-    dismiss: "Keep them for later",
-  },
-  startOver: {
-    label: "Start over from the latest version",
-    detail: "Your unsaved changes on this device will be removed.",
-  },
-  discardLocal: {
-    label: "Discard the changes kept on this device",
-    detail: "They will not be published. This cannot be undone here.",
-  },
-  retrySave: {
-    label: "Try saving again",
-    detail: "Nothing is lost by trying again.",
-  },
+/** The four recovery surfaces P2.6 ships (boot offer, start-over, retry, discard). */ export const RECOVERY_COPY =
+  {
+    restoreFound: {
+      title: "We found unsaved changes on this device.",
+      detail: "They were never published. Restore them here?",
+      confirm: "Restore changes",
+      dismiss: "Keep them for later",
+    },
+    startOver: {
+      label: "Start over from the latest version",
+      detail: "Your unsaved changes on this device will be removed.",
+    },
+    discardLocal: {
+      label: "Discard the changes kept on this device",
+      detail: "They will not be published. This cannot be undone here.",
+    },
+    retrySave: {
+      label: "Try saving again",
+      detail: "Nothing is lost by trying again.",
+    },
+  } as const
+
+/** Validation gate — the save button refused locally (no network attempt). */
+export const VALIDATION_COPY = {
+  blockedTitle: "Some fields need attention.",
+  blockedDetail: "Fix the highlighted fields, then save again.",
+} as const
+
+/** Bar buttons — same banned-word sweep as the status lines. */
+export const ACTION_COPY = {
+  save: "Save changes",
+  saving: "Saving...",
+  retry: "Try saving again",
+  startOver: "Start over from the latest version",
+  signOut: "Sign out",
 } as const
 
 /** Substitutes `{name}` with the named human from `support.name`. */
@@ -126,5 +141,7 @@ export function allCopyStrings(): readonly string[] {
   }
   walk(SAVE_BAR_COPY)
   walk(RECOVERY_COPY)
+  walk(VALIDATION_COPY)
+  walk(ACTION_COPY)
   return strings
 }

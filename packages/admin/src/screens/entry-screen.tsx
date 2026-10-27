@@ -1,7 +1,8 @@
 import type { FieldDescriptor, ParseIssue } from "@mycms/core"
 import { formatMoney } from "@mycms/core"
 import { Link, useParams } from "@tanstack/react-router"
-import { useEntryIndex, useRuntime } from "../runtime/context"
+import { EntryEditor } from "../editor/entry-editor"
+import { useEntryIndex, useRuntime, useSnapshot } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
 import { findRelationEntry, issueCounts } from "../runtime/entry-index"
 import { imageSource, previewUrl } from "../runtime/media"
@@ -13,6 +14,7 @@ export function EntryScreen() {
     readonly entry?: string
   }
   const index = useEntryIndex()
+  const snapshot = useSnapshot()
   const collection = config.collections.find(
     (candidate) => candidate.kind !== "divider" && candidate.name === params.collection,
   )
@@ -21,7 +23,7 @@ export function EntryScreen() {
       ? undefined
       : index.data?.bySlug.get(params.collection)?.get(params.entry)
 
-  if (index.isLoading) {
+  if (index.isLoading || snapshot.isLoading) {
     return <p className="text-sm text-text-muted">Reading the entry...</p>
   }
   if (
@@ -48,6 +50,7 @@ export function EntryScreen() {
   }
 
   const counts = issueCounts(entry)
+  const headSha = snapshot.data?.head
   const hidden = collectHidden(entry.fields, entry.value, "")
   const untouched = Object.entries(entry.untouched)
   const preview = previewUrl(
@@ -72,9 +75,7 @@ export function EntryScreen() {
 
       <header className="mt-4 flex flex-wrap items-start justify-between gap-4 border-b border-border-soft pb-6">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent">
-            Read-only preview
-          </p>
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent">Editing</p>
           <h1 className="mt-2 break-words text-3xl font-semibold tracking-tight">{entry.title}</h1>
           <p className="mt-2 break-all text-xs text-text-muted">{entry.path}</p>
         </div>
@@ -105,13 +106,25 @@ export function EntryScreen() {
       )}
 
       <div className="mt-7">
-        <FieldList
-          fields={entry.fields}
-          value={entry.value}
-          entry={entry}
-          index={index.data}
-          depth={0}
-        />
+        {headSha === undefined ? (
+          <FieldList
+            fields={entry.fields}
+            value={entry.value}
+            entry={entry}
+            index={index.data}
+            depth={0}
+          />
+        ) : (
+          <EntryEditor
+            key={entry.path}
+            entry={entry}
+            headSha={headSha}
+            index={index.data}
+            renderReadOnly={(field, value) => (
+              <FieldValue field={field} raw={value} entry={entry} index={index.data} depth={0} />
+            )}
+          />
+        )}
       </div>
 
       {hidden.length > 0 ? (
@@ -121,8 +134,8 @@ export function EntryScreen() {
               Preserved content ({hidden.length})
             </summary>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-text-muted">
-              These values are part of the entry but are not editable in this read-only preview.
-              They remain untouched when the editor arrives.
+              These values are part of the entry but are not edited here yet. They are preserved
+              exactly as they are.
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {hidden.map((item) => (

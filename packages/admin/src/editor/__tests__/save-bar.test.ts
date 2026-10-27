@@ -1,6 +1,6 @@
 import { BackendWriteError, type SaveMachineState } from "@mycms/core"
 import { describe, expect, it } from "vitest"
-import { describeSaveBar, type SaveBarInput, saveBarStatus } from "../save-bar"
+import { describeSaveBar, type SaveBarInput, saveBarStatus } from "../save-bar-model"
 
 /**
  * The sticky bar is a projection, not a state machine: every case below pins
