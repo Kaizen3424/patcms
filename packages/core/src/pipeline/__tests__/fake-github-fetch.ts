@@ -142,7 +142,12 @@ export function createHarness(
       // The remote state advanced; the response never arrived.
       throw new Error("response lost (dropAck chaos)")
     }
-    const response = await server.handle({ method, path, body } satisfies FakeRequest)
+    const response = await server.handle({
+      method,
+      path,
+      body,
+      headers: safeRequestHeaders(init?.headers),
+    } satisfies FakeRequest)
     return toResponse(response)
   }
 
@@ -166,6 +171,22 @@ function inlineUrlPath(url: string, prefix: string): string {
   const withoutQuery = url.split("?")[0] ?? url
   if (withoutQuery.startsWith(prefix)) return withoutQuery.slice(prefix.length)
   return withoutQuery
+}
+
+/**
+ * Request headers worth logging — Authorization NEVER lands in a log
+ * (INV-A05 posture; fixture token or not, the discipline is the point).
+ */
+function safeRequestHeaders(headers: unknown): Record<string, string> | undefined {
+  if (typeof headers !== "object" || headers === null) return undefined
+  const safe: Record<string, string> = {}
+  for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (typeof value !== "string") continue
+    const lower = key.toLowerCase()
+    if (lower === "authorization") continue
+    safe[lower] = value
+  }
+  return Object.keys(safe).length === 0 ? undefined : safe
 }
 
 function toResponse(response: FakeResponse): FetchResponseLike {

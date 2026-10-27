@@ -562,7 +562,11 @@ function treeChildren(record: Record<string, JsonValue> | undefined): TreeChild[
 }
 
 function parseTreeEntries(record: Record<string, JsonValue> | undefined): TreeEntryTuple[] {
+  // `blob` + `commit`: recursive trees flatten subtrees, but submodule entries
+  // are real — hiding them would turn a foreign submodule swap into a phantom
+  // deletion and break tuple truth for the conflict engine (ADR-0005 P2/C.2
+  // addendum; INV-P06).
   return treeChildren(record)
-    .filter((child) => child.type === "blob")
+    .filter((child) => child.type === "blob" || child.type === "commit")
     .map((child) => ({ path: child.path, sha: child.sha, mode: child.mode, type: child.type }))
 }

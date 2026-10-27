@@ -53,6 +53,8 @@ export interface FakeRequestLogEvent {
   readonly path: string
   readonly status: number
   readonly body?: unknown
+  /** Safe request headers (the harness strips Authorization before logging). */
+  readonly headers?: Readonly<Record<string, string>>
 }
 
 interface CommitRecord {
@@ -137,6 +139,7 @@ export class FakeGithubServer {
         method: request.method,
         path: request.path,
         status: response.status,
+        ...(request.headers === undefined ? {} : { headers: request.headers }),
         ...(request.body === undefined ? {} : { body: request.body }),
       })
       return response
@@ -223,6 +226,28 @@ export class FakeGithubServer {
         headers: RATE_HEADERS,
       }
     }
+
+    // Contents route (single-branch fidelity: resolved against the default
+    // branch head; multi-branch tests use /git/blobs directly).
+    const contentsMatch = /^\/contents\/(.+)$/.exec(request.path)
+    if (contentsMatch !== null) {
+      const decoded = decodeURIComponent(contentsMatch[1] as string)
+      const found = this.contents(this.#spec.defaultBranch, decoded)
+      if (found === undefined) return notFoundResponse()
+      return {
+        status: 200,
+        json: {
+          name: decoded.split("/").pop(),
+          path: decoded,
+          sha: found.sha,
+          size: found.bytes.byteLength,
+          type: "file",
+          encoding: "base64",
+          content: encodeBase64(found.bytes),
+        },
+        headers: { ...RATE_HEADERS, etag: `"blob-${found.sha}"` },
+      }
+    }
     return undefined
   }
 
@@ -280,11 +305,22 @@ export class FakeGithubServer {
         byPath.delete(path) // SHA-0 delete semantics (ADR-0005 §writes)
         continue
       }
-      if (typeof sha !== "string" || !this.#blobs.has(sha)) {
-        return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
-      }
       const mode = typeof record?.mode === "string" ? record.mode : "100644"
       const type = typeof record?.type === "string" ? record.type : "blob"
+      if (typeof sha !== "string" || !/^[0-9a-f]{40}$/.test(sha)) {
+        return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+      }
+      if (type === "blob") {
+        if (!this.#blobs.has(sha)) {
+          return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+        }
+      } else if (type === "commit") {
+        // Gitlink (submodule): the pointer may live in an EXTERNAL repo —
+        // existence in this repo is not required (real GitHub parity;
+        // ADR-0005 P2/C.2 addendum).
+      } else {
+        return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+      }
       byPath.set(path, { path, mode, type, sha })
     }
 
