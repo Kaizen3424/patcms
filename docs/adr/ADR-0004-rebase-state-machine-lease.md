@@ -139,3 +139,68 @@ Boot runs the invariant engine over each surviving draft against a FRESH head re
 3. `conflict` — `field-merge`/`blocked`: straight into the field-granularity freeze UI.
 
 Boot NEVER auto-writes to the remote; replay only adjudicates and deletes drafts in the `discard` class.
+
+## Appendix — P2.6 editor integration pins (2026-10-27)
+
+Recorded before the P2.6 mechanisms land (ADR-first law). These pin the coordinator's editor-facing
+lifecycle and the save-cycle laws the UI must obey. No law above changes; one deliberate widening of
+`RESET` is marked as such.
+
+### Coordinator lifecycle surface
+
+- `markDirty(draftKey, baseSha)` dispatches `MARK_DIRTY` (legal from `editing|dirty`; elsewhere a no-op).
+- `reset(draftKey, baseSha)` dispatches `RESET`. **Widened in P2.6:** legal from every phase EXCEPT
+  `committing` (`published|conflict|failed|paused|queued|editing|dirty` → `editing`). Rationale: the
+  editor needs a hard reset on mount/remount and after abandoning a parked job; excluding `committing`
+  keeps the masking risk out — while a write is genuinely in flight the machine must not be told a new
+  base. The editor calls it (a) on first mount with the snapshot head, (b) after a published/noop
+  verdict with the new coordinate, (c) when the founder starts over from the latest version.
+- `cancel(draftKey)` abandons a save that is NOT `committing`: it sets a cancel flag and wakes the job's
+  gate so the next loop iteration resolves `{kind:"cancelled"}` and dispatches `RESET`. The draft is
+  RETAINED (it is the crash-safety record). Cancelling a `committing` job is a no-op — a transport
+  write cannot be un-sent, and pretending otherwise would desync the UI from the ref.
+- `save(request)` REJECTS a second request for a `draftKey` that still has a live job
+  (`SaveInFlightError`). Rationale (found while planning P2.6): `jobs` is keyed by draftKey, so a second
+  `save()` would overwrite the registration and strand the first promise behind the one-flight queue —
+  a permanent deadlock that also swallows the first save's verdict. The editor additionally disables
+  submit while a save is live; the rejection is the machine-checkable backstop.
+- `SaveVerdict` gains `{kind:"cancelled"}` so an abandoned job settles honestly instead of hanging.
+
+### Save-cycle law (post-publish base)
+
+- On `published`, the new base is `verdict.commitSha` — the commit the ref was OBSERVED carrying
+  (INV-P10) — never a re-read. The editor sets `baseSha := commitSha`, `baseRaw := <the bytes it
+  composed>`, `baseValue := parse(baseRaw)`, then `reset(draftKey, commitSha)`.
+- On `noop` the base is unchanged; `reset(draftKey, baseSha)` keeps the same coordinate.
+- **Dirtiness is a VALUE-domain fact** (`computeDirtyPaths(formValue, baseValue) ≠ ∅`); lifecycle is the
+  machine. The save bar consumes both. A founder who undoes back to the base sees "all changes saved"
+  while the machine is still `dirty` — the machine never un-dirties and no event is invented for it.
+- Edits made while `queued|committing` stay in the form tree; after `published` + `reset` the local diff
+  against the new base decides whether the bar shows unsaved changes again. No keystroke is discarded
+  by a save completing.
+
+### Untouched composition + virtual keys (INV-S01/S03)
+
+- The editor's ONLY serialization path is
+  `composeEntryDocument({fields, value, untouched, document})`: `mergeUntouched(value, untouched)` →
+  strip every declared `slug` field (virtual, derived from the filename, never persisted) →
+  `serializeDocument(document, merged)`. Passing a modeled-only tree would make untouched keys look
+  deleted to `rebase()` (silent data loss), so the full tree is mandatory.
+- `formValue` persisted in the draft and passed to `rebase()` is that same full tree (untouched
+  included, virtual keys stripped).
+
+### Editor surfaces at P2.6
+
+- `authPaused` refuses pre-network with `failed(AUTH_EXPIRED)` and no dispatch. The P2.6 editor maps it
+  (and `paused(auth)`) to an "access key needs checking" state and routes the founder through
+  sign-out → sign-in → boot offer. The in-place re-auth sheet + `resumeAuth()` wiring stays P2.10;
+  INV-A01 remains partial until then.
+- Boot replay covers the ENTRY-level adjudication only: `discard` deletes the draft, `offer` shows a
+  confirm banner, `conflict` shows an honest message with "start over from the latest version". The
+  field-granularity freeze UI stays P2.9.
+- Lease scope for v0 = the entry draftKey; acquire on mount, heartbeat, release on unmount. `onLost`
+  shows a notice and the next save adjudicates through the coordinator (never a blind re-dispatch).
+  Full steal-rebaseline UX = P2.9.
+- The draft key law (`${repo}/${collection}/${slug}`) does not carry `branch`, so two branches of one
+  repo share a draft and lease slot. Accepted for the single-branch Stage A; revisited if multi-branch
+  editing lands.

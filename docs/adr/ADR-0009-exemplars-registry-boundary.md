@@ -16,3 +16,15 @@ Round-1 major: the Day-1 custom-widget author — the Sveltia gap this project e
 Exemplar acceptance criteria are P3 (widget) and P1 (backend) gate items — not polish; the contract suite version bumps = breaking-change discipline via changesets.
 ### P0 verification (2026-10-27)
 - Both registries exist as seams joined by name: `FieldTypeName` (core, 12 names) + the admin `WidgetBinding { fieldTypeName }` placeholder; the `reference-fixture-backend` exemplar stub ships and passes the shared suite (exemplar-acceptance posture). Registry mechanics land P1.2/P3. No deviation.
+
+### P2.6 verification (2026-10-27)
+
+- `defineWidget` + `createWidgetRegistry` land as the join-by-name seam: the binding carries
+  `fieldTypeName` and the component receives `WidgetProps { value, onChange, error, fieldConfig }`.
+  No `backend`, no token, no transport in `WidgetProps` — the standing veto is honoured.
+- **Recorded deviation (scope, not contract):** the async half of the pinned contract — `useField()` and
+  `services { entryIndex, readEntry, siblingValues }` — is NOT part of the six v0 widgets (string, text,
+  number, boolean, select, datetime). It arrives with the list/object/relation widgets (P3.1/P3.3), which
+  are the only consumers that need cross-entry reads. The full contract above remains the target and the
+  reference-swatch exemplar (P3.6) still owns its acceptance.
+- Registry snapshot test stays a P3.6 exemplar acceptance item, as scheduled.
