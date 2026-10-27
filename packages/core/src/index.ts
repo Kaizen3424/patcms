@@ -275,6 +275,7 @@ export {
   resolveConflictPaths,
   runSave,
   SAVE_PHASE_ORDER,
+  SaveInFlightError,
   transitionSaveState,
 } from "./pipeline"
 export type {
@@ -319,10 +320,17 @@ export {
   utf8ByteLength,
 } from "./safety"
 export type { Logger, LogLevel, LogRecord } from "./safety/logger"
-export type { JsonDocument, NewlineStyle, ParseJsonDocumentResult } from "./serialization"
-// serialization (source-preserving documents)
+// serialization (source-preserving documents + the one save-path composer)
+export type {
+  ComposedEntryDocument,
+  ComposeEntryDocumentInput,
+  JsonDocument,
+  NewlineStyle,
+  ParseJsonDocumentResult,
+} from "./serialization"
 export {
   canonicalJson,
+  composeEntryDocument,
   detectNewline,
   documentsCanonicallyEqual,
   jsonEqual,

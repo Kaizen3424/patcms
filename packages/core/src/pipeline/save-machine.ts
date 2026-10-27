@@ -170,7 +170,11 @@ export function transitionSaveState(
     case "RESUME":
       return state.phase === "paused" ? { phase: "queued", baseSha: state.baseSha } : state
     case "RESET":
-      if (state.phase === "published" || state.phase === "conflict" || state.phase === "failed") {
+      // P2.6 widening (ADR-0004 appendix): every phase except a genuinely
+      // in-flight write returns to editing. `committing` is excluded on
+      // purpose — telling the machine a new base while a transport write is
+      // live would desync it from the ref.
+      if (state.phase !== "committing") {
         return { phase: "editing", baseSha: event.baseSha }
       }
       return state

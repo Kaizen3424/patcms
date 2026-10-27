@@ -82,10 +82,38 @@ export interface SaveCoordinator {
   resume(draftKey: string): void
   /** Clears the auth pause after a successful re-auth + re-probe (INV-A01). */
   resumeAuth(): void
+  /** Editor keystroke: `editing|dirty` → `dirty`; a no-op everywhere else. */
+  markDirty(draftKey: string, baseSha: string): void
+  /**
+   * Back to `editing` against a (new) base (ADR-0004 P2.6 pin). Legal from
+   * every phase except `committing`. Used on mount, after a published/noop
+   * verdict, and when the founder starts over from the latest version.
+   */
+  reset(draftKey: string, baseSha: string): void
+  /**
+   * Abandons a save that is NOT committing: resolves `cancelled` and returns
+   * the machine to `editing`. The draft is retained (crash-safety record).
+   */
+  cancel(draftKey: string): void
   /** True between a 401 pause and `resumeAuth()` — save() refuses pre-network. */
   readonly authPaused: boolean
   state(draftKey: string): SaveMachineState | undefined
   subscribe(listener: (snapshot: CoordinatorSnapshot) => void): () => void
+}
+
+/**
+ * A second `save()` for a draftKey whose previous job is still live. Raised
+ * instead of overwriting the job registration: the one-flight queue would
+ * otherwise strand the first promise forever (ADR-0004 P2.6 pin).
+ */
+export class SaveInFlightError extends Error {
+  readonly draftKey: string
+
+  constructor(draftKey: string) {
+    super(`a save is already in progress for ${draftKey}`)
+    this.name = "SaveInFlightError"
+    this.draftKey = draftKey
+  }
 }
 
 interface Job {
@@ -95,6 +123,8 @@ interface Job {
   gate: WakeGate
   rebaseBudget: number
   backoffIndex: number
+  /** Set by `cancel()`; checked at attempt entry and after every gate wait. */
+  cancelRequested: boolean
 }
 
 /** Coalescing wake gate (see {@link createWakeGate}). */
@@ -144,6 +174,9 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     for (const listener of listeners) listener(snapshot)
   }
 
+  const baseShaOfRequest = (request: SaveRequest): string =>
+    request.baseSha ?? request.draft?.baseSha ?? ""
+
   const dispatch = (key: string, event: SaveMachineEvent): void => {
     const current = states.get(key) ?? { phase: "editing", baseSha: "" }
     const next = transitionSaveState(current, event)
@@ -188,10 +221,24 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
   }
 
   /**
+   * Cancellation is observed ONLY at boundaries where no transport call is in
+   * flight (attempt entry, and after each park/backoff gate wait), so an
+   * abandoned save can never race a write that cannot be un-sent. Resolving
+   * `cancelled` returns the machine to `editing` and keeps the draft.
+   */
+  const cancelledVerdict = (job: Job): { readonly kind: "cancelled" } | undefined => {
+    if (!job.cancelRequested) return undefined
+    dispatch(job.key, { type: "RESET", baseSha: baseShaOfRequest(job.request) })
+    return { kind: "cancelled" }
+  }
+
+  /**
    * One transport attempt + verdict handling. Returns `undefined` when the
    * job must LOOP (parked / retrying / rebasing); a verdict = terminal.
    */
   const attemptOnce = async (job: Job): Promise<SaveVerdict | undefined> => {
+    const cancelledAtEntry = cancelledVerdict(job)
+    if (cancelledAtEntry !== undefined) return cancelledAtEntry
     const request = job.request
     dispatch(job.key, { type: "START" })
     const input: SaveDriverInput = {
@@ -227,12 +274,18 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
       dispatch(job.key, { type: "PARK", reason: "quota", waitMs: verdict.waitMs })
       if (verdict.waitMs !== null) scheduleWake(verdict.waitMs, job.gate.wake)
       await job.gate.wait() // event-driven resume (INV-N01); null → manual
+      const cancelledAfterPark = cancelledVerdict(job)
+      if (cancelledAfterPark !== undefined) return cancelledAfterPark
       dispatch(job.key, { type: "RESUME" })
       return undefined
     }
     if (verdict.kind === "conflict") {
       return await adjudicateConflict(job, verdict.details)
     }
+    // Defensive: the driver never returns `cancelled` (it is produced only by
+    // cancelledVerdict at the gate boundaries above), but the union demands a
+    // branch and an honest settle beats a cast.
+    if (verdict.kind === "cancelled") return verdict
     // failed —
     if (verdict.error.code === "AUTH_EXPIRED") {
       // INV-A01: the drain freezes here (no further network until the admin
@@ -241,6 +294,8 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
       authPaused = true
       dispatch(job.key, { type: "PARK", reason: "auth", waitMs: null })
       await job.gate.wait()
+      const cancelledAfterAuth = cancelledVerdict(job)
+      if (cancelledAfterAuth !== undefined) return cancelledAfterAuth
       dispatch(job.key, { type: "RESUME" })
       return undefined
     }
@@ -252,11 +307,15 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
         dispatch(job.key, { type: "RETRY" })
         scheduleWake(delay, job.gate.wake)
         await job.gate.wait()
+        const cancelledInBackoff = cancelledVerdict(job)
+        if (cancelledInBackoff !== undefined) return cancelledInBackoff
         return undefined
       }
       // Backoff cap exhausted → paused(manual) per ADR-0004.
       dispatch(job.key, { type: "PARK", reason: pauseReason(verdict.error.code), waitMs: null })
       await job.gate.wait()
+      const cancelledAtCap = cancelledVerdict(job)
+      if (cancelledAtCap !== undefined) return cancelledAtCap
       job.backoffIndex = 0 // manual resume grants a fresh budget
       dispatch(job.key, { type: "RESUME" })
       return undefined
@@ -270,6 +329,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     for (;;) {
       const verdict = await attemptOnce(job)
       if (verdict === undefined) continue
+      // Deregister BEFORE resolving: a `finally`-based delete on the queue
+      // promise could otherwise remove a NEWER job registered for the same
+      // draftKey in the microtask gap (the same class of bug as overwriting).
+      jobs.delete(job.key)
       job.resolve(verdict)
       return
     }
@@ -409,6 +472,11 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
 
   return {
     async save(request: SaveRequest): Promise<SaveVerdict> {
+      if (jobs.has(request.draftKey)) {
+        // ADR-0004 P2.6 pin: never overwrite a live job registration — the
+        // one-flight queue would strand the first promise forever.
+        return Promise.reject(new SaveInFlightError(request.draftKey))
+      }
       if (authPaused) {
         // INV-A01: no requests inside the auth-paused window — refuse BEFORE
         // any network; the editor keeps its own edits (and may persist them
@@ -437,17 +505,14 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
           gate: createWakeGate(),
           rebaseBudget: maxSelfRebases,
           backoffIndex: 0,
+          cancelRequested: false,
         }
         jobs.set(request.draftKey, job)
         dispatch(request.draftKey, {
           type: "SUBMIT",
-          baseSha: request.baseSha ?? request.draft?.baseSha ?? "",
+          baseSha: baseShaOfRequest(request),
         })
-        void queue
-          .submit(() => runJob(job))
-          .finally(() => {
-            jobs.delete(request.draftKey)
-          })
+        void queue.submit(() => runJob(job))
       })
     },
 
@@ -471,6 +536,24 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
 
     get authPaused(): boolean {
       return authPaused
+    },
+
+    markDirty(draftKey: string, baseSha: string): void {
+      dispatch(draftKey, { type: "MARK_DIRTY", baseSha })
+    },
+
+    reset(draftKey: string, baseSha: string): void {
+      dispatch(draftKey, { type: "RESET", baseSha })
+    },
+
+    cancel(draftKey: string): void {
+      const job = jobs.get(draftKey)
+      if (job === undefined) return
+      // A live transport write cannot be un-sent; cancellation only applies to
+      // queued/parked/backoff states, where the job is waiting on its gate.
+      if (states.get(draftKey)?.phase === "committing") return
+      job.cancelRequested = true
+      job.gate.wake()
     },
 
     state(draftKey: string): SaveMachineState | undefined {

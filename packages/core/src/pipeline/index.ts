@@ -56,7 +56,7 @@ export type {
   SaveCoordinatorOptions,
   SaveRequest,
 } from "./save-controller"
-export { createSaveCoordinator } from "./save-controller"
+export { createSaveCoordinator, SaveInFlightError } from "./save-controller"
 export type {
   ConflictMergePreview,
   SaveConflictDetails,

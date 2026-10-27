@@ -8,3 +8,8 @@ export {
   parseJsonDocument,
   serializeDocument,
 } from "./document"
+export type {
+  ComposedEntryDocument,
+  ComposeEntryDocumentInput,
+} from "./entry-document"
+export { composeEntryDocument } from "./entry-document"

@@ -84,6 +84,12 @@ export type SaveVerdict =
   | { readonly kind: "parked"; readonly waitMs: number | null; readonly error: BackendWriteError }
   /** Terminal for this driver call; surfaces through the failure screens. */
   | { readonly kind: "failed"; readonly error: BackendWriteError }
+  /**
+   * The editor abandoned a non-committing save (navigation/teardown). Never
+   * produced by the driver; the coordinator resolves its own pending promise
+   * with it so an abandoned job settles instead of hanging (ADR-0004 P2.6 pin).
+   */
+  | { readonly kind: "cancelled" }
 
 export interface SaveDriverInput {
   readonly backend: GitBackend
