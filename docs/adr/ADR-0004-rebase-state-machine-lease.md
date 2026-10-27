@@ -90,3 +90,52 @@ Result shape is Result-carried (spec §7 never-throw law forces the `ok`/`issues
 | 9 | Challenge read failed / unavailable / non-blob | `blocked: unreadable` | Conservative; never false-adopt on missing evidence. |
 
 `sameFilePredicateSatisfied` ⇔ every path in our write set resolves to `clean-reapply` | `adopt-remote` | `mode-restore` (P05: "applies iff ∀ changed remoteTuple(baseBlob) == baseTuple OR canon-equal"; `other-file` paths never enter the predicate). Canon predicate default = parse-value equality from P1's serializer (`jsonEqual` over `parseUntrustedJson`); injectable for tests. `notes[]` carry machine-checkable commit-body warnings (mode restores, formatting adoptions).
+
+## Appendix — C.3 operational pins (2026-10-27)
+
+Recorded before the P2.5 mechanisms land (ADR-first law; pins the operational details the signed contract left open — no law above changes).
+
+### Persisted draft record (boot-replay payload)
+
+`DraftRecord.value` for entry saves carries exactly:
+
+```
+{ filePath, baseSha, baseRaw, formValue, savedAt }
+```
+
+- `baseRaw` = the UTF-8-decoded raw bytes the form was loaded from (`oldRaw` of `rebase()`); `formValue` = the JSON-safe edited value tree; `baseSha` = the commit sha the form was loaded against.
+- `oldBase` and `dirtyPaths` are NEVER persisted — they are derived at boot (`oldBase = parse(baseRaw)`, `dirtyPaths = diffPaths(formValue, oldBase)`), so a persisted record can never disagree with the granularity law.
+- Media tiles key alongside (`${key}/media/${n}`, P4); settings docs key by file path. Draft lifecycle is orthogonal to token lifecycle (ADR-0002) — a 401 wipe NEVER touches drafts (INV-A01).
+
+### Draft write/delete ordering (INV-P11)
+
+- The draft record is written (awaited) BEFORE the save's first network call — the fresh `getRef` included. A save that dies anywhere below the write leaves a usable draft.
+- Deletion happens ONLY after the ref is observed to contain the commit (published-by-content, INV-P10). On `conflict`/`failed`/`paused` the draft is retained verbatim.
+
+### One-flight queue (INV-P04)
+
+- Keyed per repo+branch (ONE queue per controller): all overlapping saves — autosave, manual, later media — drain sequentially. Each drained save starts with a FRESH `getRef` (ADR-0004 rule), so the second save re-bases on the first's commit sha and never false-conflicts against its own predecessor; each job funnels through exactly ONE `updateRef`.
+- Rationale: ref updates on a branch are inherently serialized server-side; queueing matches transport truth and avoids spending quota on CAS retries against our own predecessor.
+
+### Lease operational numbers (INV-P13)
+
+- TTL 15 000 ms · heartbeat every 5 000 ms · a holder silent past one TTL is stealable. Steal is SILENT (victim learns only on its next beat failing) and the stealer MUST run the full batch rebaseline (`getRef` + `listChangedFiles` → `queued|conflict`) — never a blind re-dispatch of the victim's `committing` state (paused-reasons table).
+- Lease message payload: `{purpose, key, holderId, expiresAt}` — never content, never token, never field values. The lease is UX serialization only; FF/CAS stays the sole correctness mechanism.
+- Transport: `BroadcastChannel` primary; `storage`-event fallback for engines without BC (Safari <15.4) behind an injected carrier interface so both are testable without a browser.
+
+### Paused reasons + resume mapping
+
+- `paused(reason: quota)` ← RATE_LIMIT verdict carrying `describeRatePause` waitMs: with guidance → countdown + single scheduled wake (`createRateResume`, event-driven, INV-N01); WITHOUT guidance (malformed headers) → `paused(manual)` with an explicit "try again" affordance — the machine never tight-loops on a null window.
+- `paused(reason: auth)` ← AUTH_EXPIRED after the after-write hook: drafts retained, token wiped (ADR-0002), inline re-auth sheet, probe re-run BEFORE resume (INV-A01/A03).
+- `paused(reason: network)` ← NETWORK/UNKNOWN after the retryable backoff cap (aligned with the driver's rebuild budget: 2) → `paused(manual)`.
+- `visibilitychange` wake → verify-then-rebuild BEFORE trusting any queued state (never timer-cadence progression).
+
+### Boot replay classes (INV-P12)
+
+Boot runs the invariant engine over each surviving draft against a FRESH head read; verdict classes:
+
+1. `discard` — head bytes already carry our intended content (blob-sha equal) or canon-equal to the merged would-be content: the save landed or converged; delete the draft.
+2. `offer` — engine verdicts all proceed (`clean-reapply`/`adopt-remote`/`mode-restore`) but content differs: surface "resume your unsaved changes" (founder confirms; nothing auto-writes at boot).
+3. `conflict` — `field-merge`/`blocked`: straight into the field-granularity freeze UI.
+
+Boot NEVER auto-writes to the remote; replay only adjudicates and deletes drafts in the `discard` class.

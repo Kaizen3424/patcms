@@ -16,16 +16,19 @@ export class BackendReadError extends Error {
   readonly code: ReadErrorCode
   readonly status?: number
   readonly retryAfter?: string
+  /** X-RateLimit-Reset epoch seconds (primary exhaustion → reset countdown, INV-N01). */
+  readonly resetAt?: string
 
   constructor(
     code: ReadErrorCode,
     message: string,
-    options: { status?: number; retryAfter?: string } = {},
+    options: { status?: number; retryAfter?: string; resetAt?: string } = {},
   ) {
     super(message)
     this.code = code
     this.status = options.status
     this.retryAfter = options.retryAfter
+    this.resetAt = options.resetAt
   }
 }
 

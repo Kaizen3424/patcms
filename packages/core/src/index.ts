@@ -130,7 +130,7 @@ export {
   safeParseAdminConfig,
   toAdminConfig,
 } from "./config"
-export type { DraftKey, DraftRecord, DraftStore } from "./drafts"
+export type { DraftKey, DraftRecord, DraftStore, SaveDraftPayload } from "./drafts"
 export type {
   BaseFieldDescriptor,
   BaseFieldMeta,
@@ -212,15 +212,22 @@ export {
   unwrapFieldSchema,
   validateEntryForSave,
 } from "./fields"
-// pipeline (C.1 driver, C.2 conflict engine): save driver + laws + policy
+// pipeline (C.1 driver, C.2 engine, P2.5 coordinator): save laws + policy
 export type {
+  AdjudicateDraftInput,
   CommitMessageVerdict,
   ConcurrencyLimiter,
   ConflictEngineInput,
   ConflictEngineResult,
+  ConflictMergePreview,
+  CoordinatorSnapshot,
+  DraftAdjudication,
   FieldPath,
   FieldPathSegment,
   FileConflictVerdict,
+  LeaseCarrier,
+  LeaseMessage,
+  OneFlightQueue,
   OurWrite,
   RateDescriptor,
   RebaseInput,
@@ -229,23 +236,36 @@ export type {
   RebaseResult,
   RebaseSuccess,
   SaveConflictDetails,
+  SaveCoordinator,
+  SaveCoordinatorOptions,
   SaveDriverInput,
+  SaveMachineEvent,
+  SaveMachineState,
+  SavePauseReason,
   SavePhase,
+  SaveRequest,
   SaveVerdict,
 } from "./pipeline"
 export {
+  adjudicateDraft,
   commonAncestorFieldPath,
   composeCommitMessage,
   computeDirtyPaths,
   containsSkipToken,
   createConcurrencyLimiter,
+  createOneFlightQueue,
   createRateResume,
+  createSaveCoordinator,
+  createSaveLease,
+  DEFAULT_LEASE_HEARTBEAT_MS,
+  DEFAULT_LEASE_TTL_MS,
   describeRatePause,
   diffPaths,
   equalsFieldPath,
   fieldEquals,
   fieldPathKey,
   isAncestorFieldPath,
+  isRetryableWriteCode,
   isZeroDiffChangeSet,
   parseRateWindowReset,
   parseRetryAfter,
@@ -255,6 +275,7 @@ export {
   resolveConflictPaths,
   runSave,
   SAVE_PHASE_ORDER,
+  transitionSaveState,
 } from "./pipeline"
 export type {
   JsonPrimitive,

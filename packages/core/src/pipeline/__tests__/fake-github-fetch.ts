@@ -21,6 +21,8 @@ export interface FaultSpec {
   readonly pathPattern: RegExp
   readonly times: number
   readonly status: number
+  /** Optional response headers — rate windows ride on 403/429 faults (INV-P11). */
+  readonly headers?: Readonly<Record<string, string>>
 }
 
 export interface DropAckSpec {
@@ -132,6 +134,7 @@ export function createHarness(
       return toResponse({
         status: fault.fault.status,
         json: { message: fault.fault.status >= 500 ? "Internal Server Error" : "fixture fault" },
+        ...(fault.fault.headers === undefined ? {} : { headers: fault.fault.headers }),
       })
     }
     for (const drop of dropBudget) {

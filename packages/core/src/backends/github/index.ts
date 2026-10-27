@@ -475,19 +475,25 @@ function classifyResponse(response: FetchResponseLike): BackendReadError {
   const status = response.status
   const retryAfter = response.headers.get("retry-after") ?? undefined
   const remaining = response.headers.get("x-ratelimit-remaining")
+  const resetAt = response.headers.get("x-ratelimit-reset") ?? undefined
   if (status === 401)
     return new BackendReadError("AUTH_EXPIRED", "GitHub token expired", { status })
   if (status === 403) {
-    if (remaining === "0" || retryAfter !== undefined) {
+    if (remaining === "0" || retryAfter !== undefined || resetAt !== undefined) {
       return new BackendReadError("RATE_LIMIT", "GitHub rate limit reached", {
         status,
-        retryAfter,
+        ...(retryAfter === undefined ? {} : { retryAfter }),
+        ...(resetAt === undefined ? {} : { resetAt }),
       })
     }
     return new BackendReadError("SCOPE", "GitHub token lacks the required scope", { status })
   }
   if (status === 429) {
-    return new BackendReadError("RATE_LIMIT", "GitHub rate limit reached", { status, retryAfter })
+    return new BackendReadError("RATE_LIMIT", "GitHub rate limit reached", {
+      status,
+      ...(retryAfter === undefined ? {} : { retryAfter }),
+      ...(resetAt === undefined ? {} : { resetAt }),
+    })
   }
   if (status === 404)
     return new BackendReadError("NOT_FOUND", "GitHub resource not found", { status })

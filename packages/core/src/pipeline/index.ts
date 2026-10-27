@@ -1,24 +1,13 @@
 /**
  * Save pipeline vocabulary — ADR-0004 (one transition table, never scattered
- * booleans). The state machine + drafts + lease land in P2.5. C.1 mechanics:
- * save driver, skip-token law, rate policy, zero-diff gate. C.2 mechanics:
- * conflict invariant engine (file-level) + `rebase()` (field-level merge).
+ * booleans). P2.5: state machine, one-flight queue, save coordinator (drafts +
+ * boot replay), lease contract. C.1 mechanics: save driver, skip-token law,
+ * rate policy, zero-diff gate. C.2 mechanics: conflict invariant engine
+ * (file-level) + `rebase()` (field-level merge).
  */
 
-/** Exhaustive save phases (ADR-0004 §state machine). */
-export const SAVE_PHASE_ORDER = [
-  "editing",
-  "dirty",
-  "queued",
-  "committing",
-  "published",
-  "conflict",
-  "failed",
-  "paused",
-] as const
-
-export type SavePhase = (typeof SAVE_PHASE_ORDER)[number]
-
+export type { AdjudicateDraftInput, DraftAdjudication } from "./boot-replay"
+export { adjudicateDraft } from "./boot-replay"
 export type { CommitMessageVerdict } from "./commit-message"
 export { composeCommitMessage, containsSkipToken } from "./commit-message"
 export { fieldEquals } from "./field-equals"
@@ -40,6 +29,8 @@ export type {
   OurWrite,
 } from "./invariant-engine"
 export { resolveConflictPaths } from "./invariant-engine"
+export type { OneFlightQueue } from "./one-flight"
+export { createOneFlightQueue } from "./one-flight"
 export type {
   ConcurrencyLimiter,
   RateDescriptor,
@@ -59,6 +50,36 @@ export type {
   RebaseSuccess,
 } from "./rebase"
 export { rebase } from "./rebase"
-export type { SaveConflictDetails, SaveDriverInput, SaveVerdict } from "./save-driver"
+export type {
+  CoordinatorSnapshot,
+  SaveCoordinator,
+  SaveCoordinatorOptions,
+  SaveRequest,
+} from "./save-controller"
+export { createSaveCoordinator } from "./save-controller"
+export type {
+  ConflictMergePreview,
+  SaveConflictDetails,
+  SaveDriverInput,
+  SaveVerdict,
+} from "./save-driver"
 export { runSave } from "./save-driver"
+export type {
+  LeaseCarrier,
+  LeaseMessage,
+  SaveLease,
+  SaveLeaseOptions,
+} from "./save-lease"
+export {
+  createSaveLease,
+  DEFAULT_LEASE_HEARTBEAT_MS,
+  DEFAULT_LEASE_TTL_MS,
+} from "./save-lease"
+export type {
+  SaveMachineEvent,
+  SaveMachineState,
+  SavePauseReason,
+  SavePhase,
+} from "./save-machine"
+export { isRetryableWriteCode, SAVE_PHASE_ORDER, transitionSaveState } from "./save-machine"
 export { isZeroDiffChangeSet } from "./zero-diff"

@@ -21,3 +21,18 @@ export interface DraftStore {
   delete(key: DraftKey): Promise<void>
   list(prefix?: string): Promise<readonly DraftRecord[]>
 }
+
+/**
+ * The persisted save-draft payload (ADR-0004 C.3 pins). `baseRaw` is the
+ * UTF-8-decoded raw bytes the form was loaded from (`oldRaw` of `rebase()`);
+ * `formValue` is the JSON-safe edited value tree; `baseSha` is the commit sha
+ * the form was loaded against. `oldBase` and `dirtyPaths` are NEVER persisted —
+ * they derive at boot (`parse(baseRaw)` / `diffPaths(formValue, parse(baseRaw))`),
+ * so a stored record can never disagree with the granularity law.
+ */
+export interface SaveDraftPayload {
+  readonly filePath: string
+  readonly baseSha: string
+  readonly baseRaw: string
+  readonly formValue: unknown
+}
