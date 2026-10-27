@@ -6,8 +6,9 @@
  * `${repo}/${collection}/${slug}`; staged media tiles key alongside (P4);
  * settings docs key by file path.
  */
-import { clear, createStore, del, get, keys, set } from "idb-keyval"
+import { clear, del, get, keys, set } from "idb-keyval"
 import type { DraftKey, DraftRecord, DraftStore } from "../drafts"
+import { createSharedStore } from "./idb-store"
 
 export interface IdbDraftStoreOptions {
   readonly dbName?: string
@@ -15,7 +16,7 @@ export interface IdbDraftStoreOptions {
 }
 
 export function createIdbDraftStore(options: IdbDraftStoreOptions = {}): DraftStore {
-  const store = createStore(options.dbName ?? "mycms", options.storeName ?? "drafts")
+  const store = createSharedStore(options.dbName ?? "mycms", options.storeName ?? "drafts")
 
   const asRecord = (value: unknown): DraftRecord | undefined => {
     if (typeof value !== "object" || value === null) return undefined
@@ -53,5 +54,5 @@ export function createIdbDraftStore(options: IdbDraftStoreOptions = {}): DraftSt
 
 /** Test/SSR helper: empties the draft database (never touches auth). */
 export async function clearIdbDraftStore(options: IdbDraftStoreOptions = {}): Promise<void> {
-  await clear(createStore(options.dbName ?? "mycms", options.storeName ?? "drafts"))
+  await clear(createSharedStore(options.dbName ?? "mycms", options.storeName ?? "drafts"))
 }

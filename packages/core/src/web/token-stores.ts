@@ -4,8 +4,9 @@
  * sessionStorage is the per-device fallback. Core never imports these from the
  * Node-safe main entry; hosts import `@mycms/core/web`.
  */
-import { createStore, del, get, set } from "idb-keyval"
+import { del, get, set } from "idb-keyval"
 import type { TokenStore } from "../auth"
+import { createSharedStore } from "./idb-store"
 
 export interface IdbTokenStoreOptions {
   readonly dbName?: string
@@ -14,7 +15,7 @@ export interface IdbTokenStoreOptions {
 }
 
 export function createIdbTokenStore(options: IdbTokenStoreOptions = {}): TokenStore {
-  const store = createStore(options.dbName ?? "mycms", options.storeName ?? "auth")
+  const store = createSharedStore(options.dbName ?? "mycms", options.storeName ?? "auth")
   const key = options.key ?? "pat"
   return {
     async read() {

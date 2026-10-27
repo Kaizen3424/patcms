@@ -19,6 +19,12 @@ export type {
 export type { IdbDraftStoreOptions } from "./idb-draft-store"
 export { clearIdbDraftStore, createIdbDraftStore } from "./idb-draft-store"
 export {
+  closeMycmsDatabases,
+  createSharedStore,
+  MYCMS_IDB_STORES,
+  openMycmsDatabase,
+} from "./idb-store"
+export {
   createAutoCarrier,
   createBroadcastCarrier,
   createStorageCarrier,

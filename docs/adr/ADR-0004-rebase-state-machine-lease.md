@@ -204,3 +204,13 @@ lifecycle and the save-cycle laws the UI must obey. No law above changes; one de
 - The draft key law (`${repo}/${collection}/${slug}`) does not carry `branch`, so two branches of one
   repo share a draft and lease slot. Accepted for the single-branch Stage A; revisited if multi-branch
   editing lands.
+
+### Shared IndexedDB schema (2026-10-27, found by the P2.6 save e2e)
+
+`auth` (ADR-0002) and `drafts` (this ADR) live in ONE database (`mycms`). idb-keyval's
+`createStore(dbName, storeName)` can only create its object store while the database is being CREATED:
+the second adapter to open an existing version-1 database receives `NotFoundError` on its first
+transaction, which blocked the first real save in a browser. The storage decision is unchanged (drafts
+stay in IndexedDB, key law unchanged); the web adapters now open the database ONCE through
+`web/idb-store.ts`, declaring every object store up front and bumping the version when an existing
+database is missing one. Adding a store means adding its name to `MYCMS_IDB_STORES` in the same change.
