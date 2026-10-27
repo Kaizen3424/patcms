@@ -58,6 +58,26 @@ describe("save bar projection", () => {
     ).toBe("noop")
   })
 
+  it("the saved receipt survives the post-publish reset to a fresh base", () => {
+    // The editor resets the machine to `editing` at the new commit, so a bar
+    // that only read the phase would fall straight back to "clean" and the
+    // founder would never see the confirmation.
+    expect(
+      saveBarStatus(input({ state: { phase: "editing", baseSha: BASE }, justSaved: true })),
+    ).toBe("saved")
+    expect(
+      saveBarStatus(
+        input({ state: { phase: "editing", baseSha: BASE }, justSaved: true, justNoop: true }),
+      ),
+    ).toBe("noop")
+    // ...but a fresh edit typed after the save still owns the bar.
+    expect(
+      saveBarStatus(
+        input({ state: { phase: "dirty", baseSha: BASE }, justSaved: true, dirty: true }),
+      ),
+    ).toBe("dirty")
+  })
+
   it("a conflict offers start-over and blocks Save", () => {
     const bar = describeSaveBar(
       state({

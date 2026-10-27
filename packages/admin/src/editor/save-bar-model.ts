@@ -10,8 +10,9 @@
  * un-dirties, and no event is invented for it.
  *
  * Precedence is deliberate: anything that BLOCKS a save outranks anything that
- * merely describes the edit state, and an in-flight write outranks a stale
- * local diff (the write will land; the diff is re-evaluated after it settles).
+ * merely describes the edit state, an in-flight write outranks a stale local
+ * diff (the write will land; the diff is re-evaluated after it settles), and a
+ * fresh edit outranks the receipt of the save that preceded it.
  */
 import type { SaveMachineState } from "@mycms/core"
 import type { SaveBarStatus } from "./copy"
@@ -74,6 +75,10 @@ export function saveBarStatus(input: SaveBarInput): SaveBarStatus {
   }
   if (input.leaseLost) return "leaseLost"
   if (input.dirty) return "dirty"
+  // The receipt outlives the machine: the editor resets to a fresh base after
+  // every published verdict (ADR-0004 RESET widening), so "Saved." comes from
+  // the verdict that just landed, not from a phase that reset already erased.
+  if (input.justSaved) return input.justNoop ? "noop" : "saved"
   if (phase === "published") return input.justNoop ? "noop" : "saved"
   return "clean"
 }
