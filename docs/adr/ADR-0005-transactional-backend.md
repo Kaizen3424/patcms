@@ -38,6 +38,44 @@ The P0 interface was a write-shaped skeleton; reads need their own surface. Supe
 - **After-write failure hook**: the driver exposes `onAfterWriteFailure(code)`; the admin/PatProvider wiring re-probes on 401/403/422-after-write (completes the INV-A03 P1-parked partial at P2.5 wiring).
 - **Reference fake**: `core/src/backend/fake-github-server.ts` — an HTTP-shaped, in-memory GitHub git-data model (refs/blobs/trees/commits, deterministic git framing, FF-only CAS, zero-dep). Core INV tests drive it through a `FetchLike` adapter; the playground's MSW FakeGithub delegates endpoint semantics to it so fixture and contract behavior share ONE source of framing/permission rules (ADR-0001/0009 posture). Chaos knobs live in the harness adapters, not in the truthful server model.
 
+### P2.8 addendum (2026-10-28) — status reads are required methods, not optional capabilities
+
+Supersedes the P0 sentence "optional method-shaped capabilities … accessed ONLY
+after capability check" **as it applies to deploy status**. The status reads are
+now required methods on `GitBackend` so every implementation confronts the
+contract at compile time; the existing exhaustive boolean
+`capabilities.commitStatus` remains the ONLY gate.
+
+- `readCheckRuns(branch, sha) → { kind: "ok"; totalCount; runs } | { kind: "unsupported" }`
+- `readCommitStatuses(branch, sha) → { kind: "ok"; statuses } | { kind: "unsupported" }`
+
+Rules:
+- capability `false` ⇒ `{ kind: "unsupported" }` with zero network I/O;
+  capability `true` ⇒ truthful read; failures use the existing classified read
+  errors (`AUTH_EXPIRED`, `SCOPE`, `NOT_FOUND`, `RATE_LIMIT`, `NETWORK`, `UNKNOWN`).
+  403 + any `x-ratelimit-reset` is `RATE_LIMIT`, never `SCOPE`.
+- `branch` stays a parameter on both methods (INV-P14 / provider parity) even
+  where GitHub's route is sha-scoped.
+- `per_page=100` for check-runs and `total_count` are pinned in the ADR-0008
+  P2.8 appendix; an incomplete page is `unavailable`, never Live.
+- No caching: status truth is polled fresh. This is not the content read cache
+  and never feeds conflict decisions (INV-P08 untouched).
+
+Contract suite: `STATUS_READ_CHECK` runs for every backend. With
+`commitStatus:false` it asserts `unsupported` for both methods; with `true` it
+asserts ok-shaped results and that both accept an arbitrary branch/sha without
+touching a hard-coded branch. `SHAPE_CHECK` grows the two method names.
+
+Reference fake: `FakeGithubServer` gains a stateful status model — check runs and
+commit statuses attach to commit shas, setters (`setCheckRuns`, `setStatuses`)
+drive it, and the routes resolve either a branch name or a 40-hex sha so the
+login probe (`.../commits/{branch}/check-runs?per_page=1`) keeps working. The
+playground's MSW FakeGithub delegates these routes to the core model (replacing
+the P1 static stub) and keeps the single-branch fallback
+(`server.ref(ref) ?? (40-hex ? ref : snapshot.headSha)`) so `checksRead` never
+turns `missing` spuriously. `FixtureBackend` reports `ok` with empty collections when its
+`commitStatus` capability is true; it invents no second truth source.
+
 ### P2/C.2 addendum — recursive reads surface `blob` + `commit` tuples (2026-10-27)
 
 Found during INV-P06: the P1 recursive-tree parser dropped every non-`blob` entry, so a foreign submodule swap (`type: "commit"`) was invisible at the read layer and reached the conflict engine as a phantom deletion (spurious `resurrect`). That contradicts this ADR's own conflict predicate — the base→head diff is keyed `{path → {sha, mode, type}}` and "type change blocks" — tuple truth requires type variety to survive reads. Real GitHub recursive trees include submodule entries. Fix: recursive reads keep `blob` + `commit` entries (submodule swaps stay visible; INV-P06 end-to-end), and tree-POST validation accepts gitlink entries without requiring the pointer sha to exist in-repo (submodule targets live in external repos — real GitHub parity). `tree`-type children remain flattened containers (recursive mode returns none; the truncated-walk fallback assembles its own flat list). No law above changes — this restores what the reads bullet already promised.

@@ -27,3 +27,23 @@ Genesis §2 identified the zod "metadata deficit": `z.string().min(3)` validates
 - **Untouched bytes are not re-printed.** The yve corpus is Prettier-shaped (inline objects-in-arrays, printWidth 100); a plain `JSON.stringify(..., null, 2)` reflows 77 of 106 lines in `iris-no-7.json`. INV-S01 is therefore satisfied by a **source-preserving document**: unchanged documents return their original bytes; edited/new documents use the canonical printer (2-space, author key order, LF, trailing newline). The P6 normalization pass makes canonical formatting permanent. This supersedes any reading of "serializer" as "always re-print".
 - **Drift resolution choices for the six incumbent cases** (implemented by the config port, pinned by fixtures): `category` = closed select; `people` = list `min: 1`; money/quantity integers = `int`; `contact.email` = email format; relations stay plain slug strings with cross-entry validation in the services layer; hidden defaults are metadata only and never parse-injected. Both admin and site consume the same config package at cutover.
 - **Dependency approval (owner, 2026-10-27):** `zod@4.6.7` + `idb-keyval@6.3.0` are the P1 runtime additions; `fast-check` waits for P2. GitHub transport is a hand-rolled client over the injected `FetchLike` seam (no Octokit) so MSW/e2e observe the same transport.
+
+### P2.8 addendum (2026-10-28) — optional `deploy.contexts` (additive within schemaVersion 1)
+
+`ConfigOptions` and `ConfigDefinition` gain
+`deploy?: { readonly contexts?: readonly string[] }`; `AdminConfig` carries the
+same optional shape. Absent = commit-status fallback off (ADR-0008 §2); existing
+configs parse unchanged, so this is additive within `CONFIG_SCHEMA_VERSION = 1`
+— no version bump.
+
+- The strict admin schema adds a `strictObject` for `deploy` with
+  `contexts: z.array(z.string().min(1)).optional()`; unknown keys remain errors
+  (closed config law). Semantic validation rejects duplicate contexts.
+- `defineConfig` validates and copies `deploy` only when present;
+  `toAdminConfig` passes it through unchanged. No field metadata, widget or
+  collection descriptor is involved — status contexts are site-level config.
+- It lives in config, not `AdminMountOptions`: which third-party CI contexts
+  count as the site's truth travels with the repository and is visible to the
+  host. It is not a credential or a per-session preference.
+- An empty `contexts` array is equivalent to absent (fallback disabled); it is
+  accepted so generated configs do not need to special-case emptiness.
