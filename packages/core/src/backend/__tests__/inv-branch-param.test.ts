@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import { encodeBranch } from "../../backends/github"
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../../..")
-const SCAN_ROOTS = ["src/backend", "src/backends", "src/pipeline"] as const
+const SCAN_ROOTS = ["src/backend", "src/backends", "src/pipeline", "src/status"] as const
 
 describe("INV-P14 branch parameter law", () => {
   it("has zero hard-coded main literals in backend/pipeline source", () => {

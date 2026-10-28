@@ -407,5 +407,7 @@ function stubBackend(
     commitChanges: async () => {
       throw new Error("boot never writes")
     },
+    readCheckRuns: async () => ({ kind: "ok", totalCount: 0, runs: [] }),
+    readCommitStatuses: async () => ({ kind: "ok", statuses: [] }),
   }
 }

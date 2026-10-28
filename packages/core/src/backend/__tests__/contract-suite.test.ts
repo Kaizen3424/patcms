@@ -6,6 +6,7 @@ import {
   defineContractSuite,
   runContractSuite,
   SHAPE_CHECK,
+  STATUS_READ_CHECK,
 } from "../contract-suite"
 import type { GitBackend } from "../types"
 
@@ -33,6 +34,26 @@ describe("contract suite runner (ADR-0001: one suite for every backend)", () => 
     expect(report.ok).toBe(true)
     expect(report.passed).toBe(CORE_CONTRACT_SUITE.checks.length)
     expect(report.failures).toEqual([])
+  })
+
+  it("status reads are required and capability-gated (ADR-0005 P2.8)", async () => {
+    const suite = defineContractSuite([STATUS_READ_CHECK])
+    const supported = new FixtureBackend({ headSha: HEAD })
+    const ok = await runContractSuite(supported, suite)
+    expect(ok.failures).toEqual([])
+
+    const unsupported = new FixtureBackend({
+      headSha: HEAD,
+      capabilities: { commitStatus: false },
+    })
+    const gated = await runContractSuite(unsupported, suite)
+    expect(gated.failures).toEqual([])
+    await expect(unsupported.readCheckRuns("branch", HEAD)).resolves.toEqual({
+      kind: "unsupported",
+    })
+    await expect(unsupported.readCommitStatuses("branch", HEAD)).resolves.toEqual({
+      kind: "unsupported",
+    })
   })
 
   it("records named failures for malformed implementations", async () => {

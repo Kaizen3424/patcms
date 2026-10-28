@@ -6,9 +6,15 @@
 
 import { BackendReadError } from "../../backend/errors"
 import type {
+  CheckRunConclusion,
+  CheckRunStatus,
+  CheckRunSummary,
+  CheckRunsRead,
   CommitChangeSet,
   CommitOptions,
   CommitResult,
+  CommitStatusesRead,
+  CommitStatusSummary,
   FileRead,
   GitBackend,
   GitBackendCapabilities,
@@ -209,6 +215,49 @@ export class GithubBackend implements GitBackend {
       }
     }
     return changed
+  }
+
+  async readCheckRuns(branch: string, sha: string): Promise<CheckRunsRead> {
+    if (!this.capabilities.commitStatus) return { kind: "unsupported" }
+    // Branch stays a parameter (INV-P14); GitHub's check-runs route is sha-scoped.
+    requireBranch(branch)
+    const response = await this.#request(
+      `${this.#repoUrl()}/commits/${encodeURIComponent(requireSha(sha))}/check-runs?per_page=100`,
+    )
+    if (response.kind === "not-modified") {
+      throw new BackendReadError(
+        "UNKNOWN",
+        "GitHub check-runs read returned 304 without a conditional request",
+      )
+    }
+    const record = asRecord(response.value)
+    const rawRuns = record?.check_runs
+    if (record === undefined || !Array.isArray(rawRuns)) {
+      throw new BackendReadError("UNKNOWN", "GitHub check-runs response was malformed")
+    }
+    const runs = parseCheckRuns(rawRuns)
+    const totalCount = getNumber(record, "total_count") ?? runs.length
+    return { kind: "ok", totalCount: Math.max(totalCount, runs.length), runs }
+  }
+
+  async readCommitStatuses(branch: string, sha: string): Promise<CommitStatusesRead> {
+    if (!this.capabilities.commitStatus) return { kind: "unsupported" }
+    requireBranch(branch)
+    const response = await this.#request(
+      `${this.#repoUrl()}/commits/${encodeURIComponent(requireSha(sha))}/status`,
+    )
+    if (response.kind === "not-modified") {
+      throw new BackendReadError(
+        "UNKNOWN",
+        "GitHub commit-status read returned 304 without a conditional request",
+      )
+    }
+    const record = asRecord(response.value)
+    const rawStatuses = record?.statuses
+    if (record === undefined || !Array.isArray(rawStatuses)) {
+      throw new BackendReadError("UNKNOWN", "GitHub commit-status response was malformed")
+    }
+    return { kind: "ok", statuses: parseCommitStatuses(rawStatuses) }
   }
 
   async commitChanges(
@@ -503,6 +552,93 @@ function classifyResponse(response: FetchResponseLike): BackendReadError {
 function requireBranch(branch: string): string {
   if (branch.length === 0) throw new BackendReadError("UNKNOWN", "branch must not be empty")
   return branch
+}
+
+function requireSha(sha: string): string {
+  if (sha.length === 0) throw new BackendReadError("UNKNOWN", "commit sha must not be empty")
+  return sha
+}
+
+const CHECK_RUN_STATUSES: ReadonlySet<string> = new Set<CheckRunStatus>([
+  "queued",
+  "in_progress",
+  "completed",
+  "pending",
+  "requested",
+  "waiting",
+])
+
+const CHECK_RUN_CONCLUSIONS: ReadonlySet<string> = new Set<CheckRunConclusion>([
+  "success",
+  "failure",
+  "neutral",
+  "cancelled",
+  "skipped",
+  "timed_out",
+  "action_required",
+  "stale",
+])
+
+const COMMIT_STATUS_STATES: ReadonlySet<string> = new Set([
+  "error",
+  "failure",
+  "pending",
+  "success",
+])
+
+function parseCheckRuns(list: readonly JsonValue[]): CheckRunSummary[] {
+  const runs: CheckRunSummary[] = []
+  list.forEach((item, index) => {
+    const run = asRecord(item)
+    if (run === undefined) return
+    const id = getNumber(run, "id") ?? index + 1
+    const rawStatus = getString(run, "status")
+    const rawConclusion = getString(run, "conclusion")
+    const detailsUrl = httpsUrl(getString(run, "details_url"))
+    runs.push({
+      id,
+      name: getString(run, "name") ?? `check-${id}`,
+      status:
+        rawStatus !== undefined && CHECK_RUN_STATUSES.has(rawStatus)
+          ? (rawStatus as CheckRunStatus)
+          : "pending",
+      conclusion:
+        rawConclusion !== undefined && CHECK_RUN_CONCLUSIONS.has(rawConclusion)
+          ? (rawConclusion as CheckRunConclusion)
+          : null,
+      ...(detailsUrl === undefined ? {} : { detailsUrl }),
+    })
+  })
+  return runs
+}
+
+function parseCommitStatuses(list: readonly JsonValue[]): CommitStatusSummary[] {
+  const statuses: CommitStatusSummary[] = []
+  const seen = new Set<string>()
+  for (const item of list) {
+    const status = asRecord(item)
+    const context = getString(status, "context")
+    if (status === undefined || context === undefined || context.length === 0) continue
+    // Combined-status responses are newest-first per context; keep the newest.
+    if (seen.has(context)) continue
+    seen.add(context)
+    const rawState = getString(status, "state")
+    const targetUrl = httpsUrl(getString(status, "target_url"))
+    statuses.push({
+      context,
+      state:
+        rawState !== undefined && COMMIT_STATUS_STATES.has(rawState)
+          ? (rawState as CommitStatusSummary["state"])
+          : "pending",
+      ...(targetUrl === undefined ? {} : { targetUrl }),
+    })
+  }
+  return statuses
+}
+
+/** Untrusted links survive only as https URLs (ADR-0006 render rules). */
+function httpsUrl(value: string | undefined): string | undefined {
+  return value?.startsWith("https://") === true ? value : undefined
 }
 
 /** Machine-checkable default — never carries skip tokens (ADR-0008 §4). */

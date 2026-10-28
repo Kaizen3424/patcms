@@ -39,8 +39,9 @@ method (INV-P14) and Stage-B providers may scope by ref. GitHub implementations
 MUST NOT use `branch` in these two URLs.
 
 - `capabilities.commitStatus === false` ⇒ both methods resolve
-  `{ kind: "unsupported" }` with zero network I/O; the contract suite asserts it.
-  `true` ⇒ a truthful read using the existing classified read-error taxonomy.
+  `{ kind: "unsupported" }` with zero network I/O; the contract suite pins the
+  unsupported shape and each implementation owns the no-I/O rule. `true` ⇒ a
+  truthful read using the existing classified read-error taxonomy.
 - **`per_page=100`** (supersedes §1's `per_page=1`; the login probe may stay at 1
   because it only checks permission). The reader surfaces GitHub's `total_count`;
   `runs.length < totalCount` means the page is incomplete ⇒ `unavailable`, never

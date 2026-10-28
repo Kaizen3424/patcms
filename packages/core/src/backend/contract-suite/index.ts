@@ -99,6 +99,8 @@ export const SHAPE_CHECK: ContractCheck = {
       "readFile",
       "listChangedFiles",
       "commitChanges",
+      "readCheckRuns",
+      "readCommitStatuses",
     ] as const
     for (const method of requiredMethods) {
       if (typeof backend[method] !== "function") {
@@ -192,6 +194,52 @@ export const EMPTY_DIFF_CHECK: ContractCheck = {
   },
 }
 
+/**
+ * Status reads are required methods gated by `capabilities.commitStatus`
+ * (ADR-0005 P2.8 addendum): truthful ok-shape when true, `unsupported` when
+ * false. Status data itself is scenario-owned; the suite checks the contract.
+ */
+export const STATUS_READ_CHECK: ContractCheck = {
+  name: "backend-reads/status-read-shape",
+  async run({ backend, branch }) {
+    const ref = await backend.getRef(branch)
+    const checks = await backend.readCheckRuns(branch, ref.object.sha)
+    const statuses = await backend.readCommitStatuses(branch, ref.object.sha)
+    if (!backend.capabilities.commitStatus) {
+      if (checks.kind !== "unsupported") {
+        throw new Error("commitStatus:false must make readCheckRuns return unsupported")
+      }
+      if (statuses.kind !== "unsupported") {
+        throw new Error("commitStatus:false must make readCommitStatuses return unsupported")
+      }
+      return
+    }
+    if (checks.kind !== "ok") {
+      throw new Error("commitStatus:true but readCheckRuns returned unsupported")
+    }
+    if (statuses.kind !== "ok") {
+      throw new Error("commitStatus:true but readCommitStatuses returned unsupported")
+    }
+    if (!Number.isInteger(checks.totalCount) || checks.totalCount < checks.runs.length) {
+      throw new Error("check-runs totalCount must be an integer ≥ the returned run count")
+    }
+    for (const run of checks.runs) {
+      if (!Number.isFinite(run.id) || run.name.length === 0) {
+        throw new Error("check-run entries need a numeric id and a name")
+      }
+      if (run.detailsUrl !== undefined && !run.detailsUrl.startsWith("https://")) {
+        throw new Error("check-run detailsUrl must be https when present")
+      }
+    }
+    for (const status of statuses.statuses) {
+      if (status.context.length === 0) throw new Error("commit-status entries need a context")
+      if (status.targetUrl !== undefined && !status.targetUrl.startsWith("https://")) {
+        throw new Error("commit-status targetUrl must be https when present")
+      }
+    }
+  },
+}
+
 const WRITE_CHECK_PATH = "src/content/contract-write-check.json"
 const WRITE_CHECK_CAS_PATH = "src/content/contract-cas-check.json"
 const WRITE_CHECK_BYTES = '{\n  "contract": "write-check"\n}\n'
@@ -271,6 +319,7 @@ export const CORE_CONTRACT_SUITE = defineContractSuite([
   READ_FILE_CHECK,
   ETAG_CHECK,
   EMPTY_DIFF_CHECK,
+  STATUS_READ_CHECK,
   WRITE_COMMIT_CHECK,
   WRITE_CAS_CHECK,
 ])

@@ -76,6 +76,55 @@ export interface CommitResult {
   readonly treeSha: string
 }
 
+/** Deploy-status reads (ADR-0008 P2.8 appendix; ADR-0005 P2.8 addendum). */
+export type CheckRunStatus =
+  | "queued"
+  | "in_progress"
+  | "completed"
+  | "pending"
+  | "requested"
+  | "waiting"
+
+export type CheckRunConclusion =
+  | "success"
+  | "failure"
+  | "neutral"
+  | "cancelled"
+  | "skipped"
+  | "timed_out"
+  | "action_required"
+  | "stale"
+
+export interface CheckRunSummary {
+  readonly id: number
+  readonly name: string
+  readonly status: CheckRunStatus
+  /** null until completed; unknown values are normalized to null by readers. */
+  readonly conclusion: CheckRunConclusion | null
+  /** Only https URLs survive parsing (ADR-0006 render rules). */
+  readonly detailsUrl?: string
+}
+
+export type CheckRunsRead =
+  | {
+      readonly kind: "ok"
+      readonly totalCount: number
+      readonly runs: readonly CheckRunSummary[]
+    }
+  | { readonly kind: "unsupported" }
+
+export type CommitStatusState = "error" | "failure" | "pending" | "success"
+
+export interface CommitStatusSummary {
+  readonly context: string
+  readonly state: CommitStatusState
+  readonly targetUrl?: string
+}
+
+export type CommitStatusesRead =
+  | { readonly kind: "ok"; readonly statuses: readonly CommitStatusSummary[] }
+  | { readonly kind: "unsupported" }
+
 /**
  * Capability object — exhaustive, compile-time literal (ADR-0005 §capabilities):
  * adding a key here breaks every backend implementation until it declares it.
@@ -118,4 +167,8 @@ export interface GitBackend {
     branch: string,
     options?: CommitOptions,
   ): Promise<CommitResult>
+  /** Check-runs truth for one commit (gated by `capabilities.commitStatus`). */
+  readCheckRuns(branch: string, sha: string): Promise<CheckRunsRead>
+  /** Commit-statuses fallback (gated by `capabilities.commitStatus`). */
+  readCommitStatuses(branch: string, sha: string): Promise<CommitStatusesRead>
 }

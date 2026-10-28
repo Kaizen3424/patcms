@@ -14,9 +14,11 @@ import {
   gitTreeSha,
 } from "../../backend/git-sha"
 import type {
+  CheckRunsRead,
   CommitChangeSet,
   CommitOptions,
   CommitResult,
+  CommitStatusesRead,
   FileRead,
   GitBackend,
   GitBackendCapabilities,
@@ -88,6 +90,19 @@ export class FixtureBackend implements GitBackend {
   async getRef(branch: string): Promise<Ref> {
     const sha = this.#branchHeads.get(branch) ?? this.#spec.headSha
     return { ref: `refs/heads/${branch}`, object: { sha, type: "commit" } }
+  }
+
+  async readCheckRuns(branch: string, sha: string): Promise<CheckRunsRead> {
+    if (!this.capabilities.commitStatus) return { kind: "unsupported" }
+    requireStatusArgs(branch, sha)
+    // The exemplar hosts no status data; empty is truthful, not invented.
+    return { kind: "ok", totalCount: 0, runs: [] }
+  }
+
+  async readCommitStatuses(branch: string, sha: string): Promise<CommitStatusesRead> {
+    if (!this.capabilities.commitStatus) return { kind: "unsupported" }
+    requireStatusArgs(branch, sha)
+    return { kind: "ok", statuses: [] }
   }
 
   async readTree(
@@ -209,6 +224,11 @@ export class FixtureBackend implements GitBackend {
     // Idempotent retry: equal content resolves to the same commit sha (INV-P03).
     return { commitSha, treeSha }
   }
+}
+
+function requireStatusArgs(branch: string, sha: string): void {
+  if (branch.length === 0) throw new BackendReadError("UNKNOWN", "branch must not be empty")
+  if (sha.length === 0) throw new BackendReadError("UNKNOWN", "commit sha must not be empty")
 }
 
 /** Machine-checkable content-commit default (AGENTS.md §4; ADR-0008 §4). */

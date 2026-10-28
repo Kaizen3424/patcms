@@ -142,6 +142,28 @@ describe("FakeGithub read-side contract (P1.7/P1.14)", () => {
     expect(ref.object.sha).toBe(snapshot.headSha)
   })
 
+  it("serves check runs and statuses through the shared fake model", async () => {
+    const fake = createFakeGithubHandlers(snapshot)
+    server.use(...fake.handlers)
+    fake.server.setCheckRuns(snapshot.headSha, [
+      { name: "pages", status: "completed", conclusion: "success" },
+    ])
+    fake.server.setStatuses(snapshot.headSha, [{ context: "ci/site", state: "success" }])
+
+    const api = backend()
+    await expect(api.readCheckRuns("fixture-branch", snapshot.headSha)).resolves.toMatchObject({
+      kind: "ok",
+      totalCount: 1,
+      runs: [{ name: "pages", conclusion: "success" }],
+    })
+    await expect(api.readCommitStatuses("fixture-branch", snapshot.headSha)).resolves.toMatchObject(
+      {
+        kind: "ok",
+        statuses: [{ context: "ci/site", state: "success" }],
+      },
+    )
+  })
+
   it("probes capabilities against the fake repo with no token in URLs", async () => {
     server.use(...handlers)
     const result = await probeGithubCapabilities({

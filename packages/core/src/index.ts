@@ -34,12 +34,15 @@ export {
   defineContractSuite,
   runContractSuite,
   SHAPE_CHECK,
+  STATUS_READ_CHECK,
   WRITE_CAS_CHECK,
   WRITE_COMMIT_CHECK,
 } from "./backend/contract-suite"
 export type { ReadErrorCode } from "./backend/errors"
 export { BackendReadError, isBackendReadError } from "./backend/errors"
 export type {
+  FakeCheckRunInput,
+  FakeCommitStatusInput,
   FakeGithubSpec,
   FakeRequest,
   FakeRequestLogEvent,
@@ -54,8 +57,15 @@ export type { ReadTreeLike, Result, TreeTruncationIssue } from "./backend/guards
 export { assertNotTruncated } from "./backend/guards"
 // backend / pipeline seams
 export type {
+  CheckRunConclusion,
+  CheckRunStatus,
+  CheckRunSummary,
+  CheckRunsRead,
   CommitChangeSet,
   CommitResult,
+  CommitStatusesRead,
+  CommitStatusState,
+  CommitStatusSummary,
   FileRead,
   FileWrite,
   GitBackend,

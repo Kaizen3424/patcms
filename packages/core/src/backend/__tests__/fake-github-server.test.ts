@@ -78,6 +78,68 @@ describe("FakeGithubServer — refs + contents (model truth)", () => {
   })
 })
 
+describe("FakeGithubServer — deploy-status reads (ADR-0008 P2.8)", () => {
+  it("serves check runs by branch name and by exact sha", async () => {
+    const spec = await buildSpec()
+    const server = new FakeGithubServer(spec)
+    server.setCheckRuns(spec.headSha, [
+      { name: "pages", status: "completed", conclusion: "success" },
+      { name: "preview", status: "in_progress" },
+    ])
+
+    const byBranch = await server.handle({
+      method: "GET",
+      path: "/commits/fixture-branch/check-runs",
+    })
+    const bySha = await server.handle({
+      method: "GET",
+      path: `/commits/${spec.headSha}/check-runs`,
+    })
+    for (const response of [byBranch, bySha]) {
+      expect(response.status).toBe(200)
+      expect(response.json).toMatchObject({
+        total_count: 2,
+        check_runs: [
+          { name: "pages", status: "completed", conclusion: "success" },
+          { name: "preview", status: "in_progress", conclusion: null },
+        ],
+      })
+    }
+  })
+
+  it("replaces runs and statuses, and misses unknown refs", async () => {
+    const spec = await buildSpec()
+    const server = new FakeGithubServer(spec)
+    server.setCheckRuns(spec.headSha, [{ name: "first", conclusion: "failure" }])
+    server.setCheckRuns(spec.headSha, [])
+    const empty = await server.handle({
+      method: "GET",
+      path: `/commits/${spec.headSha}/check-runs`,
+    })
+    expect(empty.json).toMatchObject({ total_count: 0, check_runs: [] })
+
+    server.setStatuses(spec.headSha, [
+      { context: "ci/site", state: "pending", targetUrl: "https://ci.example/1" },
+      { context: "ci/other", state: "success" },
+    ])
+    const statuses = await server.handle({
+      method: "GET",
+      path: `/commits/${spec.headSha}/status`,
+    })
+    expect(statuses.json).toMatchObject({
+      state: "pending",
+      total_count: 2,
+      statuses: [
+        { context: "ci/site", state: "pending", target_url: "https://ci.example/1" },
+        { context: "ci/other", state: "success" },
+      ],
+    })
+
+    const missing = await server.handle({ method: "GET", path: "/commits/nope/check-runs" })
+    expect(missing.status).toBe(404)
+  })
+})
+
 describe("FakeGithubServer — content-addressed writes (INV-P03 model basis)", () => {
   it("equal blob payloads collapse into one slot", async () => {
     const server = new FakeGithubServer(await buildSpec())

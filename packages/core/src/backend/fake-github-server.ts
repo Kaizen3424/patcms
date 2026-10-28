@@ -22,6 +22,13 @@
 import { decodeBase64, encodeBase64 } from "../safety/encoding"
 import type { GitTreeEntry } from "./git-sha"
 import { gitBlobSha, gitCommitShaCanonical, gitTreeSha } from "./git-sha"
+import type {
+  CheckRunConclusion,
+  CheckRunStatus,
+  CheckRunSummary,
+  CommitStatusState,
+  CommitStatusSummary,
+} from "./types"
 import { classifyWriteResponse, networkWriteError } from "./write-errors"
 
 export interface FakeGithubSpec {
@@ -29,6 +36,21 @@ export interface FakeGithubSpec {
   readonly headSha: string
   readonly treeSha: string
   readonly files: ReadonlyMap<string, { readonly sha: string; readonly bytes: Uint8Array }>
+}
+
+/** Test input for `setCheckRuns` — ids/names default deterministically. */
+export interface FakeCheckRunInput {
+  readonly id?: number
+  readonly name?: string
+  readonly status?: CheckRunStatus
+  readonly conclusion?: CheckRunConclusion | null
+  readonly detailsUrl?: string
+}
+
+export interface FakeCommitStatusInput {
+  readonly context: string
+  readonly state: CommitStatusState
+  readonly targetUrl?: string
 }
 
 export interface FakeRequest {
@@ -74,6 +96,8 @@ export class FakeGithubServer {
   readonly #blobs = new Map<string, Uint8Array>()
   readonly #trees = new Map<string, readonly GitTreeEntry[]>()
   readonly #commits = new Map<string, CommitRecord>()
+  readonly #checkRuns = new Map<string, readonly CheckRunSummary[]>()
+  readonly #statuses = new Map<string, readonly CommitStatusSummary[]>()
   readonly #spec: FakeGithubSpec
   readonly log: FakeRequestLogEvent[] = []
 
@@ -125,6 +149,38 @@ export class FakeGithubServer {
   setRef(branch: string, sha: string): void {
     if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error(`fake setRef: non-40-hex sha ${sha}`)
     this.#branches.set(branch, sha)
+  }
+
+  /**
+   * Attach/replace check runs for a commit (branch heads resolve through the
+   * same route). An empty list means "no run has landed" (grace subject).
+   */
+  setCheckRuns(sha: string, runs: readonly FakeCheckRunInput[]): void {
+    this.#checkRuns.set(
+      sha,
+      runs.map((run, index) => {
+        const id = run.id ?? index + 1
+        return {
+          id,
+          name: run.name ?? `check-${id}`,
+          status: run.status ?? "completed",
+          conclusion: run.conclusion === undefined ? null : run.conclusion,
+          ...(run.detailsUrl === undefined ? {} : { detailsUrl: run.detailsUrl }),
+        }
+      }),
+    )
+  }
+
+  /** Attach/replace commit statuses (the `contexts[]` fallback source). */
+  setStatuses(sha: string, statuses: readonly FakeCommitStatusInput[]): void {
+    this.#statuses.set(
+      sha,
+      statuses.map((status) => ({
+        context: status.context,
+        state: status.state,
+        ...(status.targetUrl === undefined ? {} : { targetUrl: status.targetUrl }),
+      })),
+    )
   }
 
   /** Parsed commit count AFTER a save (INV-P02 "exactly one commit"). */
@@ -227,6 +283,48 @@ export class FakeGithubServer {
       }
     }
 
+    // Deploy-status reads (ADR-0008 P2.8): branch name OR 40-hex sha.
+    const checkRunsMatch = /^\/commits\/(.+)\/check-runs$/.exec(request.path)
+    if (checkRunsMatch !== null) {
+      const sha = this.#resolveCommitRef(checkRunsMatch[1] as string)
+      if (sha === undefined) return notFoundResponse()
+      const runs = this.#checkRuns.get(sha) ?? []
+      return {
+        status: 200,
+        json: {
+          total_count: runs.length,
+          check_runs: runs.map((run) => ({
+            id: run.id,
+            name: run.name,
+            status: run.status,
+            conclusion: run.conclusion,
+            ...(run.detailsUrl === undefined ? {} : { details_url: run.detailsUrl }),
+          })),
+        },
+        headers: RATE_HEADERS,
+      }
+    }
+
+    const statusesMatch = /^\/commits\/(.+)\/status$/.exec(request.path)
+    if (statusesMatch !== null) {
+      const sha = this.#resolveCommitRef(statusesMatch[1] as string)
+      if (sha === undefined) return notFoundResponse()
+      const statuses = this.#statuses.get(sha) ?? []
+      return {
+        status: 200,
+        json: {
+          state: combinedStatusState(statuses),
+          total_count: statuses.length,
+          statuses: statuses.map((status) => ({
+            context: status.context,
+            state: status.state,
+            ...(status.targetUrl === undefined ? {} : { target_url: status.targetUrl }),
+          })),
+        },
+        headers: RATE_HEADERS,
+      }
+    }
+
     // Contents route (single-branch fidelity: resolved against the default
     // branch head; multi-branch tests use /git/blobs directly).
     const contentsMatch = /^\/contents\/(.+)$/.exec(request.path)
@@ -249,6 +347,19 @@ export class FakeGithubServer {
       }
     }
     return undefined
+  }
+
+  /**
+   * Check-runs/statuses accept either a commit sha or a branch name (the login
+   * probe uses the branch). Status-only synthetic shas are allowed so a test
+   * can model a run landing before any local commit object exists.
+   */
+  #resolveCommitRef(encodedRef: string): string | undefined {
+    const ref = decodeBranchSegment(encodedRef)
+    if (this.#commits.has(ref)) return ref
+    const branchHead = this.#branches.get(ref)
+    if (branchHead !== undefined) return branchHead
+    return /^[0-9a-f]{40}$/.test(ref) ? ref : undefined
   }
 
   /** Bytes seeded from the fixture spec (blob reads beyond created blobs). */
@@ -447,6 +558,14 @@ function tryDecodeBase64(content: string): Uint8Array | undefined {
   } catch {
     return undefined
   }
+}
+
+function combinedStatusState(statuses: readonly CommitStatusSummary[]): string {
+  if (statuses.some((status) => status.state === "error" || status.state === "failure")) {
+    return "failure"
+  }
+  if (statuses.some((status) => status.state === "pending")) return "pending"
+  return statuses.length > 0 ? "success" : "pending"
 }
 
 export function notFoundResponse(): FakeResponse {

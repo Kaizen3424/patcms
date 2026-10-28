@@ -260,4 +260,81 @@ describe("GithubBackend read transport (ADR-0005 P1 addendum)", () => {
     const api = backend(fetch)
     expect((await api.listChangedFiles("fixture-branch", HEAD, HEAD)).size).toBe(0)
   })
+
+  it("reads check runs by exact sha with per_page=100 and honest totals", async () => {
+    const { fetch, calls } = recordsFetch(() =>
+      response({
+        total_count: 3,
+        check_runs: [
+          {
+            id: 1,
+            name: "pages",
+            status: "completed",
+            conclusion: "success",
+            details_url: "https://github.com/owner/repo/runs/1",
+          },
+          { id: 2, name: "mystery", status: "unknown-status", conclusion: "mystery" },
+          {
+            id: 3,
+            name: "unsafe-link",
+            status: "completed",
+            conclusion: "neutral",
+            details_url: "javascript:alert(1)",
+          },
+        ],
+      }),
+    )
+    const read = await backend(fetch).readCheckRuns("fixture-branch", HEAD)
+    expect(read).toMatchObject({ kind: "ok", totalCount: 3 })
+    if (read.kind !== "ok") return
+    expect(read.runs[0]).toEqual({
+      id: 1,
+      name: "pages",
+      status: "completed",
+      conclusion: "success",
+      detailsUrl: "https://github.com/owner/repo/runs/1",
+    })
+    expect(read.runs[1]).toMatchObject({ name: "mystery", status: "pending", conclusion: null })
+    expect(read.runs[2]?.detailsUrl).toBeUndefined()
+    expect(calls[0]?.url).toBe(
+      `${BASE}/repos/${OWNER}/${REPO}/commits/${HEAD}/check-runs?per_page=100`,
+    )
+    // Branch is a contract parameter, never part of GitHub's sha-scoped route.
+    expect(calls[0]?.url).not.toContain("fixture-branch")
+  })
+
+  it("surfaces an incomplete check-run page as totalCount > runs", async () => {
+    const { fetch } = recordsFetch(() =>
+      response({
+        total_count: 120,
+        check_runs: [{ id: 1, name: "pages", status: "in_progress", conclusion: null }],
+      }),
+    )
+    const read = await backend(fetch).readCheckRuns("fixture-branch", HEAD)
+    expect(read).toMatchObject({ kind: "ok", totalCount: 120 })
+    if (read.kind === "ok") expect(read.runs).toHaveLength(1)
+  })
+
+  it("reads combined statuses, keeping the newest per context", async () => {
+    const { fetch, calls } = recordsFetch(() =>
+      response({
+        state: "failure",
+        total_count: 3,
+        statuses: [
+          { context: "ci/site", state: "failure", target_url: "https://ci.example/1" },
+          { context: "ci/site", state: "success" },
+          { context: "other", state: "weird", target_url: "http://ci.example/2" },
+        ],
+      }),
+    )
+    const read = await backend(fetch).readCommitStatuses("fixture-branch", HEAD)
+    expect(read).toMatchObject({
+      kind: "ok",
+      statuses: [
+        { context: "ci/site", state: "failure", targetUrl: "https://ci.example/1" },
+        { context: "other", state: "pending" },
+      ],
+    })
+    expect(calls[0]?.url).toBe(`${BASE}/repos/${OWNER}/${REPO}/commits/${HEAD}/status`)
+  })
 })

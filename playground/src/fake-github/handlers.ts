@@ -128,11 +128,36 @@ export function createFakeGithubHandlers(
         HttpResponse.json({ required_status_checks: null }, { headers: rateHeaders() }),
       ),
     ),
+    // Deploy-status reads delegate to the core model (ADR-0008 P2.8). The
+    // single-branch fallback keeps the login probe truthful when the fixture
+    // has no explicit ref for the requested branch.
     http.get(
       `${repoPath}/commits/*/check-runs`,
-      guarded(() =>
-        HttpResponse.json({ total_count: 0, check_runs: [] }, { headers: rateHeaders() }),
-      ),
+      guarded(async ({ request }) => {
+        const ref = commitRef(request.url, "/check-runs")
+        if (ref === null) return notFound()
+        const sha = server.ref(ref) ?? (/^[0-9a-f]{40}$/.test(ref) ? ref : snapshot.headSha)
+        return toHttp(
+          await server.handle({
+            method: "GET",
+            path: `/commits/${encodeURIComponent(sha)}/check-runs`,
+          }),
+        )
+      }),
+    ),
+    http.get(
+      `${repoPath}/commits/*/status`,
+      guarded(async ({ request }) => {
+        const ref = commitRef(request.url, "/status")
+        if (ref === null) return notFound()
+        const sha = server.ref(ref) ?? (/^[0-9a-f]{40}$/.test(ref) ? ref : snapshot.headSha)
+        return toHttp(
+          await server.handle({
+            method: "GET",
+            path: `/commits/${encodeURIComponent(sha)}/status`,
+          }),
+        )
+      }),
     ),
     http.get(
       `${repoPath}/git/ref/*`,
@@ -339,6 +364,25 @@ async function readJson(request: Request): Promise<unknown> {
     return JSON.parse(text)
   } catch {
     return undefined
+  }
+}
+
+/** `/commits/{ref}/check-runs|status` → decoded ref (or null). */
+function commitRef(url: string, suffix: string): string | null {
+  const marker = "/commits/"
+  const index = url.indexOf(marker)
+  if (index < 0) return null
+  const rest = url.slice(index + marker.length).split("?")[0] ?? ""
+  if (!rest.endsWith(suffix)) return null
+  const encoded = rest.slice(0, -suffix.length)
+  if (encoded.length === 0) return null
+  try {
+    return encoded
+      .split("/")
+      .map((segment) => decodeURIComponent(segment))
+      .join("/")
+  } catch {
+    return null
   }
 }
 

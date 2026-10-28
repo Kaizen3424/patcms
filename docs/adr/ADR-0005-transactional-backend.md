@@ -50,7 +50,8 @@ contract at compile time; the existing exhaustive boolean
 - `readCommitStatuses(branch, sha) → { kind: "ok"; statuses } | { kind: "unsupported" }`
 
 Rules:
-- capability `false` ⇒ `{ kind: "unsupported" }` with zero network I/O;
+- capability `false` ⇒ `{ kind: "unsupported" }` with zero network I/O (the
+  suite pins the shape; implementations own the no-I/O rule);
   capability `true` ⇒ truthful read; failures use the existing classified read
   errors (`AUTH_EXPIRED`, `SCOPE`, `NOT_FOUND`, `RATE_LIMIT`, `NETWORK`, `UNKNOWN`).
   403 + any `x-ratelimit-reset` is `RATE_LIMIT`, never `SCOPE`.
