@@ -106,6 +106,24 @@ export const VALIDATION_COPY = {
   blockedDetail: "Fix the highlighted fields, then save again.",
 } as const
 
+/**
+ * Post-publish advisory chips (P2.7 — ADR-0004 P2.7 pins). The master-plan
+ * §5.2 wording used the banned "committed"; the deck says "saved" (superseding
+ * note is pinned in the ADR). These lines NEVER gate a save.
+ */
+export const ADVISORY_COPY = {
+  pausedTitle: "Your change is saved, but the site's update is paused by an older problem.",
+  chipDetail: "{title}: {detail}",
+  takeMeThere: "Take me there",
+  copyMessage: "Copy message for {name}",
+  copyBody: "{title}: {detail} ({path})",
+  copied: "Copied",
+  dismiss: "Dismiss",
+  unknownTitle: "We could not check the rest of the site just now.",
+  unknownDetail:
+    "Your change is saved. Tell {name} if it does not appear live within a few minutes.",
+} as const
+
 /** Bar buttons — same banned-word sweep as the status lines. */
 export const ACTION_COPY = {
   save: "Save changes",
@@ -118,6 +136,19 @@ export const ACTION_COPY = {
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
+}
+
+/**
+ * Generic placeholder fill for chip lines ({title}/{detail}/{count}). Built on
+ * split/join, never String.replace — a value containing `$` patterns must be
+ * inert (validator copy comes from repo content).
+ */
+export function fillLine(template: string, values: Readonly<Record<string, string>>): string {
+  let result = template
+  for (const [key, value] of Object.entries(values)) {
+    result = result.split(`{${key}}`).join(value)
+  }
+  return result
 }
 
 /** Applies `fillName` to every field of a copy line (detail may carry `{name}`). */
@@ -147,5 +178,6 @@ export function allCopyStrings(): readonly string[] {
   walk(RECOVERY_COPY)
   walk(VALIDATION_COPY)
   walk(ACTION_COPY)
+  walk(ADVISORY_COPY)
   return strings
 }

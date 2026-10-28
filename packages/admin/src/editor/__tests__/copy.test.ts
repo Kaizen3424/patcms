@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  ADVISORY_COPY,
   allCopyStrings,
+  fillLine,
   fillName,
   personalize,
   RECOVERY_COPY,
@@ -88,5 +90,26 @@ describe("founder copy deck", () => {
       "retrySave",
       "recheck",
     ])
+  })
+
+  it("ships the advisory chip lines (P2.7 — 'saved', never a banned word)", () => {
+    expect(Object.keys(ADVISORY_COPY)).toEqual([
+      "pausedTitle",
+      "chipDetail",
+      "takeMeThere",
+      "copyMessage",
+      "copyBody",
+      "copied",
+      "dismiss",
+      "unknownTitle",
+      "unknownDetail",
+    ])
+  })
+
+  it("fills chip placeholders inertly ($ patterns stay literal)", () => {
+    expect(fillLine("{title}: {detail}", { title: "A$&", detail: "b" })).toBe("A$&: b")
+    expect(fillLine(ADVISORY_COPY.copyBody, { title: "t", detail: "d", path: "p" })).toBe(
+      "t: d (p)",
+    )
   })
 })

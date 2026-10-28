@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRuntime } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
 import { defaultWidgetRegistry, EDITABLE_FIELD_TYPES } from "../widgets"
+import { AdvisoryChips } from "./advisory-chip"
 import { personalize, RECOVERY_COPY, SAVE_BAR_COPY } from "./copy"
 import type { EntryFormState } from "./form-value"
 import {
@@ -40,6 +41,8 @@ import {
 } from "./form-value"
 import { SaveBar } from "./save-bar"
 import { describeSaveBar } from "./save-bar-model"
+import type { SweepVerdict } from "./save-sweep"
+import { sweepSite } from "./save-sweep"
 
 /** Draft debounce — crash protection only; saving is always explicit. */
 const DRAFT_WRITE_DELAY_MS = 800
@@ -67,7 +70,7 @@ export interface EntryEditorProps {
 }
 
 export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEditorProps) {
-  const { backend, repository, drafts, coordinator, lease, support, signOut } = useRuntime()
+  const { backend, config, repository, drafts, coordinator, lease, support, signOut } = useRuntime()
   const draftKey = `${repository.repo}/${entry.collectionName}/${entry.slug}`
 
   const [form, setForm] = useState<EntryFormState | null>(() => {
@@ -81,6 +84,8 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
   const [justSaved, setJustSaved] = useState(false)
   const [justNoop, setJustNoop] = useState(false)
   const [leaseLost, setLeaseLost] = useState(false)
+  /** Post-publish advisory sweep (P2.7); undefined = never ran yet. */
+  const [sweep, setSweep] = useState<SweepVerdict | undefined>(undefined)
   const mounted = useRef(true)
   const saving = useRef(false)
   const initialized = useRef(false)
@@ -271,6 +276,10 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
         coordinator.reset(draftKey, verdict.commitSha)
         setJustSaved(true)
         setJustNoop(false)
+        // P2.7: sweep what the site does with the OBSERVED commit (her path
+        // excluded). Never on noop; never in the save path's way — the sweep
+        // reads standalone and its verdict can never gate a save.
+        runSweep(verdict.commitSha)
       } else if (verdict.kind === "noop") {
         coordinator.reset(draftKey, current.baseSha)
         setJustSaved(true)
@@ -347,6 +356,25 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     if (lease === undefined) return
     void lease.acquire(draftKey).then((held) => {
       if (mounted.current && held) setLeaseLost(false)
+    })
+  }
+
+  /**
+   * Post-publish sweep (P2.7 pin): one fresh read of the OBSERVED commit, her
+   * own path excluded. The sweep never gates a save: the verdict occupies its
+   * own advisory state and nothing in the save path reads it.
+   */
+  const runSweep = (headSha: string): void => {
+    if (backend === undefined) return
+    setSweep(undefined)
+    void sweepSite({
+      config,
+      backend,
+      branch: repository.branch,
+      headSha,
+      ourPath: entry.path,
+    }).then((verdict) => {
+      if (mounted.current) setSweep(verdict)
     })
   }
 
@@ -449,6 +477,8 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
             )
           })}
       </div>
+
+      <AdvisoryChips verdict={sweep} supportName={support.name} />
 
       <SaveBar
         model={model}
