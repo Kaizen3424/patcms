@@ -14,6 +14,12 @@
  * holderId holds a contested lease. Payload hygiene: messages carry ONLY
  * {purpose, kind, key, holderId, expiresAt} — never content, never token,
  * never field values.
+ *
+ * A tab that LOST the lease regains the slot on an OBSERVED free (`onFreed`):
+ * a foreign release leaving the key with no live claim. Silent TTL expiry
+ * travels no wire signal — the manual re-check covers that path (ADR-0004
+ * P2.7 pins; never a timed auto-acquire, which could steal from a live
+ * editor that a throttled browser merely silenced).
  */
 
 export interface LeaseMessage {
@@ -38,6 +44,12 @@ export interface SaveLease {
   release(key: string): Promise<void>
   /** Fires when a foreign claim displaces ours (silent steal). */
   onLost(key: string, handler: () => void): () => void
+  /**
+   * Fires when an observed foreign `release` leaves the key with no live
+   * foreign claim and we do not hold — the key is free for our re-acquire.
+   * Silent TTL expiry fires nothing (nothing traveled the wire).
+   */
+  onFreed(key: string, handler: () => void): () => void
   /** Stop listening (host teardown / tests). */
   dispose(): void
 }
@@ -70,6 +82,7 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
 
   const states = new Map<string, KeyState>()
   const lostHandlers = new Map<string, Set<() => void>>()
+  const freedHandlers = new Map<string, Set<() => void>>()
 
   const stateOf = (key: string): KeyState => states.get(key) ?? {}
 
@@ -94,6 +107,14 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
     } else if (current.foreignClaim?.holderId === message.holderId) {
       // The claim this release pairs with is gone — the key is up for grabs.
       states.set(message.key, { ourExpiry: current.ourExpiry })
+      // A lost tab regains the slot ONLY on an observed free (ADR-0004 P2.7
+      // pins): fire when we do not hold and nothing else now claims the key
+      // live. Silent TTL expiry never fires this — the wire never saw it.
+      if (current.ourExpiry === undefined || current.ourExpiry <= now()) {
+        if (liveForeign(message.key) === undefined) {
+          for (const handler of freedHandlers.get(message.key) ?? []) handler()
+        }
+      }
     }
   })
 
@@ -180,10 +201,20 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
       }
     },
 
+    onFreed(key: string, handler: () => void): () => void {
+      const handlers = freedHandlers.get(key) ?? new Set()
+      handlers.add(handler)
+      freedHandlers.set(key, handlers)
+      return () => {
+        handlers.delete(handler)
+      }
+    },
+
     dispose(): void {
       unsubscribe()
       states.clear()
       lostHandlers.clear()
+      freedHandlers.clear()
     },
   }
 }

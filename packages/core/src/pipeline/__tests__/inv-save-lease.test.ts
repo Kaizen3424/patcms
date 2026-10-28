@@ -179,9 +179,13 @@ describe("INV-P13 — BroadcastChannel transport (real, Node ≥22 ships BC)", (
     expect(await left.acquire(KEY)).toBe(true)
     // The right tab sees the live claim and backs off.
     expect(await right.acquire(KEY)).toBe(false)
+    const freed: string[] = []
+    right.onFreed(KEY, () => freed.push(KEY))
     await left.release(KEY)
-    // A release is observed; the right tab can now take it.
+    // A release is observed: the freed signal fires AND the right tab can
+    // take it (P2.7 — the auto-clear path hangs on this).
     await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(freed).toEqual([KEY])
     expect(await right.acquire(KEY)).toBe(true)
     await right.release(KEY)
     left.dispose()
@@ -250,6 +254,117 @@ describe("INV-P13 — edge defenses (clock skew, re-acquire, unsubscribe, genera
     const claim = carrier.sent.find((message) => message.kind === "claim")
     expect(claim?.holderId).toMatch(/^[0-9a-f]{16}$/)
     await lease.release(KEY)
+  })
+})
+
+describe("INV-P13 — P2.7 freed signal (an observed foreign release regains the slot)", () => {
+  it("onFreed fires when a foreign release leaves the key free while we are lost; the re-acquire succeeds", async () => {
+    const t = 0
+    const carrier = fakeCarrier()
+    const lease = createSaveLease({ carrier, now: () => t, holderId: "zzz", claimSettleMs: 1 })
+    const freed: string[] = []
+    lease.onFreed(KEY, () => freed.push(KEY))
+
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "claim",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: t + DEFAULT_LEASE_TTL_MS,
+    })
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "release",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: t,
+    })
+
+    expect(freed).toEqual([KEY])
+    expect(await lease.acquire(KEY)).toBe(true)
+    await lease.release(KEY)
+  })
+
+  it("onFreed does NOT fire while WE hold (our hold survives a foreign release)", async () => {
+    const t = 0
+    const carrier = fakeCarrier()
+    const lease = createSaveLease({ carrier, now: () => t, holderId: "aaa", claimSettleMs: 1 })
+    expect(await lease.acquire(KEY)).toBe(true)
+    const freed: string[] = []
+    lease.onFreed(KEY, () => freed.push(KEY))
+
+    // A bigger-id foreign claim is recorded (no displacement), then released.
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "claim",
+      key: KEY,
+      holderId: "zzz",
+      expiresAt: t + DEFAULT_LEASE_TTL_MS,
+    })
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "release",
+      key: KEY,
+      holderId: "zzz",
+      expiresAt: t,
+    })
+
+    expect(freed).toEqual([]) // we are still holding — nothing became free for us
+    await lease.release(KEY)
+  })
+
+  it("onFreed does NOT fire when a different holder's claim stays recorded", async () => {
+    const t = 0
+    const carrier = fakeCarrier()
+    const lease = createSaveLease({ carrier, now: () => t, holderId: "zzz", claimSettleMs: 1 })
+    const freed: string[] = []
+    lease.onFreed(KEY, () => freed.push(KEY))
+
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "claim",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: t + DEFAULT_LEASE_TTL_MS,
+    })
+    // A release from an unknown holder is ignored: the recorded aaa claim
+    // stays live, so the key is NOT free.
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "release",
+      key: KEY,
+      holderId: "bbb",
+      expiresAt: t,
+    })
+
+    expect(freed).toEqual([])
+    expect(await lease.acquire(KEY)).toBe(false) // the live aaa claim refuses us
+  })
+
+  it("onFreed unsubscribe stops future freed callbacks", async () => {
+    const t = 0
+    const carrier = fakeCarrier()
+    const lease = createSaveLease({ carrier, now: () => t, holderId: "zzz", claimSettleMs: 1 })
+    const freed: string[] = []
+    const unsubscribe = lease.onFreed(KEY, () => freed.push(KEY))
+    unsubscribe()
+
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "claim",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: t + DEFAULT_LEASE_TTL_MS,
+    })
+    carrier.deliver({
+      purpose: "mycms-save-lease",
+      kind: "release",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: t,
+    })
+
+    expect(freed).toEqual([])
   })
 })
 
@@ -343,6 +458,59 @@ describe("INV-P13 — storage fallback carrier (post + event sides, both node-te
       holderId: "zzz",
       expiresAt: 123,
     })
+  })
+
+  it("storage events free a lost lease too (release parity with claims)", async () => {
+    const fakeStorage = {
+      setItem(): void {},
+      getItem(): string | null {
+        return null
+      },
+      removeItem(): void {},
+      clear(): void {},
+      key(): string | null {
+        return null
+      },
+      get length(): number {
+        return 0
+      },
+    } as unknown as Storage
+    const target = new EventTarget() as unknown as EventSource & EventTarget
+    const lease = createSaveLease({
+      carrier: createStorageCarrier({ storage: fakeStorage, events: target }),
+      now: () => 0,
+      holderId: "zzz",
+      claimSettleMs: 1,
+    })
+    const freed: string[] = []
+    lease.onFreed(KEY, () => freed.push(KEY))
+
+    const fire = (message: LeaseMessage): void => {
+      const event = new Event("storage") as StorageEvent
+      Object.defineProperty(event, "storageArea", { value: fakeStorage })
+      Object.defineProperty(event, "newValue", {
+        value: `${LEASE_WIRE_PREFIX}${JSON.stringify(message)}`,
+      })
+      target.dispatchEvent(event)
+    }
+    fire({
+      purpose: "mycms-save-lease",
+      kind: "claim",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: 1500,
+    })
+    fire({
+      purpose: "mycms-save-lease",
+      kind: "release",
+      key: KEY,
+      holderId: "aaa",
+      expiresAt: 0,
+    })
+
+    expect(freed).toEqual([KEY])
+    expect(await lease.acquire(KEY)).toBe(true)
+    await lease.release(KEY)
   })
 })
 
