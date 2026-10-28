@@ -250,6 +250,32 @@ Recorded before the P2.7 mechanisms land (ADR-first law). No law above changes.
   playground reads a `?leaseTtlMs=` URL parameter into it so the e2e can exercise the TTL-steal
   deterministically. The shipped default stays 15 000 ms.
 
+#### Refinement — first-come holds are never stolen by id (2026-10-27, P2.7 L2 journey)
+
+The first L2 lease journey run exposed code deviating from this appendix: `acquire` refused a
+live foreign claim only when the claimant's id was SMALLER (`foreign.holderId < selfId`), so a
+claimant with a smaller id could silently steal a LIVE, heart-beating hold — a coin flip under
+random session ids; and a claim ARRIVAL displaced a live hold whenever its id was smaller, which
+the appendix's "can never silently steal" sentence never licensed for entries opened second.
+
+Refinement, recorded before the mechanism (schéma, not a contract change — the wire payload
+stays the 5-tuple):
+
+- `SaveLease` tracks a first-observation stamp per foreign claim (`foreignSeenAt`); RENEWALS by
+  the same holder keep the stamp, so a heart-beating hold stays "pre-existing" to later
+  claimants no matter when its last beat landed. Our own hold keeps its establishing stamp
+  (`ourHoldStamp`); renewals keep it too.
+- `acquire` refuses a live foreign claim whose stamp predates our post by more than the settle
+  window — REGARDLESS of id. The grace window absorbs message-order inversions in a
+  millisecond double-click race; claims first seen within that window are CONTEMPORANEOUS and
+  keep the pinned id tie-break (smaller id wins the fresh race, deterministic).
+- A claim arrival NEVER displaces our hold. The old smaller-id "silent steal on arrival" is
+  superseded: the victim learns only from its own beat failing (TTL expiry), or from the
+  discovery guard — a live foreign claim whose stamp predates our own hold's stamp (possible
+  only after clock skew or delayed delivery) makes the NEXT beat fail and fire `onLost`.
+- Only a holder silent past one TTL is stealable, as pinned above — enforceable solely through
+  claim expiry (`liveForeign` already filters it).
+
 ### Cross-entry sweep + advisory chips (master-plan §5.2(b); admin-owned per the phase deliverables)
 
 - Trigger: once after a `published` verdict, at the sha the ref was OBSERVED carrying

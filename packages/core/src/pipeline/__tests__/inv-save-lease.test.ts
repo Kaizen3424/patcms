@@ -73,18 +73,20 @@ describe("INV-P13 — claim/hold/renew/release over a deterministic carrier", ()
     await lease.release(KEY)
   })
 
-  it("SILENT STEAL (message-loss edge): the victim learns only on its next beat failing", async () => {
+  it("a claim arrival NEVER displaces a LIVE hold (P2.7 — no id steals)", async () => {
     const t = 0
     const carrier = fakeCarrier()
     const victim = createSaveLease({ carrier, now: () => t, holderId: "mmm", claimSettleMs: 1 })
-    const thief = createSaveLease({ carrier, now: () => t, holderId: "aaa", claimSettleMs: 1 })
 
     expect(await victim.acquire(KEY)).toBe(true)
     const lost: string[] = []
     victim.onLost(KEY, () => lost.push(KEY))
 
-    // The thief claims WITHOUT ever having seen the victim's claim (lost
-    // message / throttled tab edge). The victim is displaced silently.
+    // Message-loss edge: a thief claims WITHOUT ever having seen the holder's
+    // claim (lost message / throttled tab edge). P2.7 pins the answer: a
+    // live, heart-beating hold is not displaced — not even by a smaller id.
+    // If the split reality happens at all, the CAS (INV-P01) — never the
+    // lease — is the correctness mechanism.
     const stolenClaim: LeaseMessage = {
       purpose: "mycms-save-lease",
       kind: "claim",
@@ -93,12 +95,8 @@ describe("INV-P13 — claim/hold/renew/release over a deterministic carrier", ()
       expiresAt: t + DEFAULT_LEASE_TTL_MS,
     }
     carrier.deliver(stolenClaim) // the bus delivers to every listener
-    expect(lost).toEqual([KEY]) // displaced — the only signal the victim gets
-    expect(await victim.renew(KEY)).toBe(false) // the next beat FAILS → rebaseline
-    // The thief's own fresh claim wins outright (its claim is the live one).
-    expect(await thief.acquire(KEY)).toBe(true)
-
-    await thief.release(KEY)
+    expect(lost).toEqual([]) // no silent displacement on arrival
+    expect(await victim.renew(KEY)).toBe(true) // the hold stands; no beat failure
   })
 
   it("TTL expiry: a silent holder is stealable; renew fails after expiry", async () => {
@@ -130,6 +128,61 @@ describe("INV-P13 — claim/hold/renew/release over a deterministic carrier", ()
     await lease.release(KEY)
     t += 1
     expect(await lease.renew(KEY)).toBe(false) // released
+  })
+})
+
+describe("INV-P13 — P2.7 first-come law (pre-existing live holds are never stolen)", () => {
+  it("a pre-existing LIVE foreign claim refuses ANY claimant, regardless of id", async () => {
+    let t = 100
+    const carrier = fakeCarrier()
+    const holder = createSaveLease({ carrier, now: () => t, holderId: "zzz", claimSettleMs: 1 })
+    const elector = createSaveLease({ carrier, now: () => t, holderId: "aaa", claimSettleMs: 1 })
+
+    expect(await holder.acquire(KEY)).toBe(true)
+    t = 900
+    // The smaller-id claimant OBSERVED the live hold before its own acquire.
+    carrier.deliver(carrier.sent[carrier.sent.length - 1] as LeaseMessage)
+    t = 1000
+    expect(await elector.acquire(KEY)).toBe(false) // "zzz" was first — "aaa" waits, any id
+
+    // Only a holder SILENT past one TTL is stealable — expiry, never ids.
+    t = 100 + DEFAULT_LEASE_TTL_MS + 1
+    expect(await elector.acquire(KEY)).toBe(true)
+    await elector.release(KEY)
+  })
+
+  it("…and in the other id order too (the LARGER id refuses)", async () => {
+    let t = 100
+    const carrier = fakeCarrier()
+    const holder = createSaveLease({ carrier, now: () => t, holderId: "aaa", claimSettleMs: 1 })
+    const elector = createSaveLease({ carrier, now: () => t, holderId: "zzz", claimSettleMs: 1 })
+
+    expect(await holder.acquire(KEY)).toBe(true)
+    t = 900
+    carrier.deliver(carrier.sent[carrier.sent.length - 1] as LeaseMessage)
+    t = 1000
+    expect(await elector.acquire(KEY)).toBe(false)
+  })
+
+  it("a RENEWAL keeps the first-observation stamp (heart-beating stays pre-existing)", async () => {
+    let t = 100
+    const carrier = fakeCarrier()
+    const holder = createSaveLease({ carrier, now: () => t, holderId: "aaa", claimSettleMs: 1 })
+    const watcher = createSaveLease({ carrier, now: () => t, holderId: "zzz", claimSettleMs: 1 })
+
+    expect(await holder.acquire(KEY)).toBe(true)
+    t = 900
+    carrier.deliver(carrier.sent[carrier.sent.length - 1] as LeaseMessage) // first claim, seen at 900
+    t = 5100
+    // The holder renews; the renewal travels the wire to the watcher too.
+    expect(await holder.renew(KEY)).toBe(true)
+    carrier.deliver(carrier.sent[carrier.sent.length - 1] as LeaseMessage) // renewal seen at 5100
+    t = 6000
+    // The stamp stayed at the FIRST observation (900): the hold still
+    // predates the watcher's acquire even though a renewal arrived lately —
+    // a heart-beating hold can never be raced into by a later claimant.
+    expect(await watcher.acquire(KEY)).toBe(false)
+    await holder.release(KEY)
   })
 })
 
@@ -227,21 +280,26 @@ describe("INV-P13 — edge defenses (clock skew, re-acquire, unsubscribe, genera
   })
 
   it("onLost unsubscribe stops future displacement callbacks", async () => {
-    const t = 0
+    let t = 1000
     const carrier = fakeCarrier()
     const lease = createSaveLease({ carrier, now: () => t, holderId: "mmm", claimSettleMs: 1 })
-    expect(await lease.acquire(KEY)).toBe(true)
-    const lost: string[] = []
-    const unsubscribe = lease.onLost(KEY, () => lost.push(KEY))
-    unsubscribe()
-    // A smaller live foreign claim would displace — but no handler remains.
+    // A foreign claim arrives while we hold nothing: recorded with its stamp.
     carrier.deliver({
       purpose: "mycms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
-      expiresAt: t + DEFAULT_LEASE_TTL_MS,
+      expiresAt: 2000,
     })
+    // We acquire after it expired → we hold.
+    t = 3000
+    expect(await lease.acquire(KEY)).toBe(true)
+    const lost: string[] = []
+    const unsubscribe = lease.onLost(KEY, () => lost.push(KEY))
+    unsubscribe()
+    // Clock skew resurrects the pre-existing (stamped) claim: the next beat
+    // discovers we acquired into a hold — but no handler remains.
+    t = 1500
     expect(lost).toEqual([])
     expect(await lease.renew(KEY)).toBe(false) // the hold was still displaced
   })

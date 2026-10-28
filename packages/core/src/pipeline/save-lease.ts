@@ -10,8 +10,17 @@
  * storage-event fallback for engines without BC) live in `core/web`.
  *
  * Model per key: `ourExpiry` (our hold's epoch expiry) and `foreignClaim`
- * (the latest foreign claim observed). Deterministic tie-break: the SMALLER
- * holderId holds a contested lease. Payload hygiene: messages carry ONLY
+ * (the latest foreign claim observed) + their stamps (`ourHoldStamp` = the
+ * post-time of the claim that ESTABLISHED our hold, kept across renewals;
+ * `foreignSeenAt` = first observation of the tracked foreign claim — a
+ * renewal by the SAME holder keeps it, so a heart-beating hold stays
+ * "pre-existing" to later claimants). Deterministic tie-break: the SMALLER
+ * holderId wins a CONTEMPORANEOUS fresh-claim race (claims first observed
+ * within the settle window). A claim that PREDATES our post is a live hold:
+ * acquire refuses it regardless of id, and a hold is NEVER displaced by a
+ * claim arrival (P2.7 pins — a live, heart-beating editor must never be
+ * silently stolen from; the victim learns only when its own beat fails).
+ * Payload hygiene: messages carry ONLY
  * {purpose, kind, key, holderId, expiresAt} — never content, never token,
  * never field values.
  *
@@ -71,7 +80,11 @@ export const DEFAULT_LEASE_HEARTBEAT_MS = 5_000
 
 interface KeyState {
   readonly foreignClaim?: LeaseMessage
+  /** Epoch ms — FIRST observation of `foreignClaim` (same-holder renewals keep it). */
+  readonly foreignSeenAt?: number
   readonly ourExpiry?: number
+  /** Epoch ms — when the claim that ESTABLISHED our hold was posted; renewals keep it. */
+  readonly ourHoldStamp?: number
 }
 
 export function createSaveLease(options: SaveLeaseOptions): SaveLease {
@@ -87,7 +100,11 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
   const stateOf = (key: string): KeyState => states.get(key) ?? {}
 
   const fireLost = (key: string): void => {
-    states.set(key, { foreignClaim: stateOf(key).foreignClaim })
+    const current = stateOf(key)
+    states.set(key, {
+      foreignClaim: current.foreignClaim,
+      foreignSeenAt: current.foreignSeenAt,
+    })
     for (const handler of lostHandlers.get(key) ?? []) handler()
   }
 
@@ -95,18 +112,24 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
     if (message.purpose !== "mycms-save-lease" || message.holderId === selfId) return
     const current = stateOf(message.key)
     if (message.kind === "claim") {
-      states.set(message.key, { ...current, foreignClaim: message })
-      // Silent steal: a foreign claim with a smaller id displaces our hold.
-      if (
-        current.ourExpiry !== undefined &&
-        current.ourExpiry > now() &&
-        message.holderId < selfId
-      ) {
-        fireLost(message.key)
-      }
+      // A RENEWAL by the same holder keeps its first-observation stamp, so a
+      // heart-beating hold stays pre-existing to later claimants; a new
+      // holderId stamps fresh.
+      const stamp =
+        current.foreignClaim?.holderId === message.holderId && current.foreignSeenAt !== undefined
+          ? current.foreignSeenAt
+          : now()
+      states.set(message.key, {
+        ...current,
+        foreignClaim: message,
+        foreignSeenAt: stamp,
+      })
+      // A claim arrival NEVER displaces our hold (P2.7). We record it and let
+      // acquire/weHold apply the law: pre-existing → refuse; our own beat
+      // failing → we step down. No id-based steal of a live hold.
     } else if (current.foreignClaim?.holderId === message.holderId) {
       // The claim this release pairs with is gone — the key is up for grabs.
-      states.set(message.key, { ourExpiry: current.ourExpiry })
+      states.set(message.key, { ourExpiry: current.ourExpiry, ourHoldStamp: current.ourHoldStamp })
       // A lost tab regains the slot ONLY on an observed free (ADR-0004 P2.7
       // pins): fire when we do not hold and nothing else now claims the key
       // live. Silent TTL expiry never fires this — the wire never saw it.
@@ -132,12 +155,21 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
   const weHold = (key: string): boolean => {
     const current = stateOf(key)
     if (current.ourExpiry === undefined || current.ourExpiry <= now()) {
-      states.set(key, { foreignClaim: current.foreignClaim })
+      states.set(key, { foreignClaim: current.foreignClaim, foreignSeenAt: current.foreignSeenAt })
       return false
     }
+    // Discovery defense (clock-skew / delayed delivery): if a live foreign
+    // claim turns out to PREDATE our hold, we acquired into an existing hold
+    // and step down honestly (the beat fails — the victim learns late, as the
+    // ADR's silent-steal wording allows).
     const foreign = liveForeign(key)
-    if (foreign !== undefined && foreign.holderId < selfId) {
-      fireLost(key) // displaced while we believed we held
+    if (
+      foreign !== undefined &&
+      current.ourHoldStamp !== undefined &&
+      current.foreignSeenAt !== undefined &&
+      current.foreignSeenAt < current.ourHoldStamp - settleMs
+    ) {
+      fireLost(key)
       return false
     }
     return true
@@ -156,9 +188,9 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
       if (weHold(key)) return true
       const ours = claim(key)
       post(ours)
-      // Settle window: competing claimants answer; the deterministic
-      // tie-break (smaller holderId wins) resolves fresh races. The FULL
-      // window is observed (never early-exited) so late competitors count.
+      const postedAt = now()
+      // Settle window: competing claimants answer. The FULL window is
+      // observed (never early-exited) so late competitors count.
       await new Promise((resolve) => {
         const timer = setTimeout(resolve, settleMs)
         if (typeof timer === "object" && timer !== null && "unref" in timer) {
@@ -166,9 +198,26 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
         }
       })
       const foreign = liveForeign(key)
-      if (foreign !== undefined && foreign.holderId < selfId) return false
-      // No live foreign claim, or we out-compete it (it backs off on its own).
-      states.set(key, { ...stateOf(key), ourExpiry: ours.expiresAt })
+      const foreignSeenAt = stateOf(key).foreignSeenAt
+      if (
+        foreign !== undefined &&
+        foreignSeenAt !== undefined &&
+        foreignSeenAt < postedAt - settleMs
+      ) {
+        // P2.7 pin: a claim predating our post is a LIVE hold — we came
+        // second and refuse regardless of id (the settle-window grace
+        // absorbs message-order inversions in a millisecond race). A
+        // silent holder is stealable only once its claim EXPIRED, which
+        // `liveForeign` already filters.
+        return false
+      }
+      if (foreign !== undefined && foreign.holderId < selfId) {
+        // Contemporaneous fresh-claim race — the deterministic tie-break.
+        return false
+      }
+      // No live foreign claim, or we out-compete a contemporaneous rival
+      // (it backs off on its own).
+      states.set(key, { ...stateOf(key), ourExpiry: ours.expiresAt, ourHoldStamp: postedAt })
       return true
     },
 
@@ -176,13 +225,18 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
       if (!weHold(key)) return false
       const ours = claim(key)
       post(ours)
+      // A renewal continues the SAME hold: `ourHoldStamp` stays, so any pre-
+      // existing claim we somehow missed keeps our step-down guard armed.
       states.set(key, { ...stateOf(key), ourExpiry: ours.expiresAt })
       return true
     },
 
     async release(key: string): Promise<void> {
       const current = stateOf(key)
-      states.set(key, { foreignClaim: current.foreignClaim })
+      states.set(key, {
+        foreignClaim: current.foreignClaim,
+        foreignSeenAt: current.foreignSeenAt,
+      })
       post({
         purpose: "mycms-save-lease",
         kind: "release",
