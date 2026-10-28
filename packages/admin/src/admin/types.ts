@@ -27,4 +27,9 @@ export interface AdminMountOptions {
   readonly draftStore?: DraftStore
   /** Injectable cross-tab lease carrier (tests / hosts without BroadcastChannel). */
   readonly leaseCarrier?: LeaseCarrier
+  /**
+   * Lease TTL override (epoch ms, default 15 000 — ADR-0004). Host/test seam for
+   * deterministic cross-tab journeys; hard UX rules are untouched by it.
+   */
+  readonly leaseTtlMs?: number
 }

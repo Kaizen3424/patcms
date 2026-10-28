@@ -25,6 +25,11 @@ async function main(): Promise<void> {
     throw new Error(message)
   }
 
+  // E2e determinism seam (ADR-0004 P2.7 pins): hosts may override the lease TTL;
+  // shipped admin behavior keeps the 15s default when no parameter is present.
+  const requested = new URLSearchParams(window.location.search).get("leaseTtlMs")
+  const leaseTtlMs = requested === null ? undefined : parseLeaseTtl(requested)
+
   mountAdmin(host, {
     config: yveAdminConfig,
     support: { name: "Ing" },
@@ -33,7 +38,14 @@ async function main(): Promise<void> {
       repo: DEFAULT_TAGS.repo,
       branch: snapshot.defaultBranch,
     },
+    ...(leaseTtlMs === undefined ? {} : { leaseTtlMs }),
   })
+}
+
+function parseLeaseTtl(value: string): number | undefined {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined
+  return Math.round(parsed)
 }
 
 void main().catch((error: unknown) => {

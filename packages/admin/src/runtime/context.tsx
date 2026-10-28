@@ -192,8 +192,14 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
   const lease = useMemo<SaveLease | undefined>(() => {
     if (backend === undefined) return undefined
     const carrier = options.leaseCarrier ?? defaultCarrier()
-    return carrier === undefined ? undefined : createSaveLease({ carrier, now: () => Date.now() })
-  }, [backend, options.leaseCarrier])
+    return carrier === undefined
+      ? undefined
+      : createSaveLease({
+          carrier,
+          now: () => Date.now(),
+          ...(options.leaseTtlMs === undefined ? {} : { ttlMs: options.leaseTtlMs }),
+        })
+  }, [backend, options.leaseCarrier, options.leaseTtlMs])
 
   useEffect(() => {
     if (lease === undefined) return
