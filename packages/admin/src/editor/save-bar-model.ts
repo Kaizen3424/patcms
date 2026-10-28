@@ -41,6 +41,8 @@ export interface SaveBarModel {
   readonly canRetry: boolean
   /** "Start over from the latest version" is offered on a freeze. */
   readonly canStartOver: boolean
+  /** "Check again" re-acquires a lost lease (ADR-0004 P2.7 clearing law). */
+  readonly canRecheck: boolean
   /** True while a transport attempt is live or queued (submit stays disabled). */
   readonly busy: boolean
 }
@@ -91,6 +93,9 @@ export function describeSaveBar(input: SaveBarInput): SaveBarModel {
     canSave: status === "dirty",
     canRetry: status === "failed" || status === "paused",
     canStartOver: status === "conflict",
+    // A lost lease clears only via re-acquire (manual re-check or an observed
+    // foreign release); Save stays disabled until the hold is actually won.
+    canRecheck: status === "leaseLost",
     busy: status === "saving",
   }
 }

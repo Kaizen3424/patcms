@@ -26,6 +26,7 @@ export interface SaveBarProps {
   readonly onSave: () => void
   readonly onRetry: () => void
   readonly onStartOver: () => void
+  readonly onRecheck: () => void
   readonly onSignOut: () => void
 }
 
@@ -36,6 +37,7 @@ export function SaveBar({
   onSave,
   onRetry,
   onStartOver,
+  onRecheck,
   onSignOut,
 }: SaveBarProps) {
   const base = personalize(SAVE_BAR_COPY[model.status], supportName)
@@ -75,6 +77,16 @@ export function SaveBar({
                 title={RECOVERY_COPY.startOver.detail}
               >
                 {RECOVERY_COPY.startOver.label}
+              </button>
+            ) : null}
+            {model.canRecheck ? (
+              <button
+                type="button"
+                className={SECONDARY_BUTTON}
+                onClick={onRecheck}
+                title={RECOVERY_COPY.recheck.detail}
+              >
+                {RECOVERY_COPY.recheck.label}
               </button>
             ) : null}
             {model.status === "authExpired" ? (

@@ -30,6 +30,7 @@ function bar(
     onSave: vi.fn(),
     onRetry: vi.fn(),
     onStartOver: vi.fn(),
+    onRecheck: vi.fn(),
     onSignOut: vi.fn(),
   }
   render(
@@ -76,6 +77,22 @@ describe("save bar component", () => {
     const retry = screen.getByRole("button", { name: ACTION_COPY.retry })
     await userEvent.setup().click(retry)
     expect(handlers.onRetry).toHaveBeenCalledOnce()
+  })
+
+  it("offers Check again on a lost lease; Save stays blocked until it returns", async () => {
+    const handlers = bar({ leaseLost: true })
+    expect(screen.getByTestId("save-bar").getAttribute("data-status")).toBe("leaseLost")
+    const check = screen.getByRole("button", { name: RECOVERY_COPY.recheck.label })
+    await userEvent.setup().click(check)
+    expect(handlers.onRecheck).toHaveBeenCalledOnce()
+    const save = screen.getByRole("button", { name: ACTION_COPY.save })
+    expect((save as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole("button", { name: ACTION_COPY.retry })).toBeNull()
+  })
+
+  it("shows no Check again while the lease is held", () => {
+    bar({ state: { phase: "dirty", baseSha: BASE }, dirty: true })
+    expect(screen.queryByRole("button", { name: RECOVERY_COPY.recheck.label })).toBeNull()
   })
 
   it("offers start-over on a freeze and signs out on an auth pause", async () => {

@@ -113,14 +113,23 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
 
   // Cross-tab lease: UX serialization only — the CAS stays the correctness
   // mechanism (ADR-0004). Losing it is a notice, never a silent save block.
+  // While lost, Save stays disabled and the notice clears ONLY after a real
+  // re-acquire wins (manual re-check or an observed foreign release — P2.7
+  // pins; never a timed auto-acquire, which could steal from a live editor).
   useEffect(() => {
     if (lease === undefined) return
     let active = true
-    void lease.acquire(draftKey).then((held) => {
-      if (active && !held) setLeaseLost(true)
-    })
-    const unsubscribe = lease.onLost(draftKey, () => {
+    const reacquire = (): void => {
+      void lease.acquire(draftKey).then((held) => {
+        if (active) setLeaseLost(!held)
+      })
+    }
+    reacquire()
+    const unsubscribeLost = lease.onLost(draftKey, () => {
       if (active) setLeaseLost(true)
+    })
+    const unsubscribeFreed = lease.onFreed(draftKey, () => {
+      if (active) reacquire()
     })
     const timer = setInterval(() => {
       void lease.renew(draftKey).then((held) => {
@@ -129,7 +138,8 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     }, DEFAULT_LEASE_HEARTBEAT_MS)
     return () => {
       active = false
-      unsubscribe()
+      unsubscribeLost()
+      unsubscribeFreed()
       clearInterval(timer)
       void lease.release(draftKey)
     }
@@ -332,6 +342,14 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     setBoot(undefined)
   }
 
+  /** Manual lease re-check (ADR-0004 P2.7): clears the notice iff we truly win. */
+  const recheckLease = (): void => {
+    if (lease === undefined) return
+    void lease.acquire(draftKey).then((held) => {
+      if (mounted.current && held) setLeaseLost(false)
+    })
+  }
+
   const model = describeSaveBar({
     state: machine,
     dirty: form !== null && isFormDirty(form),
@@ -439,6 +457,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
         onSave={() => void save()}
         onRetry={retry}
         onStartOver={() => void startOver()}
+        onRecheck={recheckLease}
         onSignOut={() => void signOut()}
       />
     </div>

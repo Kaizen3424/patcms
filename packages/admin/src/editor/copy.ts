@@ -70,11 +70,11 @@ export const SAVE_BAR_COPY: Readonly<Record<SaveBarStatus, CopyLine>> = {
   },
   leaseLost: {
     title: "This entry is open in another tab.",
-    detail: "Changes made here stay on this device. Reload before you save again.",
+    detail: "Changes made here stay on this device. Check again once the other tab is closed.",
   },
 }
 
-/** The four recovery surfaces P2.6 ships (boot offer, start-over, retry, discard). */ export const RECOVERY_COPY =
+/** Recovery surfaces P2.6 ships (boot offer, start-over, retry, discard) + the P2.7 lease re-check. */ export const RECOVERY_COPY =
   {
     restoreFound: {
       title: "We found unsaved changes on this device.",
@@ -93,6 +93,10 @@ export const SAVE_BAR_COPY: Readonly<Record<SaveBarStatus, CopyLine>> = {
     retrySave: {
       label: "Try saving again",
       detail: "Nothing is lost by trying again.",
+    },
+    recheck: {
+      label: "Check again",
+      detail: "Nothing is lost by checking. Saving unlocks once your other tab is closed.",
     },
   } as const
 

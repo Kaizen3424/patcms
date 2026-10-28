@@ -123,6 +123,25 @@ describe("save bar projection", () => {
     expect(describeSaveBar(input({ leaseLost: true })).tone).toBe("warning")
   })
 
+  it("a lost lease offers Check again but never Save (re-acquire clears it)", () => {
+    const bar = describeSaveBar(input({ leaseLost: true }))
+    expect(bar.canRecheck).toBe(true)
+    expect(bar.canSave).toBe(false)
+    expect(bar.canRetry).toBe(false)
+    expect(bar.canStartOver).toBe(false)
+  })
+
+  it("only the lost lease offers Check again", () => {
+    expect(describeSaveBar(input()).canRecheck).toBe(false)
+    expect(
+      describeSaveBar(input({ state: { phase: "dirty", baseSha: BASE }, dirty: true })).canRecheck,
+    ).toBe(false)
+    expect(
+      describeSaveBar(input({ state: { phase: "committing", baseSha: BASE }, dirty: true }))
+        .canRecheck,
+    ).toBe(false)
+  })
+
   it("a live write outranks a lost lease and a stale local diff", () => {
     expect(
       saveBarStatus(

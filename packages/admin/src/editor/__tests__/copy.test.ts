@@ -80,12 +80,13 @@ describe("founder copy deck", () => {
     }
   })
 
-  it("ships the four recovery surfaces", () => {
+  it("ships the recovery surfaces", () => {
     expect(Object.keys(RECOVERY_COPY)).toEqual([
       "restoreFound",
       "startOver",
       "discardLocal",
       "retrySave",
+      "recheck",
     ])
   })
 })
