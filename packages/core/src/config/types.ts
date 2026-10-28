@@ -15,6 +15,14 @@ export interface ViewGroup {
   readonly pattern: string
 }
 
+/**
+ * Site-level deploy-status configuration (ADR-0008 §2, ADR-0003 P2.8 addendum).
+ * Absent/empty `contexts` = commit-status fallback off.
+ */
+export interface DeployConfig {
+  readonly contexts?: readonly string[]
+}
+
 export interface FolderCollectionOptions {
   readonly name: string
   readonly label: string
@@ -103,6 +111,7 @@ export type CollectionDefinition =
 
 export interface ConfigOptions {
   readonly site?: { readonly name?: string; readonly url?: string }
+  readonly deploy?: DeployConfig
   readonly media: MediaFolders
   readonly collections: readonly CollectionDefinition[]
 }
@@ -110,6 +119,7 @@ export interface ConfigOptions {
 export interface ConfigDefinition {
   readonly schemaVersion: typeof CONFIG_SCHEMA_VERSION
   readonly site?: { readonly name?: string; readonly url?: string }
+  readonly deploy?: DeployConfig
   readonly media: MediaFolders
   readonly collections: readonly CollectionDefinition[]
 }
@@ -117,6 +127,7 @@ export interface ConfigDefinition {
 export interface AdminConfig {
   readonly schemaVersion: typeof CONFIG_SCHEMA_VERSION
   readonly site?: { readonly name?: string; readonly url?: string }
+  readonly deploy?: DeployConfig
   readonly media: MediaFolders
   readonly collections: readonly CollectionDescriptor[]
 }

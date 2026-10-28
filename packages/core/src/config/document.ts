@@ -16,6 +16,7 @@ import type {
   CollectionDescriptor,
   ConfigDefinition,
   ConfigOptions,
+  DeployConfig,
   FileDefinition,
   FileOptions,
   FilesCollectionDefinition,
@@ -112,6 +113,7 @@ export function collectionDivider(label?: string): CollectionDefinition {
 
 export function defineConfig(options: ConfigOptions): ConfigDefinition {
   validateMedia(options.media, "config")
+  const deploy = options.deploy === undefined ? undefined : validateDeploy(options.deploy)
   const names = new Set<string>()
   for (const collection of options.collections) {
     if (collection.kind === "divider") continue
@@ -121,6 +123,7 @@ export function defineConfig(options: ConfigOptions): ConfigDefinition {
   return {
     schemaVersion: CONFIG_SCHEMA_VERSION,
     ...(options.site === undefined ? {} : { site: options.site }),
+    ...(deploy === undefined ? {} : { deploy }),
     media: options.media,
     collections: options.collections,
   }
@@ -131,6 +134,7 @@ export function toAdminConfig(config: ConfigDefinition): AdminConfig {
   const document: AdminConfig = {
     schemaVersion: config.schemaVersion,
     ...(config.site === undefined ? {} : { site: config.site }),
+    ...(config.deploy === undefined ? {} : { deploy: config.deploy }),
     media: config.media,
     collections: config.collections.map(collectionToDescriptor),
   }
@@ -374,6 +378,19 @@ function validateViewGroup(
   if (group.name.length === 0 || group.label.length === 0) {
     throw new Error(`${collection}: view group name/label cannot be empty`)
   }
+}
+
+function validateDeploy(deploy: DeployConfig): DeployConfig {
+  if (deploy.contexts === undefined) return {}
+  const seen = new Set<string>()
+  for (const context of deploy.contexts) {
+    if (context.trim().length === 0) {
+      throw new Error("deploy.contexts cannot contain blank names")
+    }
+    if (seen.has(context)) throw new Error(`deploy.contexts: duplicate context ${context}`)
+    seen.add(context)
+  }
+  return { contexts: [...deploy.contexts] }
 }
 
 function validateMedia(media: MediaFolders, context: string): MediaFolders {

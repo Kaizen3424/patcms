@@ -9,6 +9,13 @@ const mediaSchema = z.strictObject({
   publicFolder: z.string().min(1),
 })
 
+/** Commit-status contexts (ADR-0008 §2): exact names, no blank entries. */
+const deploySchema = z.strictObject({
+  contexts: z
+    .array(z.string().refine((value) => value.trim().length > 0, "context cannot be blank"))
+    .optional(),
+})
+
 const optionSchema = z.strictObject({
   label: z.string().min(1),
   value: z.string().min(1),
@@ -159,6 +166,7 @@ const adminConfigSchema = z.strictObject({
       url: z.string().min(1).optional(),
     })
     .optional(),
+  deploy: deploySchema.optional(),
   media: mediaSchema,
   collections: z.array(collectionSchema).min(1),
 })
@@ -215,6 +223,7 @@ export function safeParseAdminConfig(
 
 function validateSemantics(config: AdminConfig, issues: ConfigIssue[]): void {
   validateMedia(config.media, "media", issues)
+  validateContexts(config.deploy, issues)
   const names = new Set<string>()
   for (const collection of config.collections) {
     if (collection.kind === "divider") continue
@@ -345,6 +354,17 @@ function validateField(
   if (field.type === "object") {
     validateFields(field.fields, context, collections, issues)
   }
+}
+
+function validateContexts(deploy: AdminConfig["deploy"], issues: ConfigIssue[]): void {
+  if (deploy?.contexts === undefined) return
+  const seen = new Set<string>()
+  deploy.contexts.forEach((context, index) => {
+    if (seen.has(context)) {
+      issues.push({ path: `deploy.contexts[${index}]`, message: `duplicate context ${context}` })
+    }
+    seen.add(context)
+  })
 }
 
 function validateMedia(

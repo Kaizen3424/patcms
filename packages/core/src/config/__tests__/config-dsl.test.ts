@@ -123,6 +123,51 @@ describe("config DSL → AdminConfig", () => {
     expect(JSON.parse(JSON.stringify(admin))).toEqual(admin)
   })
 
+  it("projects optional deploy.contexts additively (P2.8)", () => {
+    const media = { folder: "public/images", publicFolder: "/images" }
+    const withDeploy = defineConfig({
+      media,
+      collections: [products],
+      deploy: { contexts: ["Cloudflare Pages", "Vercel"] },
+    })
+    expect(toAdminConfig(withDeploy).deploy).toEqual({
+      contexts: ["Cloudflare Pages", "Vercel"],
+    })
+    expect(toAdminConfig(config).deploy).toBeUndefined()
+
+    // Empty means "fallback off", not an invalid document.
+    expect(
+      toAdminConfig(defineConfig({ media, collections: [products], deploy: { contexts: [] } }))
+        .deploy,
+    ).toEqual({ contexts: [] })
+  })
+
+  it("rejects duplicate/blank status contexts and unknown deploy keys", () => {
+    const media = { folder: "public/images", publicFolder: "/images" }
+    expect(() =>
+      defineConfig({
+        media,
+        collections: [products],
+        deploy: { contexts: ["pages", "pages"] },
+      }),
+    ).toThrow(/duplicate context/)
+    expect(() =>
+      defineConfig({ media, collections: [products], deploy: { contexts: [" "] } }),
+    ).toThrow(/blank/)
+
+    const raw = JSON.parse(JSON.stringify(toAdminConfig(config)))
+    raw.deploy = { contexts: ["pages", "pages"] }
+    expect(() => parseAdminConfig(raw)).toThrow(/duplicate context/)
+
+    const blank = JSON.parse(JSON.stringify(toAdminConfig(config)))
+    blank.deploy = { contexts: [" "] }
+    expect(() => parseAdminConfig(blank)).toThrow(ConfigValidationError)
+
+    const unknown = JSON.parse(JSON.stringify(toAdminConfig(config)))
+    unknown.deploy = { contexts: ["pages"], extra: true }
+    expect(() => parseAdminConfig(unknown)).toThrow(ConfigValidationError)
+  })
+
   it("strictly rejects unknown descriptor keys", () => {
     const admin = JSON.parse(JSON.stringify(toAdminConfig(config)))
     admin.collections[0].fields[1].wat = true

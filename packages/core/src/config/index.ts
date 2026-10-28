@@ -25,6 +25,7 @@ export type {
   CollectionDividerDescriptor,
   ConfigDefinition,
   ConfigOptions,
+  DeployConfig,
   FileDefinition,
   FileDescriptor,
   FileOptions,
