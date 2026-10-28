@@ -350,4 +350,22 @@ export {
   parseJsonDocument,
   serializeDocument,
 } from "./serialization"
+export type {
+  DeployStatusCause,
+  DeployStatusKind,
+  DeployStatusSnapshot,
+  StatusDecision,
+  StatusReads,
+  StatusTiming,
+  StatusWatcher,
+  StatusWatcherOptions,
+} from "./status"
+export {
+  classifyCheckRuns,
+  classifyCommitStatuses,
+  createStatusReads,
+  createStatusWatcher,
+  DEFAULT_STATUS_TIMING,
+  decideStatus,
+} from "./status"
 export type { WebKeyValueStore } from "./web"

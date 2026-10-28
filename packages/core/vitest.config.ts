@@ -11,7 +11,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     coverage: {
       enabled: true,
-      include: ["src/pipeline/**", "src/fields/**", "src/safety/**"],
+      include: ["src/pipeline/**", "src/fields/**", "src/safety/**", "src/status/**"],
       thresholds: { lines: 90, statements: 90 },
     },
   },
