@@ -137,6 +137,14 @@ C.3  P2.5 state machine + lease + drafts + boot replay (L) → P2.6 editor v0 + 
 ```
 **Checkpoint: P2 (3 mini-gates)** — every INV-P + A01/A02/N01 + D01–03 green; owner demo of publish loop.
 
+### P2.7 — Lease-notice completion + sweep verdict classes + advisory chips (M, after P2.6)
+
+- Acceptance (ADR-0004 P2.7 pins FIRST): `SaveLease.onFreed(key, handler)` fires exactly when an observed foreign `release` leaves the key with no live claim and we don't hold (BroadcastChannel + storage carriers); the lost-lease notice clears via re-acquire — manual "Check again" button and auto on release, NEVER a timed acquire (no stealing from live-but-throttled tabs); Save stays disabled while lost (UX serialization). After a `published` verdict (never `noop`), admin `sweepSite` re-reads all content files fresh at `verdict.commitSha` (tree without etag; file reads revalidate on content-addressed blob shas — INV-P08 applies to conflict challenge reads only) without touching React Query caches; pure `classifySweep` → `upToDate | advisory(one problem per entry, first error issue) | unknown`; advisory chips (one per problem entry, dismissible, "Take me there" route link + minimal clipboard "Copy message for {name}"; deck copy says "saved", never the banned "committed") never gate Save; any read failure → `unknown` coverage-honest chip. `AdminMountOptions.leaseTtlMs` plumbed to `createSaveLease`; playground honors `?leaseTtlMs=` for e2e determinism.
+- Verify: core focused `pnpm --filter @mycms/core test -- src/pipeline/__tests__/inv-save-lease.test.ts --coverage.enabled=false`; admin `pnpm --filter @mycms/admin test`; `pnpm -r typecheck && pnpm run check && pnpm -r build`; `pnpm e2e` 4/4 (save + smoke + lease-journey + advisory-chip); INV-P15 row ticked with evidence; INV-P13 row gains the notice-clear note.
+- Dependencies: ADR-0004 P2.7 addendum commit lands before any mechanism commit.
+- Files: `packages/core/src/pipeline/save-lease.ts` (+ `__tests__/inv-save-lease.test.ts`), `packages/admin/src/admin/types.ts`, `packages/admin/src/runtime/context.tsx`, `playground/src/main.ts`, `packages/admin/src/editor/{save-bar-model,save-bar,copy,entry-editor,save-sweep,advisory-chip}.{ts,tsx}` + `__tests__/`, `e2e/specs/{lease,advisory-chip}.spec.ts`.
+- Size: M — sliced as 7 commits (ADR docs → core onFreed → ttl plumb → notice UI → sweep → chips → e2e).
+
 ## Phase 3 — Widgets (see `P3-widgets.md`)
 
 Tasks P3.1–P3.9 in the phase file; sizes S/M; parity golden (INV-C01 initial) is the phase goal.

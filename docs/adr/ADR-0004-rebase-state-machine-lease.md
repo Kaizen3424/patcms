@@ -214,3 +214,65 @@ transaction, which blocked the first real save in a browser. The storage decisio
 stay in IndexedDB, key law unchanged); the web adapters now open the database ONCE through
 `web/idb-store.ts`, declaring every object store up front and bumping the version when an existing
 database is missing one. Adding a store means adding its name to `MYCMS_IDB_STORES` in the same change.
+
+## Appendix — P2.7 lease-notice + sweep advisory pins (2026-10-27)
+
+Recorded before the P2.7 mechanisms land (ADR-first law). No law above changes.
+
+### Lease-notice completion (the INV-P13 surface)
+
+- `leaseLost` stays a WARNING, never a correctness gate: while a tab knows it does not hold the
+  lease, its Save button stays disabled — that is deliberate UX serialization (the lease is
+  UX-only; INV-P01 FF/CAS remains the sole correctness mechanism). A save attempted while lost
+  would most often land as a conflict screen (the field-granularity freeze UI is P2.9), so the
+  notice is the honest serialization slot.
+- Two clearing paths, both event-driven (NEVER timer-cadence acquire):
+  1. **Manual "Check again"**: the founder re-runs `acquire(draftKey)`. `acquire` already refuses
+     only while a LIVE foreign claim exists (unexpired), so a re-check can never silently steal
+     from a live, heart-beating editor; only a holder silent past one TTL (15s) — dead or
+     throttled — is stealable. Clearing happens on a `true` answer; the bar returns to
+     dirty/clean.
+  2. **Auto re-acquire on an OBSERVED foreign `release`**: `SaveLease` gains
+     `onFreed(key, handler): () => void` — fired exactly when a foreign `release` leaves the key
+     with no live foreign claim AND we do not hold. The consumer re-acquires on the signal;
+     clearing only when the re-acquire returns `true` (someone may have claimed in between; then
+     the notice stays honest).
+- `onFreed` does NOT fire for silent TTL expiry (nothing travels the wire when a tab dies) — the
+  manual check covers that path. Both paths are pinned by the L2 lease journey.
+- **No timer-based auto re-acquire**: browsers heavily throttle background tabs, so a timed
+  re-check could steal from a live editor that merely went quiet. Manual check + observed release
+  only.
+- Draft writes continue verbatim while leaseLost (status quo): drafts are the crash-safety record
+  keyed `${repo}/${collection}/${slug}` and two tabs share one device store, so concurrent
+  editing while lost is a documented last-writer-wins limitation — revisited with the P2.9
+  rebaseline UX, not patched by inventing keyed slot variants now.
+- `AdminMountOptions` gains `leaseTtlMs?: number` (compositional host surface, zero new deps); the
+  playground reads a `?leaseTtlMs=` URL parameter into it so the e2e can exercise the TTL-steal
+  deterministically. The shipped default stays 15 000 ms.
+
+### Cross-entry sweep + advisory chips (master-plan §5.2(b); admin-owned per the phase deliverables)
+
+- Trigger: once after a `published` verdict, at the sha the ref was OBSERVED carrying
+  (`verdict.commitSha`, INV-P10 content truth). `noop` saves sweep nothing.
+- The sweep is ADMIN-side (`sweepSite`): fresh `readTree(branch, commitSha, {})` with no etag — a
+  full fetch; per-file reads ride `readFile(branch, path, blobSha)`, where a 304 is
+  content-addressed truth (the blob sha IS the bytes identity), not a stale-cache hazard.
+  **Scope note:** INV-P08 (fresh-binding) covers CONFLICT challenge reads through the engine's
+  `readFreshBlob` seam only; it never applies to this advisory sweep. Pinned so the two laws
+  cannot bleed into each other.
+- The sweep NEVER touches the shared React Query snapshot/index caches (an invalidation
+  mid-editor would churn mounts and boot adjudication) — it performs standalone reads.
+- Classification (`classifySweep`, pure): other entries carrying error-level issues →
+  `advisory(problems)` — one problem per ENTRY with its first error issue (bespoke per-code prose
+  stays with the message map, P3.8/P5.6); no errors anywhere → `upToDate` (no chip); any
+  read/parse/transport failure → `unknown` (conservative: coverage-honest copy, never a false
+  "all clear").
+- **Copy veto note:** master-plan §5.2's literal chip phrase ("Your change is **committed**") uses
+  a word banned on founder surfaces (§7 vocabulary ban); the deck says "saved" instead —
+  *"Your change is saved, but the site's update is paused by an older problem."* This supersedes
+  the master-plan wording until the copy law audit (P5.6) formalizes it.
+- CTAs: "Take me there" (route link to the problem entry's editor) and "Copy message for {name}"
+  (minimal clipboard composer NOW; the structured composer is P2.10 and will supersede it).
+  Chips render one per problem entry, individually dismissible.
+- THE STANDING VETO, restated for this surface: an advisory chip never gates her save. Chip state
+  lives outside the save-bar model entirely; nothing in the save path reads it.
