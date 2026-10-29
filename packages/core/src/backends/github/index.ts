@@ -73,8 +73,8 @@ export class GithubBackend implements GitBackend {
   constructor(options: GithubBackendOptions) {
     this.#owner = options.owner
     this.#repo = options.repo
-    this.#tokenAccessor =
-      typeof options.token === "function" ? options.token : () => options.token
+    const initialToken = options.token
+    this.#tokenAccessor = typeof initialToken === "function" ? initialToken : () => initialToken
     this.#fetch = options.fetch
     this.#baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "")
   }

@@ -1,20 +1,33 @@
 import type { FieldDescriptor, ParseIssue } from "@mycms/core"
-import { formatMoney } from "@mycms/core"
+import { formatMoney, isBackendReadError } from "@mycms/core"
 import { Link, useParams } from "@tanstack/react-router"
+import { useState } from "react"
+import {
+  FAILURE_CARD_COPY,
+  FAILURE_COPY,
+  fillName,
+  personalize,
+  READ_ERROR_COPY,
+} from "../editor/copy"
 import { EntryEditor } from "../editor/entry-editor"
+import { composeFailureReport, copyToClipboard } from "../editor/failure-report"
+import { ReauthSheet } from "../editor/reauth-sheet"
 import { useEntryIndex, useRuntime, useSnapshot } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
 import { findRelationEntry, issueCounts } from "../runtime/entry-index"
 import { imageSource, previewUrl } from "../runtime/media"
 
 export function EntryScreen() {
-  const { config } = useRuntime()
+  const { config, support, repository, signOut } = useRuntime()
   const params = useParams({ strict: false }) as {
     readonly collection?: string
     readonly entry?: string
   }
   const index = useEntryIndex()
   const snapshot = useSnapshot()
+  const [reauthOpen, setReauthOpen] = useState(false)
+  const [reportCopied, setReportCopied] = useState(false)
+
   const collection = config.collections.find(
     (candidate) => candidate.kind !== "divider" && candidate.name === params.collection,
   )
@@ -25,6 +38,98 @@ export function EntryScreen() {
 
   if (index.isLoading || snapshot.isLoading) {
     return <p className="text-sm text-text-muted">Reading the entry...</p>
+  }
+
+  const readError = index.error ?? snapshot.error
+  if (readError !== null && readError !== undefined && isBackendReadError(readError)) {
+    const errorCode = readError.code
+    const fallback = FAILURE_COPY.UNKNOWN
+    const line =
+      (errorCode && errorCode in FAILURE_COPY ? FAILURE_COPY[errorCode] : undefined) ?? fallback
+    const copy = personalize(
+      line ?? { title: "Something went wrong.", detail: "Please contact {name}." },
+      support.name,
+    )
+
+    const handleCopy = async () => {
+      const report = composeFailureReport({
+        entryTitle: params.entry ?? "entry",
+        filePath: `${params.collection ?? "collection"}/${params.entry ?? "entry"}`,
+        branch: repository.branch,
+        repo: `${repository.owner}/${repository.repo}`,
+        baseSha: "",
+        errorCode,
+        httpStatus: readError.status,
+        timestamp: new Date().toISOString(),
+        partnerName: support.name,
+        kind: "read",
+      })
+      const ok = await copyToClipboard(report)
+      if (ok) {
+        setReportCopied(true)
+        setTimeout(() => setReportCopied(false), 2500)
+      }
+    }
+
+    return (
+      <div
+        className="rounded-card border border-danger/40 bg-danger/10 p-8 text-center"
+        data-testid="read-error-screen"
+      >
+        <h1 className="text-base font-semibold text-text-primary">{copy.title}</h1>
+        {copy.detail ? <p className="mt-2 text-sm text-text-muted">{copy.detail}</p> : null}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {errorCode === "AUTH_EXPIRED" ? (
+            <button
+              type="button"
+              className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-[#111]"
+              onClick={() => setReauthOpen(true)}
+            >
+              {FAILURE_CARD_COPY.checkKey}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-[#111]"
+              onClick={() => {
+                void index.refetch()
+                void snapshot.refetch()
+              }}
+            >
+              {READ_ERROR_COPY.retry}
+            </button>
+          )}
+          <Link
+            to="/c/$collection"
+            params={{ collection: params.collection ?? "products" }}
+            className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-xs font-medium text-text-primary"
+          >
+            {READ_ERROR_COPY.backToFolder}
+          </Link>
+          <button
+            type="button"
+            className="rounded-lg border border-border-strong bg-surface px-4 py-2 text-xs font-medium text-text-primary"
+            onClick={() => void handleCopy()}
+          >
+            {reportCopied
+              ? FAILURE_CARD_COPY.copied
+              : fillName(READ_ERROR_COPY.copyMessage, support.name)}
+          </button>
+        </div>
+        <ReauthSheet
+          open={reauthOpen}
+          supportName={support.name}
+          isRead={true}
+          onReauthenticated={() => {
+            setReauthOpen(false)
+            void index.refetch()
+            void snapshot.refetch()
+          }}
+          onCancel={() => setReauthOpen(false)}
+          onSignOut={() => void signOut()}
+        />
+      </div>
+    )
   }
   if (
     index.isError ||

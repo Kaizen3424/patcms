@@ -21,6 +21,7 @@ import type {
 } from "@mycms/core"
 import {
   adjudicateDraft,
+  computeDirtyPaths,
   DEFAULT_LEASE_HEARTBEAT_MS,
   decodeUtf8,
   encodeUtf8,
@@ -38,6 +39,8 @@ import { usePublishedSha } from "../status/provider"
 import { defaultWidgetRegistry, EDITABLE_FIELD_TYPES } from "../widgets"
 import { AdvisoryChips } from "./advisory-chip"
 import { personalize, RECOVERY_COPY, SAVE_BAR_COPY } from "./copy"
+import { FailureCard } from "./failure-card"
+import { composeFailureReport, copyToClipboard } from "./failure-report"
 import type { EntryFormState } from "./form-value"
 import {
   composeFormBytes,
@@ -58,6 +61,8 @@ import {
   replayLateKeystrokes,
 } from "./freeze-model"
 import { FreezePanel } from "./freeze-panel"
+import { RateLimitTimer } from "./rate-limit-timer"
+import { ReauthSheet } from "./reauth-sheet"
 import { SaveBar } from "./save-bar"
 import { describeSaveBar } from "./save-bar-model"
 import type { SweepVerdict } from "./save-sweep"
@@ -118,6 +123,8 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
   const [leaseLost, setLeaseLost] = useState(false)
   /** Post-publish advisory sweep (P2.7); undefined = never ran yet. */
   const [sweep, setSweep] = useState<SweepVerdict | undefined>(undefined)
+  const [reauthOpen, setReauthOpen] = useState(false)
+  const [reportCopied, setReportCopied] = useState(false)
   const mounted = useRef(true)
   const saving = useRef(false)
   const initialized = useRef(false)
@@ -147,6 +154,12 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     setMachine(coordinator.state(draftKey))
     return coordinator.subscribe((snapshot) => setMachine(snapshot.states.get(draftKey)))
   }, [coordinator, draftKey])
+
+  useEffect(() => {
+    if (machine?.phase === "paused" && machine.reason === "auth") {
+      setReauthOpen(true)
+    }
+  }, [machine])
 
   // Cross-tab lease: UX serialization only — the CAS stays the correctness
   // mechanism (ADR-0004). Losing it is a notice, never a silent save block.
@@ -468,6 +481,39 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     void save()
   }
 
+  const handleCopyMessage = async (): Promise<void> => {
+    if (machine?.phase !== "failed" && machine?.phase !== "paused") return
+    const errorCode =
+      machine.phase === "failed"
+        ? machine.error.code
+        : machine.reason === "auth"
+          ? "AUTH_EXPIRED"
+          : machine.reason === "quota"
+            ? "RATE_LIMIT"
+            : "NETWORK"
+    const httpStatus = machine.phase === "failed" ? machine.error.status : undefined
+    const dirty = formRef.current
+      ? computeDirtyPaths(formRef.current.formValue, formRef.current.baseValue)
+      : []
+    const report = composeFailureReport({
+      entryTitle: entry.title,
+      filePath: entry.path,
+      branch: repository.branch,
+      repo: `${repository.owner}/${repository.repo}`,
+      baseSha: machine.baseSha,
+      changedFields: dirty.map((p) => p.join(".")),
+      errorCode,
+      httpStatus,
+      timestamp: new Date().toISOString(),
+      partnerName: support.name,
+    })
+    const ok = await copyToClipboard(report)
+    if (ok) {
+      setReportCopied(true)
+      setTimeout(() => setReportCopied(false), 2500)
+    }
+  }
+
   const startOver = async (): Promise<void> => {
     if (backend === undefined) return
     const ref = await backend.getRef(repository.branch)
@@ -655,6 +701,72 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
       <AdvisoryChips verdict={sweep} supportName={support.name} />
 
       <StatusChip sha={publishedSha} />
+
+      {/* Rate limit live countdown (INV-N01) */}
+      {machine?.phase === "paused" && machine.reason === "quota" && machine.waitMs !== null ? (
+        <div className="mt-6">
+          <RateLimitTimer
+            waitMs={machine.waitMs}
+            onManualResume={() => coordinator?.resume(draftKey)}
+          />
+        </div>
+      ) : null}
+
+      {/* Docked failure card (INV-A02) */}
+      {machine?.phase === "failed" ||
+      (machine?.phase === "paused" &&
+        (machine.reason === "auth" ||
+          machine.reason === "network" ||
+          (machine.reason === "quota" && machine.waitMs === null))) ? (
+        <div className="mt-6">
+          <FailureCard
+            errorCode={
+              machine.phase === "failed"
+                ? machine.error.code
+                : machine.reason === "auth"
+                  ? "AUTH_EXPIRED"
+                  : machine.reason === "quota"
+                    ? "RATE_LIMIT"
+                    : "NETWORK"
+            }
+            httpStatus={machine.phase === "failed" ? machine.error.status : undefined}
+            supportName={support.name}
+            onRetry={retry}
+            onCheckKey={
+              (machine.phase === "failed" && machine.error.code === "AUTH_EXPIRED") ||
+              (machine.phase === "paused" && machine.reason === "auth")
+                ? () => setReauthOpen(true)
+                : undefined
+            }
+            onStartOver={() => void startOver()}
+            onCopyMessage={() => void handleCopyMessage()}
+            copied={reportCopied}
+            technicalContext={
+              formRef.current
+                ? {
+                    entryTitle: entry.title,
+                    filePath: entry.path,
+                    branch: repository.branch,
+                    repo: `${repository.owner}/${repository.repo}`,
+                    baseSha: machine.baseSha,
+                    changedFields: computeDirtyPaths(
+                      formRef.current.formValue,
+                      formRef.current.baseValue,
+                    ).map((p) => p.join(".")),
+                  }
+                : undefined
+            }
+          />
+        </div>
+      ) : null}
+
+      <ReauthSheet
+        open={reauthOpen}
+        supportName={support.name}
+        onReauthenticated={() => setReauthOpen(false)}
+        onCancel={() => setReauthOpen(false)}
+        onSignOut={() => void signOut()}
+      />
 
       <SaveBar
         model={model}

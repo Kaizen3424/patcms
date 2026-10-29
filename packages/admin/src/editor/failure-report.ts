@@ -41,14 +41,12 @@ export const PARTNER_GUIDANCE: Readonly<Record<string, string>> = {
     "Network connection error contacting api.github.com. Verify DNS, firewall, or device connection.",
   TREE_TRUNCATED:
     "The tree exceeds GitHub's size limits or contains too many files to read safely in one request.",
-  UNKNOWN:
-    "Unclassified GitHub API error. Check GitHub status and recent workflow runs.",
+  UNKNOWN: "Unclassified GitHub API error. Check GitHub status and recent workflow runs.",
 }
 
 /** Formats the dual-audience diagnostic payload for sharing with support.name. */
 export function composeFailureReport(ctx: FailureReportContext): string {
-  const guidance =
-    ctx.guidance ?? PARTNER_GUIDANCE[ctx.errorCode] ?? PARTNER_GUIDANCE.UNKNOWN ?? ""
+  const guidance = ctx.guidance ?? PARTNER_GUIDANCE[ctx.errorCode] ?? PARTNER_GUIDANCE.UNKNOWN ?? ""
   const fields =
     ctx.changedFields && ctx.changedFields.length > 0 ? ctx.changedFields.join(", ") : "none"
   const statusStr = ctx.httpStatus !== undefined ? ` (HTTP ${ctx.httpStatus})` : ""

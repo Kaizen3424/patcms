@@ -191,13 +191,20 @@ describe("founder copy deck", () => {
       "UNKNOWN",
     ]
     for (const code of codes) {
-      expect(FAILURE_COPY[code]?.title.length).toBeGreaterThan(0)
-      expect(FAILURE_COPY[code]?.detail?.length).toBeGreaterThan(0)
-      const line = personalize(FAILURE_COPY[code]!, "Milan")
+      const entry = FAILURE_COPY[code]
+      expect(entry).toBeDefined()
+      if (!entry) {
+        continue
+      }
+      expect(entry.title.length).toBeGreaterThan(0)
+      expect(entry.detail?.length).toBeGreaterThan(0)
+      const line = personalize(entry, "Milan")
       expect(line.title).not.toContain("{name}")
       expect(line.detail).not.toContain("{name}")
     }
     expect(Object.keys(FAILURE_COPY)).toHaveLength(codes.length)
+    expect(FAILURE_CARD_COPY.reassurance.length).toBeGreaterThan(0)
+    expect(READ_ERROR_COPY.retry.length).toBeGreaterThan(0)
   })
 
   it("ships the in-place re-auth copy deck (P2.10 — INV-A01)", () => {
