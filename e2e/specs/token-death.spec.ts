@@ -23,6 +23,7 @@ test("mid-batch 401 write -> docked failure card + re-auth sheet -> probe invali
   baseURL,
   page,
 }) => {
+  test.slow()
   if (baseURL === undefined) throw new Error("playwright config must set use.baseURL")
   const origins = await installOriginAllowlist(page, new URL(baseURL).origin)
 

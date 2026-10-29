@@ -2,7 +2,7 @@
 
 > **Every agent session starts here.** Read this file fully, then follow §4 Session Protocol. This file never duplicates details it can point to; it is the single tracker for project state. Agents MUST maintain §3 and the task checklists — stale docs are treated as build failures.
 
-Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.10 built & committed `b0d04d5`; next: P2.11 / P2.12 in a NEW chat)
+Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.11 built & committed; next: P2.12 in a NEW chat)
 
 ---
 
@@ -27,7 +27,7 @@ Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.1
 | P6 | yve integration cutover | ⬜ Blocked until P5 | success criteria on the real site; rollback path proven |
 | P7 | OSS publication | ⬜ Blocked until P6 | stranger completes widget exemplar unaided; release dry-run |
 
-**Current focus:** P2 checkpoint **C.3 done — P2.10 built & committed** `b0d04d5` (head of the P2.10 stack `c9d8367`→`4291d21`→`e89354a`→`d003b57`→`66180ac`→`4fed5f0`→`e78e0f5`→`c54df08`→`b0d04d5`). Core 443/443 (57 files) @ 92.54% stmts / 95.71% lines, admin 126/126, playground 18/18, `pnpm e2e` 14/14 (save · smoke · 2 lease · chip · live · grace · failed-link · supersede · 2 conflict · token-death · 2 rate-limit). ADR-0004 P2.10 appendix (classifier matrix, zero-banned-word validation, in-place re-auth sheet, dynamic token seam, structured copy composer, accessible countdown UI, auto-wake resume & manual override). INV-A01, INV-A02, and INV-N01 fully green; INV-P12 stays for P2.12 kill-tab journey. **P2.11 / P2.12 starts in a NEW chat — pick up from `tasks/plan.md` / phase file, not from chat history.** Evidence: `pnpm -r typecheck` + `pnpm run check` + `pnpm -r build` + `pnpm e2e` + supply-chain scans clean. C.1/C.2/C.3 all ⛔ PASSED. P0 remote: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep P7.1 — working name MyCMS until then).
+**Current focus:** P2 checkpoint **C.3 done — P2.11 built & committed** (ADR-0005 P2.11 addendum `5f9dfe9`, `createReplayFetch` `dcd2224`, `capture-recorded-fixtures.mjs` `a4c0873`, golden tape `recorded-contract-tape.json` + replay suite `ccd5cc9`, contract README). Core 454/454 (60 files) @ 92.53% stmts / 95.71% lines, admin 126/126, playground 18/18, `pnpm e2e` 14/14. ADR-0005 P2.11 addendum (Keyed-Endpoint FIFO Queue matching, body hashing for concurrency resilience, monotonic sequential queueing, case-insensitive headers, 4-stage secret/PII scrubbing, fail-closed regex validation, parameterization, and contract suite README short "how to run"). Exit gate recorded fixtures requirement satisfied. **P2.12 (kill-tab recovery, parked tx recovery, final publish-loop demo) starts in a NEW chat — pick up from `tasks/plan.md` / phase file, not from chat history.** Evidence: `pnpm -r typecheck` + `pnpm run check` + `pnpm -r build` + `pnpm e2e` + supply-chain scans clean. C.1/C.2/C.3 all ⛔ PASSED. P0 remote: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep P7.1 — working name MyCMS until then).
 
 *Legend: ⬜ not started · 🟨 in progress · ✅ gate passed (date) · ⛔ blocked*
 

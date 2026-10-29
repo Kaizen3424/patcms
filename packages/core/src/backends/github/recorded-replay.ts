@@ -296,9 +296,8 @@ export async function createReplayFetch(
     initQueues()
   }
 
-  const replay = replayFn as unknown as {
-    [K in keyof ReplayFetch]: ReplayFetch[K]
-  } & FetchLike
+  type Mutable<T> = { -readonly [P in keyof T]: T[P] }
+  const replay = replayFn as unknown as Mutable<ReplayFetch>
   replay.remainingCount = remainingCount
   replay.isDrained = isDrained
   replay.pendingKeys = pendingKeys
