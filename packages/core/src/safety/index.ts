@@ -9,7 +9,7 @@ export {
   DEFAULT_LOCALE,
   sortBy,
 } from "./collator"
-export { decodeBase64, decodeUtf8, encodeUtf8 } from "./encoding"
+export { decodeBase64, decodeUtf8, encodeBase64, encodeUtf8 } from "./encoding"
 export type { Logger, LogLevel, LogRecord } from "./logger"
 export { createLogger, isSensitiveKey, maskData, maskString } from "./logger"
 export type { MoneyFormatOptions } from "./money"

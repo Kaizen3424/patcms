@@ -2,7 +2,7 @@
  * Helper to push a foreign commit onto FakeGithubServer (P2.9 conflict seams).
  * Uses server.handle() directly so it honors FakeGithubServer CAS and git-data rules.
  */
-import type { FakeGithubServer } from "@mycms/core"
+import { encodeBase64, encodeUtf8, type FakeGithubServer } from "@mycms/core"
 
 export interface PushForeignEntryCommitInput {
   readonly server: FakeGithubServer
@@ -27,7 +27,7 @@ export async function pushForeignEntryCommit(input: PushForeignEntryCommitInput)
   const blobRes = await server.handle({
     method: "POST",
     path: "/git/blobs",
-    body: { content: btoa(nextText), encoding: "base64" },
+    body: { content: encodeBase64(encodeUtf8(nextText)), encoding: "base64" },
   })
   const blobSha = (blobRes.json as { sha: string }).sha
 

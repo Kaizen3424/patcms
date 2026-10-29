@@ -66,6 +66,7 @@ async function main(): Promise<void> {
           baseRaw: initialText,
           formValue: {
             ...initialParsed,
+            title: "The Rock Pendant (draft edit)",
             material: "Wool felt · Leather (stored in draft)",
           },
         },

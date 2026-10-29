@@ -323,6 +323,7 @@ export {
   decodeBase64,
   decodeUtf8,
   deriveSlug,
+  encodeBase64,
   encodeUtf8,
   formatMoney,
   isSafePath,

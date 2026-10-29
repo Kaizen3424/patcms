@@ -85,6 +85,7 @@ interface ActiveConflict {
   readonly rows: readonly FreezeRow[]
   readonly baseMineTree: Readonly<Record<string, unknown>>
   readonly choices: ReadonlyMap<string, "theirs" | "mine">
+  readonly isBoot?: boolean
 }
 
 export interface EntryEditorProps {
@@ -215,6 +216,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
             rows,
             baseMineTree: stored,
             choices: new Map(),
+            isBoot: true,
           })
         } else {
           setConflict({
@@ -222,6 +224,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
             rows: [],
             baseMineTree: stored,
             choices: new Map(),
+            isBoot: true,
           })
         }
         return
@@ -235,6 +238,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
           rows: [],
           baseMineTree: {},
           choices: new Map(),
+          isBoot: true,
         })
         return
       }
@@ -428,7 +432,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     const reconciledTree = applyAllFreezeChoices(conflict.baseMineTree, nextRows)
     const current = formRef.current
     const finalTree =
-      current === null
+      current === null || conflict.isBoot
         ? reconciledTree
         : replayLateKeystrokes({
             baseMineTree: conflict.baseMineTree,
