@@ -80,3 +80,38 @@ turns `missing` spuriously. `FixtureBackend` reports `ok` with empty collections
 ### P2/C.2 addendum — recursive reads surface `blob` + `commit` tuples (2026-10-27)
 
 Found during INV-P06: the P1 recursive-tree parser dropped every non-`blob` entry, so a foreign submodule swap (`type: "commit"`) was invisible at the read layer and reached the conflict engine as a phantom deletion (spurious `resurrect`). That contradicts this ADR's own conflict predicate — the base→head diff is keyed `{path → {sha, mode, type}}` and "type change blocks" — tuple truth requires type variety to survive reads. Real GitHub recursive trees include submodule entries. Fix: recursive reads keep `blob` + `commit` entries (submodule swaps stay visible; INV-P06 end-to-end), and tree-POST validation accepts gitlink entries without requiring the pointer sha to exist in-repo (submodule targets live in external repos — real GitHub parity). `tree`-type children remain flattened containers (recursive mode returns none; the truncated-walk fallback assembles its own flat list). No law above changes — this restores what the reads bullet already promised.
+
+### P2.11 addendum (2026-10-29) — Recorded fixture wire format, redaction rules, and replay semantics
+
+Completes the Consequences note: *"GithubBackend additionally covered by recorded HTTP fixtures from a sandbox repo (transport-drift hedge)"*.
+
+1. **Wire schema (`RecordedTape`):**
+   - Serialized JSON containing:
+     - `schemaVersion: 1`
+     - `meta`: `{ schemaVersion: 1, recordedAt: string, owner: string, repo: string, branch: string, source: "sandbox" | "synthetic", description: string }`
+     - `interactions`: list of `{ request, response }` where:
+       - `request`: `{ method: string, url: string, headers?: Record<string, string>, body?: unknown }`
+       - `response`: `{ status: number, statusText?: string, headers: Record<string, string>, body?: unknown }`
+2. **Matching semantics (`createReplayFetch`):**
+   - In-memory `FetchLike` implementation (`packages/core/src/backends/github/recorded-replay.ts`).
+   - Grouping into a **Keyed-Endpoint FIFO Queue**:
+     `matchKey = method + " " + pathnameAndQuery + (etag ? " [etag=" + etag + "]" : "") + (bodySha ? " [body=" + bodySha + "]" : "")`
+   - Concurrent calls (e.g. `mapLimited(writes, 5)` in blob uploads) are disambiguated by body hash SHA-256.
+   - Sequential monotonic calls (e.g. repeated `getRef` calls advancing HEAD from initial to committed to CAS head) are popped sequentially from the FIFO queue for that key.
+   - Conditional requests (`If-None-Match`) match only when the incoming request supplies the header, cleanly separating 200 unconditional reads from 304 not-modified revalidations.
+   - Headers: `response.headers.get(name)` performs case-insensitive retrieval (`headers[name.toLowerCase()] ?? null`).
+   - Unmatched requests or exhausted queues throw descriptive errors listing the requested method, URL, key, candidate keys in tape, and remaining depths.
+3. **Redaction & Security Laws (INV-A04 / INV-A05):**
+   - Authorization headers: unconditionally scrubbed to `Bearer [token]` in all recorded requests.
+   - Token scrubbing: raw token string passed to capture script is replaced globally across headers and payloads with `[token]`.
+   - Committer PII: Git author and committer emails in responses are replaced with `cms-contract-bot@example.com`, names with `MyCMS Contract Runner`.
+   - Header allowlist: responses keep only functional headers inspected by `GithubBackend` and write-error classifiers (`etag`, `content-type`, `x-ratelimit-limit`, `x-ratelimit-remaining`, `x-ratelimit-reset`, `x-ratelimit-resource`, `retry-after`). Volatile headers (`x-github-request-id`, `set-cookie`, `date`, `server`, etc.) are stripped. All header keys are lower-cased.
+   - CAS error body preservation: HTTP 422 error bodies from GitHub (`Update is not a fast forward`, `ref update`, etc.) are preserved verbatim (minus token/email) so `classifyWriteResponse` correctly yields `CAS_CONFLICT`.
+   - Fail-closed pre-write scan: capture script scans output for raw tokens (`ghp_*`, `github_pat_*`) or unmasked emails, failing immediately on detection.
+4. **Parameterization & Branch Rules (INV-P14):**
+   - Canonical placeholders: repository identity is parameterized (defaulting to `test-owner` and `test-repo`), allowing replay against any test owner/repo options without URL mismatches.
+   - Branch names: fixtures and replay tests use `contract-fixture` or parameter variables; literal `"main"` is prohibited anywhere in core backends.
+5. **Dual-source capture strategy:**
+   - `--seed` mode uses `FakeGithubServer` to generate deterministic golden tapes offline, ensuring CI and offline builds pass without network or live GitHub credentials.
+   - Live mode captures real traffic from a GitHub sandbox repo after resetting the fixture branch, satisfying the real-world transport drift hedge.
+
