@@ -38,7 +38,7 @@ import { parseUntrustedJson } from "../../safety/untrusted-json"
 export interface GithubBackendOptions {
   readonly owner: string
   readonly repo: string
-  readonly token: string
+  readonly token: string | (() => string | undefined)
   readonly fetch: FetchLike
   /** API origin override (tests/proxies); defaults to https://api.github.com. */
   readonly baseUrl?: string
@@ -66,16 +66,26 @@ export class GithubBackend implements GitBackend {
   readonly capabilities: GitBackendCapabilities = { commitStatus: true, branches: true }
   readonly #owner: string
   readonly #repo: string
-  readonly #token: string
+  #tokenAccessor: () => string | undefined
   readonly #fetch: FetchLike
   readonly #baseUrl: string
 
   constructor(options: GithubBackendOptions) {
     this.#owner = options.owner
     this.#repo = options.repo
-    this.#token = options.token
+    this.#tokenAccessor =
+      typeof options.token === "function" ? options.token : () => options.token
     this.#fetch = options.fetch
     this.#baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "")
+  }
+
+  /** Updates the in-memory access key for in-place re-authentication (INV-A01). */
+  setToken(token: string): void {
+    this.#tokenAccessor = () => token
+  }
+
+  #getToken(): string {
+    return this.#tokenAccessor() ?? ""
   }
 
   async getRef(branch: string): Promise<Ref> {
@@ -355,7 +365,7 @@ export class GithubBackend implements GitBackend {
         body: JSON.stringify(payload),
         headers: {
           Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${this.#token}`,
+          Authorization: `Bearer ${this.#getToken()}`,
           "Content-Type": "application/json",
           "X-GitHub-Api-Version": API_VERSION,
         },
@@ -472,7 +482,7 @@ export class GithubBackend implements GitBackend {
   ): Promise<RequestResult> {
     const headers: Record<string, string> = {
       Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${this.#token}`,
+      Authorization: `Bearer ${this.#getToken()}`,
       "X-GitHub-Api-Version": API_VERSION,
     }
     if (etag !== undefined) headers["If-None-Match"] = etag

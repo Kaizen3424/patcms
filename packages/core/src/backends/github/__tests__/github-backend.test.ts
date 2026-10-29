@@ -337,4 +337,30 @@ describe("GithubBackend read transport (ADR-0005 P1 addendum)", () => {
     })
     expect(calls[0]?.url).toBe(`${BASE}/repos/${OWNER}/${REPO}/commits/${HEAD}/status`)
   })
+
+  it("supports dynamic token accessor and in-place setToken without recreation (INV-A01)", async () => {
+    let currentToken = "token-alpha"
+    const { fetch, calls } = recordsFetch(() =>
+      response({ ref: "refs/heads/main", object: { sha: HEAD, type: "commit" } }),
+    )
+    const b = new GithubBackend({
+      owner: OWNER,
+      repo: REPO,
+      token: () => currentToken,
+      fetch,
+    })
+
+    await b.getRef("main")
+    expect(calls[0]?.init?.headers).toMatchObject({ Authorization: "Bearer token-alpha" })
+
+    // Dynamic accessor reads the updated value
+    currentToken = "token-beta"
+    await b.getRef("main")
+    expect(calls[1]?.init?.headers).toMatchObject({ Authorization: "Bearer token-beta" })
+
+    // setToken updates the token accessor directly
+    b.setToken("token-gamma")
+    await b.getRef("main")
+    expect(calls[2]?.init?.headers).toMatchObject({ Authorization: "Bearer token-gamma" })
+  })
 })
