@@ -62,6 +62,7 @@ interface RuntimeValue {
   /** Cross-tab UX serialization; undefined when no carrier is available. */
   readonly lease: SaveLease | undefined
   readonly signIn: (token: string, remember: boolean) => Promise<CapabilityProbeResult>
+  readonly reauthenticate: (token: string, remember: boolean) => Promise<CapabilityProbeResult>
   readonly signOut: () => Promise<void>
 }
 
@@ -153,6 +154,18 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     return result
   }
 
+  const reauthenticate = async (
+    newToken: string,
+    remember: boolean,
+  ): Promise<CapabilityProbeResult> => {
+    const result = await probe(newToken)
+    await auth.signIn(newToken, { remember })
+    backend?.setToken(newToken)
+    setProbeResult(result)
+    coordinator?.resumeAuth()
+    return result
+  }
+
   const signOut = async (): Promise<void> => {
     await auth.signOut()
     snapshots.clear()
@@ -197,8 +210,15 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
             backend,
             branch: repository.branch,
             drafts,
+            onAfterWriteFailure: (error) => {
+              if (error.code === "AUTH_EXPIRED" || error.code === "SCOPE") {
+                void auth.reprobe().catch(() => {
+                  // Probe failure wipes persisted credentials per ADR-0002
+                })
+              }
+            },
           }),
-    [backend, drafts, repository.branch],
+    [backend, drafts, repository.branch, auth],
   )
 
   const lease = useMemo<SaveLease | undefined>(() => {
@@ -246,6 +266,7 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     coordinator,
     lease,
     signIn,
+    reauthenticate,
     signOut,
   }
 
@@ -260,6 +281,10 @@ export function useRuntime(): RuntimeValue {
   const value = useContext(RuntimeContext)
   if (value === undefined) throw new Error("useRuntime must be used inside AdminRuntimeProvider")
   return value
+}
+
+export function useRuntimeSafe(): RuntimeValue | undefined {
+  return useContext(RuntimeContext)
 }
 
 /**
