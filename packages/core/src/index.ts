@@ -374,3 +374,4 @@ export {
   decideStatus,
 } from "./status"
 export type { WebKeyValueStore } from "./web"
+export { clearIdbDraftStore, createIdbDraftStore } from "./web"

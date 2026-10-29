@@ -37,6 +37,12 @@ export interface FakeGithubOptions {
   readonly chaos?: FakeGithubChaos
   /** When true, requests without a Bearer token get 401 (contract/probe tests). */
   readonly requireAuth?: boolean
+  /** Seam called before applying a ref PATCH (used for CAS conflict injection). */
+  readonly beforeRefPatch?: (input: {
+    readonly server: FakeGithubServer
+    readonly branch: string
+    readonly requestBody: unknown
+  }) => Promise<void> | void
 }
 
 /**
@@ -336,11 +342,15 @@ export function createFakeGithubHandlers(
       guarded(async ({ request }) => {
         const branch = patchBranch(request.url)
         if (branch === null) return notFound()
+        const body = await readJson(request)
+        if (options.beforeRefPatch !== undefined) {
+          await options.beforeRefPatch({ server, branch, requestBody: body })
+        }
         return toHttp(
           await server.handle({
             method: "PATCH",
             path: `/git/refs/heads/${branch}`,
-            body: await readJson(request),
+            body,
           }),
         )
       }),

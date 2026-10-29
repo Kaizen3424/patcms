@@ -1,9 +1,15 @@
 import { mountAdmin } from "@mycms/admin"
 import "@mycms/admin/styles.css"
-import type { StatusTiming } from "@mycms/core"
+import {
+  createIdbDraftStore,
+  type FakeGithubServer,
+  type SaveDraftPayload,
+  type StatusTiming,
+} from "@mycms/core"
 import { setupWorker } from "msw/browser"
 import { yveAdminConfig } from "./config/yve"
 import { loadFixtureRepoFromBrowser } from "./fake-github/browser-fixture-repo"
+import { pushForeignEntryCommit } from "./fake-github/foreign-commit"
 import { createFakeGithubHandlers, DEFAULT_TAGS } from "./fake-github/handlers"
 import { installHarness } from "./harness"
 
@@ -13,12 +19,70 @@ import { installHarness } from "./harness"
  */
 async function main(): Promise<void> {
   const snapshot = await loadFixtureRepoFromBrowser()
+  const conflictDemo = new URLSearchParams(window.location.search).get("conflictDemo")
+
+  let conflictInjected = false
+  const beforeRefPatch =
+    conflictDemo === "save"
+      ? async ({ server, branch }: { server: FakeGithubServer; branch: string }) => {
+          if (conflictInjected) return
+          conflictInjected = true
+          await pushForeignEntryCommit({
+            server,
+            branch,
+            path: "src/content/products/the-rock-pendant.json",
+            mutator: (content) => ({
+              ...content,
+              material: "Wool felt · Leather (foreign push)",
+            }),
+            message: "foreign push at CAS (conflict demo)",
+          })
+        }
+      : undefined
+
   const { handlers, server } = createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
     requireAuth: true,
+    ...(beforeRefPatch === undefined ? {} : { beforeRefPatch }),
   })
   const worker = setupWorker(...handlers)
   await worker.start()
   installHarness({ server, defaultBranch: snapshot.defaultBranch })
+
+  if (conflictDemo === "boot") {
+    const targetPath = "src/content/products/the-rock-pendant.json"
+    const file = server.contents(snapshot.defaultBranch, targetPath)
+    if (file) {
+      const initialText = new TextDecoder().decode(file.bytes)
+      const initialParsed = JSON.parse(initialText) as Record<string, unknown>
+      const initialHeadSha = server.ref(snapshot.defaultBranch) ?? snapshot.headSha
+
+      const draftStore = createIdbDraftStore()
+      await draftStore.put<SaveDraftPayload>({
+        key: `${DEFAULT_TAGS.repo}/products/the-rock-pendant`,
+        savedAt: new Date().toISOString(),
+        value: {
+          filePath: targetPath,
+          baseSha: initialHeadSha,
+          baseRaw: initialText,
+          formValue: {
+            ...initialParsed,
+            material: "Wool felt · Leather (stored in draft)",
+          },
+        },
+      })
+
+      await pushForeignEntryCommit({
+        server,
+        branch: snapshot.defaultBranch,
+        path: targetPath,
+        mutator: (content) => ({
+          ...content,
+          material: "Wool felt · Leather (foreign push)",
+        }),
+        message: "foreign push pre-boot (conflict demo)",
+      })
+    }
+  }
 
   const host = document.getElementById("app")
   if (host === null) {
