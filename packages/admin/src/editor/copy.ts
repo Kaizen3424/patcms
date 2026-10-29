@@ -154,6 +154,96 @@ export const ACTION_COPY = {
   signOut: "Sign out",
 } as const
 
+/**
+ * Failure card copy (P2.10 — INV-A02 classifier matrix).
+ * Rendered docked above the SaveBar on non-quota failures and on entry read errors.
+ * No banned words; "{name}" comes from config support.name.
+ */
+export const FAILURE_COPY: Readonly<Record<string, CopyLine>> = {
+  AUTH_EXPIRED: {
+    title: "Your access key needs checking.",
+    detail: "Sign in again with your access key. Your changes stay safe on this device.",
+  },
+  SCOPE: {
+    title: "This access key cannot update the site.",
+    detail: "Ask {name} to give this access key permission to update files.",
+  },
+  RATE_LIMIT: {
+    title: "The site is busy right now.",
+    detail: "Saving will continue in a moment. You can keep editing.",
+  },
+  NOT_FOUND: {
+    title: "The site files could not be reached.",
+    detail: "The site files may have moved. Ask {name} to check the site connection.",
+  },
+  VALIDATION: {
+    title: "The site files could not accept this change.",
+    detail: "Your words are safe on this device. Ask {name} to check the entry format.",
+  },
+  NETWORK: {
+    title: "Internet connection problem.",
+    detail: "We could not reach the site. Check your internet connection and try again.",
+  },
+  TREE_TRUNCATED: {
+    title: "The folder is too large to read safely.",
+    detail: "Ask {name} to look at this folder before you save.",
+  },
+  UNKNOWN: {
+    title: "Saving did not go through.",
+    detail: "Your changes are still on this device. Try again, or ask {name} for help.",
+  },
+}
+
+/** In-place re-auth modal copy (P2.10 — INV-A01). */
+export const REAUTH_COPY = {
+  title: "Your access key needs checking",
+  detail: "Your changes are safe on this device. Enter your access key to continue saving.",
+  readTitle: "Your access key needs checking to open this entry.",
+  inputLabel: "Access key",
+  inputPlaceholder: "Paste your access key here",
+  showKey: "Show access key",
+  hideKey: "Hide access key",
+  remember: "Remember on this device",
+  submit: "Check key and save",
+  submitRead: "Check key",
+  submitting: "Checking key...",
+  cancel: "Keep editing",
+  signOut: "Sign out",
+  errorInvalid: "This access key could not be verified. Check the key and its permissions.",
+  errorEmpty: "Please enter your access key.",
+} as const
+
+/** Rate limit reset countdown copy (P2.10 — INV-N01). */
+export const RATE_COPY = {
+  busyTitle: "The site is busy right now.",
+  countdown: "Resuming in {seconds} seconds...",
+  pausedTitle: "Saving is paused.",
+  pausedDetail: "Your changes are kept on this device. Try saving again in a moment.",
+  resumeNow: "Try saving now",
+  announcementStart:
+    "Saving is paused because the site is busy. Resuming in about {seconds} seconds.",
+  announcementWarning: "Resuming in 10 seconds.",
+  announcementResume: "Resuming now.",
+} as const
+
+/** Failure card actions and labels (P2.10). */
+export const FAILURE_CARD_COPY = {
+  reassurance: "Your changes are kept on this device.",
+  retry: "Try saving again",
+  checkKey: "Check access key",
+  copyMessage: "Copy message for {name}",
+  copied: "Copied to clipboard",
+  technicalDetails: "Technical details for {name}",
+  startOver: "Start over from the latest version",
+} as const
+
+/** Entry screen read failure actions (P2.10). */
+export const READ_ERROR_COPY = {
+  retry: "Try loading again",
+  backToFolder: "Back to folder",
+  copyMessage: "Copy message for {name}",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -201,5 +291,10 @@ export function allCopyStrings(): readonly string[] {
   walk(FREEZE_COPY)
   walk(ACTION_COPY)
   walk(ADVISORY_COPY)
+  walk(FAILURE_COPY)
+  walk(REAUTH_COPY)
+  walk(RATE_COPY)
+  walk(FAILURE_CARD_COPY)
+  walk(READ_ERROR_COPY)
   return strings
 }

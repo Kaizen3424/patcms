@@ -9,10 +9,15 @@ import {
 import {
   ADVISORY_COPY,
   allCopyStrings,
+  FAILURE_CARD_COPY,
+  FAILURE_COPY,
   FREEZE_COPY,
   fillLine,
   fillName,
   personalize,
+  RATE_COPY,
+  READ_ERROR_COPY,
+  REAUTH_COPY,
   RECOVERY_COPY,
   SAVE_BAR_COPY,
   type SaveBarStatus,
@@ -172,5 +177,39 @@ describe("founder copy deck", () => {
     expect(fillLine(ADVISORY_COPY.copyBody, { title: "t", detail: "d", path: "p" })).toBe(
       "t: d (p)",
     )
+  })
+
+  it("ships the failure copy decks for every classified error code (P2.10 — INV-A02)", () => {
+    const codes = [
+      "AUTH_EXPIRED",
+      "SCOPE",
+      "RATE_LIMIT",
+      "NOT_FOUND",
+      "VALIDATION",
+      "NETWORK",
+      "TREE_TRUNCATED",
+      "UNKNOWN",
+    ]
+    for (const code of codes) {
+      expect(FAILURE_COPY[code]?.title.length).toBeGreaterThan(0)
+      expect(FAILURE_COPY[code]?.detail?.length).toBeGreaterThan(0)
+      const line = personalize(FAILURE_COPY[code]!, "Milan")
+      expect(line.title).not.toContain("{name}")
+      expect(line.detail).not.toContain("{name}")
+    }
+    expect(Object.keys(FAILURE_COPY)).toHaveLength(codes.length)
+  })
+
+  it("ships the in-place re-auth copy deck (P2.10 — INV-A01)", () => {
+    expect(REAUTH_COPY.title).toBe("Your access key needs checking")
+    expect(REAUTH_COPY.inputLabel).toBe("Access key")
+    expect(REAUTH_COPY.submit).toBe("Check key and save")
+    expect(REAUTH_COPY.signOut).toBe("Sign out")
+  })
+
+  it("ships the rate limit countdown copy deck (P2.10 — INV-N01)", () => {
+    expect(RATE_COPY.busyTitle).toBe("The site is busy right now.")
+    expect(RATE_COPY.resumeNow).toBe("Try saving now")
+    expect(fillLine(RATE_COPY.countdown, { seconds: "24" })).toBe("Resuming in 24 seconds...")
   })
 })
