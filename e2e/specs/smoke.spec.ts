@@ -32,7 +32,9 @@ test("login -> browse all yve fixtures -> open entries incl. a drift banner", as
   const origins = await installOriginAllowlist(page, new URL(baseURL).origin)
 
   await page.goto("/")
-  await expect(page.getByRole("heading", { name: "Content studio" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Content studio" })).toBeVisible({
+    timeout: 15_000,
+  })
 
   await page.getByLabel("Access key").fill("github_pat_e2e_fixture")
   await page.getByRole("button", { name: "Continue" }).click()

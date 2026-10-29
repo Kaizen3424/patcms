@@ -30,7 +30,12 @@ test("edit one field -> save -> exactly one commit with the new words", async ({
   const origins = await installOriginAllowlist(page, new URL(baseURL).origin)
 
   await page.goto("/")
-  await expect(page.getByRole("heading", { name: "Content studio" })).toBeVisible()
+  // Cold boot loads the whole yve fixture library before this heading paints.
+  // The sibling journeys give the same gate the same explicit budget; the 5s
+  // expect default is too tight when the full parallel suite starts together.
+  await expect(page.getByRole("heading", { name: "Content studio" })).toBeVisible({
+    timeout: 15_000,
+  })
   await page.getByLabel("Access key").fill("github_pat_e2e_fixture")
   await page.getByRole("button", { name: "Continue" }).click()
 
