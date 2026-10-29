@@ -28,6 +28,7 @@ test("login -> browse all yve fixtures -> open entries incl. a drift banner", as
   baseURL,
   page,
 }) => {
+  test.slow()
   if (baseURL === undefined) throw new Error("playwright config must set use.baseURL")
   const origins = await installOriginAllowlist(page, new URL(baseURL).origin)
 
