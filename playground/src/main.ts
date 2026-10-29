@@ -1,5 +1,6 @@
 import { mountAdmin } from "@mycms/admin"
 import "@mycms/admin/styles.css"
+import type { StatusTiming } from "@mycms/core"
 import { setupWorker } from "msw/browser"
 import { yveAdminConfig } from "./config/yve"
 import { loadFixtureRepoFromBrowser } from "./fake-github/browser-fixture-repo"
@@ -30,6 +31,11 @@ async function main(): Promise<void> {
   const requested = new URLSearchParams(window.location.search).get("leaseTtlMs")
   const leaseTtlMs = requested === null ? undefined : parseLeaseTtl(requested)
 
+  // Deploy-status cadence seam (ADR-0008 P2.8): the six parameters let a
+  // journey reach terminal states without waiting out real minutes. Absent or
+  // invalid values keep the shipped defaults.
+  const statusTiming = parseStatusTiming(window.location.search)
+
   mountAdmin(host, {
     config: yveAdminConfig,
     support: { name: "Ing" },
@@ -39,6 +45,7 @@ async function main(): Promise<void> {
       branch: snapshot.defaultBranch,
     },
     ...(leaseTtlMs === undefined ? {} : { leaseTtlMs }),
+    ...(statusTiming === undefined ? {} : { statusTiming }),
   })
 }
 
@@ -46,6 +53,36 @@ function parseLeaseTtl(value: string): number | undefined {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed <= 0) return undefined
   return Math.round(parsed)
+}
+
+/**
+ * `statusFastPollMs` / `statusSlowPollMs` / `statusFastWindowMs` /
+ * `statusGraceMs` / `statusMaxWatchMs` / `statusJitterRatio` on the playground
+ * URL map onto `AdminMountOptions.statusTiming`. Jitter may be 0 (exact
+ * cadence); everything else must be a positive number of milliseconds.
+ */
+function parseStatusTiming(search: string): Partial<StatusTiming> | undefined {
+  const params = new URLSearchParams(search)
+  const read = (key: string, allowZero = false): number | undefined => {
+    const raw = params.get(key)
+    if (raw === null) return undefined
+    const parsed = Number(raw)
+    if (!Number.isFinite(parsed) || parsed < 0 || (!allowZero && parsed === 0)) return undefined
+    return Math.round(parsed)
+  }
+  const timing: { -readonly [K in keyof StatusTiming]?: number } = {}
+  const assign = (field: keyof StatusTiming, param: string): void => {
+    const value = read(param)
+    if (value !== undefined) timing[field] = value
+  }
+  assign("fastPollMs", "statusFastPollMs")
+  assign("slowPollMs", "statusSlowPollMs")
+  assign("fastWindowMs", "statusFastWindowMs")
+  assign("graceMs", "statusGraceMs")
+  assign("maxWatchMs", "statusMaxWatchMs")
+  const jitter = read("statusJitterRatio", true)
+  if (jitter !== undefined && jitter <= 1) timing.jitterRatio = jitter
+  return Object.keys(timing).length === 0 ? undefined : timing
 }
 
 void main().catch((error: unknown) => {

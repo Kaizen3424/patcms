@@ -23,8 +23,10 @@ import {
 } from "@mycms/core"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
-import { useRuntime } from "../runtime/context"
+import { usePublishEntry, useRuntime } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
+import { StatusChip } from "../status/chip"
+import { usePublishedSha } from "../status/provider"
 import { defaultWidgetRegistry, EDITABLE_FIELD_TYPES } from "../widgets"
 import { AdvisoryChips } from "./advisory-chip"
 import { personalize, RECOVERY_COPY, SAVE_BAR_COPY } from "./copy"
@@ -71,6 +73,8 @@ export interface EntryEditorProps {
 
 export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEditorProps) {
   const { backend, config, repository, drafts, coordinator, lease, support, signOut } = useRuntime()
+  const publishEntry = usePublishEntry()
+  const publishedSha = usePublishedSha(entry.path)
   const draftKey = `${repository.repo}/${entry.collectionName}/${entry.slug}`
 
   const [form, setForm] = useState<EntryFormState | null>(() => {
@@ -276,6 +280,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
         coordinator.reset(draftKey, verdict.commitSha)
         setJustSaved(true)
         setJustNoop(false)
+        publishEntry(entry.path, verdict.commitSha)
         // P2.7: sweep what the site does with the OBSERVED commit (her path
         // excluded). Never on noop; never in the save path's way — the sweep
         // reads standalone and its verdict can never gate a save.
@@ -479,6 +484,8 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
       </div>
 
       <AdvisoryChips verdict={sweep} supportName={support.name} />
+
+      <StatusChip sha={publishedSha} />
 
       <SaveBar
         model={model}

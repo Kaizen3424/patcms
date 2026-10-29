@@ -1,5 +1,12 @@
 /** Admin composition types — host supplies JSON-safe config + repository target. */
-import type { AdminConfig, DraftStore, FetchLike, LeaseCarrier, TokenStore } from "@mycms/core"
+import type {
+  AdminConfig,
+  DraftStore,
+  FetchLike,
+  LeaseCarrier,
+  StatusTiming,
+  TokenStore,
+} from "@mycms/core"
 
 export interface SupportContext {
   /** The named human every founder-facing surface references — never "someone" (master-plan §7). */
@@ -32,4 +39,6 @@ export interface AdminMountOptions {
    * deterministic cross-tab journeys; hard UX rules are untouched by it.
    */
   readonly leaseTtlMs?: number
+  /** Deploy-status poll cadence overrides (ADR-0008 P2.8). */
+  readonly statusTiming?: Partial<StatusTiming>
 }

@@ -30,8 +30,12 @@ import {
 } from "@mycms/core/web"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
-import { createContext, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import type { AdminMountOptions, AdminRepository, SupportContext } from "../admin/types"
+import type { StatusProviderDeps } from "../status/provider"
+import { StatusProvider } from "../status/provider"
+import type { PublishStore } from "../status/publish-store"
+import { createPublishStore } from "../status/publish-store"
 import type { EntryIndex } from "./entry-index"
 import { loadEntryIndex } from "./entry-index"
 import { createMemoryDraftStore } from "./memory-draft-store"
@@ -51,6 +55,8 @@ interface RuntimeValue {
   readonly epoch: number
   /** Crash-safety store for editor drafts (IDB, or memory fallback). */
   readonly drafts: DraftStore
+  /** Session-only publish journal: entryId → latestCommitSha (P2.8). */
+  readonly publishStore: PublishStore
   /** Save orchestration for this backend generation (P2.6 editor). */
   readonly coordinator: SaveCoordinator | undefined
   /** Cross-tab UX serialization; undefined when no carrier is available. */
@@ -69,6 +75,7 @@ interface AdminRuntimeProviderProps {
 export function AdminRuntimeProvider({ options, children }: AdminRuntimeProviderProps) {
   const queryClient = useQueryClient()
   const repository = options.repository
+  const config = options.config
   const fetchLike = useMemo<FetchLike>(() => {
     if (options.fetch !== undefined) return options.fetch
     return globalThis.fetch.bind(globalThis) as unknown as FetchLike
@@ -132,6 +139,10 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     }
   }, [auth])
 
+  // Publish journal (P2.8): session-only map, cleared on sign-out. The entry
+  // editor populates it from the `published` verdict; status chips key reads off it.
+  const publishStore = useMemo(() => createPublishStore(), [])
+
   const signIn = async (token: string, remember: boolean): Promise<CapabilityProbeResult> => {
     const result = await auth.signIn(token, { remember })
     setProbeResult(result)
@@ -146,6 +157,7 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     await auth.signOut()
     snapshots.clear()
     queryClient.clear()
+    publishStore.clear()
     setProbeResult(undefined)
     setStatus("signedOut")
     setEpoch((value) => value + 1)
@@ -206,8 +218,20 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     return () => lease.dispose()
   }, [lease])
 
+  const statusDeps = useMemo(
+    (): StatusProviderDeps => ({
+      probe: probeResult,
+      backend,
+      branch: repository.branch,
+      ...(config.deploy?.contexts === undefined ? {} : { contexts: config.deploy.contexts }),
+      publishStore,
+      ...(options.statusTiming === undefined ? {} : { statusTiming: options.statusTiming }),
+    }),
+    [backend, config.deploy?.contexts, probeResult, repository.branch, options.statusTiming],
+  )
+
   const value: RuntimeValue = {
-    config: options.config,
+    config,
     support: options.support,
     repository,
     auth,
@@ -218,19 +242,39 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     snapshots,
     epoch,
     drafts,
+    publishStore,
     coordinator,
     lease,
     signIn,
     signOut,
   }
 
-  return <RuntimeContext.Provider value={value}>{children}</RuntimeContext.Provider>
+  return (
+    <RuntimeContext.Provider value={value}>
+      <StatusProvider deps={statusDeps}>{children}</StatusProvider>
+    </RuntimeContext.Provider>
+  )
 }
 
 export function useRuntime(): RuntimeValue {
   const value = useContext(RuntimeContext)
   if (value === undefined) throw new Error("useRuntime must be used inside AdminRuntimeProvider")
   return value
+}
+
+/**
+ * Captures the `published` verdict's `commitSha` into the session-only publish
+ * journal (P2.8). The entry editor calls this from the `published` branch;
+ * `noop` and failures never republish. Absent a sha, there is no chip to read.
+ */
+export function usePublishEntry(): (entryId: string, commitSha: string) => void {
+  const { publishStore } = useRuntime()
+  return useCallback(
+    (entryId: string, commitSha: string) => {
+      publishStore.publish(entryId, commitSha)
+    },
+    [publishStore],
+  )
 }
 
 /**

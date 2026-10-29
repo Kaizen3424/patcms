@@ -1,6 +1,7 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 import { useEntryIndex, useRuntime } from "../runtime/context"
+import { StatusBanner } from "../status/chip"
 
 export function AppShell({ children }: { readonly children?: ReactNode }) {
   const { config, support, probe, signOut } = useRuntime()
@@ -79,12 +80,15 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-soft px-5 py-3 md:px-8">
-          <p className="text-xs text-text-muted">
-            Read-only preview <span className="px-1.5 text-border-strong">/</span>{" "}
-            {probe?.rateLimit === null || probe?.rateLimit === undefined
-              ? "GitHub"
-              : `${probe.rateLimit.remaining} of ${probe.rateLimit.limit} requests left`}
-          </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <p className="text-xs text-text-muted">
+              Read-only preview <span className="px-1.5 text-border-strong">/</span>{" "}
+              {probe?.rateLimit === null || probe?.rateLimit === undefined
+                ? "GitHub"
+                : `${probe.rateLimit.remaining} of ${probe.rateLimit.limit} requests left`}
+            </p>
+            <StatusBanner />
+          </div>
           <div className="flex items-center gap-2 md:hidden">
             <button
               type="button"
