@@ -11,12 +11,20 @@
  *    second save in the same session is possible;
  *  - edits typed while a save is committing survive and re-dirty the form.
  */
-import type { FieldDescriptor, ParseIssue, SaveDraftPayload, SaveMachineState } from "@mycms/core"
+import type {
+  ConflictMergePreview,
+  FieldDescriptor,
+  FieldPath,
+  ParseIssue,
+  SaveDraftPayload,
+  SaveMachineState,
+} from "@mycms/core"
 import {
   adjudicateDraft,
   DEFAULT_LEASE_HEARTBEAT_MS,
   decodeUtf8,
   encodeUtf8,
+  fieldPathKey,
   parseJsonDocument,
   SaveInFlightError,
   validateEntryForSave,
@@ -40,7 +48,16 @@ import {
   withFieldValue,
   withLatestVersion,
   withPublishedBase,
+  withReconciledBase,
 } from "./form-value"
+import {
+  allFreezeRowsDecided,
+  applyAllFreezeChoices,
+  createFreezeRows,
+  type FreezeRow,
+  replayLateKeystrokes,
+} from "./freeze-model"
+import { FreezePanel } from "./freeze-panel"
 import { SaveBar } from "./save-bar"
 import { describeSaveBar } from "./save-bar-model"
 import type { SweepVerdict } from "./save-sweep"
@@ -59,6 +76,15 @@ interface BootOffer {
 interface BootConflict {
   readonly kind: "conflict"
   readonly headSha: string
+}
+
+interface ActiveConflict {
+  readonly headSha: string
+  readonly remoteRaw?: string
+  readonly merge?: ConflictMergePreview
+  readonly rows: readonly FreezeRow[]
+  readonly baseMineTree: Readonly<Record<string, unknown>>
+  readonly choices: ReadonlyMap<string, "theirs" | "mine">
 }
 
 export interface EntryEditorProps {
@@ -84,6 +110,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
   const formRef = useRef(form)
   const [machine, setMachine] = useState<SaveMachineState | undefined>(undefined)
   const [boot, setBoot] = useState<BootOffer | BootConflict | undefined>(undefined)
+  const [conflict, setConflict] = useState<ActiveConflict | undefined>(undefined)
   const [validationIssues, setValidationIssues] = useState<readonly ParseIssue[]>([])
   const [justSaved, setJustSaved] = useState(false)
   const [justNoop, setJustNoop] = useState(false)
@@ -173,14 +200,42 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
         return
       }
       if (adjudication.kind === "conflict") {
-        setBoot({ kind: "conflict", headSha: adjudication.headSha })
+        const stored = asRecord(record.value.formValue) ?? {}
+        if (adjudication.merge !== undefined) {
+          const rows = createFreezeRows({
+            frozenFieldPaths: adjudication.merge.frozenFieldPaths,
+            remoteRaw: adjudication.merge.remoteRaw,
+            mineTree: stored,
+            fields: entry.fields,
+          })
+          setConflict({
+            headSha: adjudication.headSha,
+            remoteRaw: adjudication.merge.remoteRaw,
+            merge: adjudication.merge,
+            rows,
+            baseMineTree: stored,
+            choices: new Map(),
+          })
+        } else {
+          setConflict({
+            headSha: adjudication.headSha,
+            rows: [],
+            baseMineTree: stored,
+            choices: new Map(),
+          })
+        }
         return
       }
       const stored = asRecord(record.value.formValue)
       if (stored === undefined && adjudication.mergedRaw === undefined) {
         // Nothing restorable was stored — the honest surface is the freeze
         // message, not an "offer" that would blank the entry.
-        setBoot({ kind: "conflict", headSha: adjudication.headSha })
+        setConflict({
+          headSha: adjudication.headSha,
+          rows: [],
+          baseMineTree: {},
+          choices: new Map(),
+        })
         return
       }
       setBoot({
@@ -246,6 +301,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     if (current === null || coordinator === undefined) return
     if (current.dirtyPaths.length === 0 || saving.current) return
     saving.current = true
+    const submitSnapshot = current.formValue
     try {
       const bytes = composeFormBytes(current, entry.fields)
       const validation = await validateEntryForSave({
@@ -272,25 +328,76 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
 
       if (verdict.kind === "published") {
         // New base = the commit the ref was OBSERVED carrying + the bytes we
-        // composed. Never a re-read; edits made during the save stay dirty.
+        // composed (or reconciled). Never a re-read; edits made during the save
+        // stay dirty.
         const latest = formRef.current
         if (latest !== null) {
-          updateForm(withPublishedBase(latest, { commitSha: verdict.commitSha, raw: bytes }))
+          if (verdict.reconciliation !== undefined) {
+            updateForm(
+              withReconciledBase(latest, {
+                commitSha: verdict.commitSha,
+                raw: verdict.reconciliation.reconciledRaw,
+                submitSnapshot,
+              }),
+            )
+          } else {
+            updateForm(withPublishedBase(latest, { commitSha: verdict.commitSha, raw: bytes }))
+          }
         }
         coordinator.reset(draftKey, verdict.commitSha)
         setJustSaved(true)
         setJustNoop(false)
+        setConflict(undefined)
         publishEntry(entry.path, verdict.commitSha)
         // P2.7: sweep what the site does with the OBSERVED commit (her path
         // excluded). Never on noop; never in the save path's way — the sweep
         // reads standalone and its verdict can never gate a save.
         runSweep(verdict.commitSha)
       } else if (verdict.kind === "noop") {
-        coordinator.reset(draftKey, current.baseSha)
+        const latest = formRef.current
+        if (latest !== null && verdict.reconciliation !== undefined) {
+          updateForm(
+            withReconciledBase(latest, {
+              commitSha: verdict.reconciliation.reconciledSha,
+              raw: verdict.reconciliation.reconciledRaw,
+              submitSnapshot,
+            }),
+          )
+          coordinator.reset(draftKey, verdict.reconciliation.reconciledSha)
+        } else {
+          coordinator.reset(draftKey, current.baseSha)
+        }
         setJustSaved(true)
         setJustNoop(true)
+        setConflict(undefined)
+      } else if (verdict.kind === "conflict") {
+        setJustSaved(false)
+        const merge = verdict.details.merge
+        if (merge !== undefined) {
+          const rows = createFreezeRows({
+            frozenFieldPaths: merge.frozenFieldPaths,
+            remoteRaw: merge.remoteRaw,
+            mineTree: submitSnapshot,
+            fields: entry.fields,
+          })
+          setConflict({
+            headSha: verdict.details.currentHeadSha,
+            remoteRaw: merge.remoteRaw,
+            merge,
+            rows,
+            baseMineTree: submitSnapshot,
+            choices: new Map(),
+          })
+        } else {
+          setConflict({
+            headSha: verdict.details.currentHeadSha,
+            rows: [],
+            baseMineTree: submitSnapshot,
+            choices: new Map(),
+          })
+        }
       } else {
-        // conflict | failed: the bar reads the machine; drafts stay on device.
+        // failed: the bar reads the machine; drafts stay on device.
         setJustSaved(false)
       }
     } catch (error) {
@@ -298,6 +405,51 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     } finally {
       saving.current = false
     }
+  }
+
+  const handleFreezeChoice = (path: FieldPath, choice: "theirs" | "mine"): void => {
+    if (conflict === undefined) return
+    const key = fieldPathKey(path)
+    const nextChoices = new Map(conflict.choices)
+    nextChoices.set(key, choice)
+
+    const nextRows = conflict.rows.map((r) => (r.key === key ? { ...r, choice } : r))
+
+    if (!allFreezeRowsDecided(nextRows)) {
+      setConflict({
+        ...conflict,
+        choices: nextChoices,
+        rows: nextRows,
+      })
+      return
+    }
+
+    // All rows decided: reconcile tree, replay late keystrokes, adopt remote base.
+    const reconciledTree = applyAllFreezeChoices(conflict.baseMineTree, nextRows)
+    const current = formRef.current
+    const finalTree =
+      current === null
+        ? reconciledTree
+        : replayLateKeystrokes({
+            baseMineTree: conflict.baseMineTree,
+            liveFormTree: current.formValue,
+            reconciledTree,
+          })
+
+    const remoteRaw = conflict.remoteRaw ?? ""
+    if (current !== null) {
+      const updated = withBase(withFieldTree(current, finalTree), {
+        baseSha: conflict.headSha,
+        baseRaw: remoteRaw,
+      })
+      updateForm(updated)
+      if (isFormDirty(updated)) {
+        coordinator?.markDirty(draftKey, conflict.headSha)
+      }
+    }
+    coordinator?.reset(draftKey, conflict.headSha)
+    setConflict(undefined)
+    setBoot(undefined)
   }
 
   const retry = (): void => {
@@ -328,6 +480,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     await drafts.delete(draftKey)
     if (!mounted.current) return
     setBoot(undefined)
+    setConflict(undefined)
     setValidationIssues([])
     setJustSaved(false)
     setJustNoop(false)
@@ -389,6 +542,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     justSaved,
     justNoop,
     leaseLost,
+    freezePending: conflict !== undefined && !allFreezeRowsDecided(conflict.rows),
   })
 
   if (form === null) {
@@ -428,6 +582,17 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
           onRestore={() => void restore()}
           onDismiss={dismissOffer}
           onStartOver={() => void startOver()}
+        />
+      )}
+
+      {conflict === undefined ? null : (
+        <FreezePanel
+          rows={conflict.rows}
+          ourFieldPaths={conflict.merge?.ourFieldPaths}
+          onChoose={handleFreezeChoice}
+          onStartOver={() => void startOver()}
+          degraded={conflict.merge === undefined}
+          supportName={support.name}
         />
       )}
 

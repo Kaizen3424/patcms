@@ -90,6 +90,19 @@ describe("save bar projection", () => {
     expect(bar.canSave).toBe(false)
   })
 
+  it("freezePending blocks Save and marks status as conflict even with dirty form", () => {
+    const bar = describeSaveBar(
+      input({
+        state: { phase: "dirty", baseSha: BASE },
+        dirty: true,
+        freezePending: true,
+      }),
+    )
+    expect(bar.status).toBe("conflict")
+    expect(bar.canSave).toBe(false)
+    expect(bar.canStartOver).toBe(true)
+  })
+
   it("a quota park with a countdown reads as busy; a null window reads as paused", () => {
     expect(
       saveBarStatus(state({ phase: "paused", reason: "quota", waitMs: 30_000, baseSha: BASE })),

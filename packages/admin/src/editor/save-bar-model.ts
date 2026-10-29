@@ -30,6 +30,8 @@ export interface SaveBarInput {
   readonly justNoop: boolean
   /** Cross-tab lease was displaced (`lease.onLost`). */
   readonly leaseLost: boolean
+  /** Freeze UI has undecided conflict rows (Save stays blocked until decided). */
+  readonly freezePending?: boolean
 }
 
 export interface SaveBarModel {
@@ -70,7 +72,7 @@ export function saveBarStatus(input: SaveBarInput): SaveBarStatus {
 
   if (phase === "paused" && input.state?.reason === "auth") return "authExpired"
   if (phase === "failed") return "failed"
-  if (phase === "conflict") return "conflict"
+  if (phase === "conflict" || input.freezePending) return "conflict"
   if (phase === "queued" || phase === "committing") return "saving"
   if (phase === "paused") {
     return input.state?.reason === "quota" && input.state.waitMs !== null ? "busy" : "paused"
@@ -90,7 +92,7 @@ export function describeSaveBar(input: SaveBarInput): SaveBarModel {
   return {
     status,
     tone: TONES[status],
-    canSave: status === "dirty",
+    canSave: status === "dirty" && !input.freezePending,
     canRetry: status === "failed" || status === "paused",
     canStartOver: status === "conflict",
     // A lost lease clears only via re-acquire (manual re-check or an observed

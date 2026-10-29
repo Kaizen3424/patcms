@@ -15,6 +15,7 @@
 import type { FieldDescriptor, FieldPath, JsonDocument } from "@mycms/core"
 import { composeEntryDocument, computeDirtyPaths, parseJsonDocument } from "@mycms/core"
 import type { IndexedEntry } from "../runtime/entry-index"
+import { replayLateKeystrokes } from "./freeze-model"
 
 export interface EntryFormState {
   /** Full edited tree (untouched keys merged, virtual fields stripped). */
@@ -121,6 +122,39 @@ export function withPublishedBase(
     baseValue,
     document,
     dirtyPaths: computeDirtyPaths(form.formValue, baseValue),
+  }
+}
+
+/**
+ * Adopts a reconciled base (P2.9 — ADR-0004 auto-merge base adoption).
+ * The base is updated to <commitSha, reconciledRaw>. Keystrokes typed while
+ * the save ran (the difference between the live form and the submit snapshot)
+ * are replayed onto the reconciled base tree.
+ */
+export function withReconciledBase(
+  form: EntryFormState,
+  input: {
+    readonly commitSha: string
+    readonly raw: string
+    readonly submitSnapshot: Readonly<Record<string, unknown>>
+  },
+): EntryFormState {
+  const parsed = parseJsonDocument(input.raw)
+  const document = parsed.ok ? parsed.document : form.document
+  const reconciledBaseValue = asRecord(parsed.ok ? parsed.document.value : form.baseValue)
+  const newFormValue = replayLateKeystrokes({
+    baseMineTree: input.submitSnapshot,
+    liveFormTree: form.formValue,
+    reconciledTree: reconciledBaseValue,
+  })
+  return {
+    ...form,
+    baseSha: input.commitSha,
+    baseRaw: input.raw,
+    baseValue: reconciledBaseValue,
+    formValue: newFormValue,
+    document,
+    dirtyPaths: computeDirtyPaths(newFormValue, reconciledBaseValue),
   }
 }
 

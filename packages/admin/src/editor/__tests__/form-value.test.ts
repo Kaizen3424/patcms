@@ -11,6 +11,7 @@ import {
   withFieldValue,
   withLatestVersion,
   withPublishedBase,
+  withReconciledBase,
 } from "../form-value"
 
 /**
@@ -165,6 +166,40 @@ describe("entry form model", () => {
     const { form: state } = form()
     const restored = withFieldTree(state, { title: "The Rock Pendant", price: 120 })
     expect(restored.dirtyPaths).toEqual([["legacy"]])
+  })
+
+  it("withReconciledBase adopts reconciled bytes and replays late keystrokes", () => {
+    const { form: state } = form()
+    const submitSnapshot = { ...state.formValue, title: "Our Edit" }
+
+    // Suppose partner edited price to 999 and that landed via auto-merge
+    const reconciledRaw = canonicalJson({
+      title: "Our Edit",
+      price: 999,
+      legacy: { kept: true },
+    } as never)
+
+    // And while the save was in-flight, founder made another keystroke on title
+    const liveForm = withFieldValue(
+      { ...state, formValue: submitSnapshot },
+      "title",
+      "Our Edit with late typing",
+    )
+
+    const next = withReconciledBase(liveForm, {
+      commitSha: "e".repeat(40),
+      raw: reconciledRaw,
+      submitSnapshot,
+    })
+
+    expect(next.baseSha).toBe("e".repeat(40))
+    expect(next.baseValue.price).toBe(999)
+    // Partner's price was adopted into formValue
+    expect(next.formValue.price).toBe(999)
+    // Late keystroke survived
+    expect(next.formValue.title).toBe("Our Edit with late typing")
+    // Only the late edit is dirty against the new reconciled base
+    expect(next.dirtyPaths).toEqual([["title"]])
   })
 
   it("a hostile field name becomes an own property, never a prototype write", () => {
