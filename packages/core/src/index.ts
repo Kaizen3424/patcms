@@ -234,6 +234,8 @@ export type {
   DraftAdjudication,
   FieldPath,
   FieldPathSegment,
+  FieldPathWriteIssue,
+  FieldPathWriteResult,
   FileConflictVerdict,
   LeaseCarrier,
   LeaseMessage,
@@ -271,6 +273,7 @@ export {
   createSaveLease,
   DEFAULT_LEASE_HEARTBEAT_MS,
   DEFAULT_LEASE_TTL_MS,
+  deleteAtFieldPath,
   describeRatePause,
   diffPaths,
   equalsFieldPath,
@@ -289,6 +292,7 @@ export {
   SAVE_PHASE_ORDER,
   SaveInFlightError,
   transitionSaveState,
+  writeAtFieldPath,
 } from "./pipeline"
 export type {
   JsonPrimitive,

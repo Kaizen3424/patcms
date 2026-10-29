@@ -11,16 +11,23 @@ export { adjudicateDraft } from "./boot-replay"
 export type { CommitMessageVerdict } from "./commit-message"
 export { composeCommitMessage, containsSkipToken } from "./commit-message"
 export { fieldEquals } from "./field-equals"
-export type { FieldPath, FieldPathSegment } from "./field-paths"
+export type {
+  FieldPath,
+  FieldPathSegment,
+  FieldPathWriteIssue,
+  FieldPathWriteResult,
+} from "./field-paths"
 export {
   commonAncestorFieldPath,
   computeDirtyPaths,
+  deleteAtFieldPath,
   diffPaths,
   equalsFieldPath,
   fieldPathKey,
   isAncestorFieldPath,
   readAtFieldPath,
   relatedFieldPaths,
+  writeAtFieldPath,
 } from "./field-paths"
 export type {
   ConflictEngineInput,

@@ -130,3 +130,138 @@ function leafDiff(next: unknown, base: unknown, path: FieldPath): FieldPath[] {
 export function computeDirtyPaths(formValue: unknown, oldBase: unknown): FieldPath[] {
   return diffPaths(formValue, oldBase)
 }
+
+// --- value-domain path writers (ADR-0004 P2.9 appendix) ---------------------
+//
+// The ONLY mutation surface the admin's freeze UI uses to apply a per-field
+// decision. Pure: the input tree is never mutated; a deep clone is spliced and
+// returned. They generalize the splice internals `rebase()` already owns
+// (parents auto-created, list-item deletion refused as a whole-list edit) so
+// the no-second-serializer law holds outside rebase too.
+
+export type FieldPathWriteResult =
+  | { readonly ok: true; readonly tree: unknown }
+  | { readonly ok: false; readonly issue: FieldPathWriteIssue }
+
+export interface FieldPathWriteIssue {
+  readonly code: "ROOT_PATH" | "SPLICE_GAP"
+  readonly detail: string
+}
+
+/**
+ * Writes `value` at `path` inside a deep clone of `tree`, creating intermediate
+ * containers when genuinely new (a record key creates an object or a list
+ * depending on whether the NEXT segment is an index). `path: []` is refused —
+ * the root is not a field.
+ */
+export function writeAtFieldPath(
+  tree: unknown,
+  path: FieldPath,
+  value: unknown,
+): FieldPathWriteResult {
+  if (path.length === 0) {
+    return { ok: false, issue: { code: "ROOT_PATH", detail: "the document root is not a field" } }
+  }
+  const clone = cloneTree(tree)
+  const outcome = assignAt(clone, path, value)
+  return outcome.kind === "ok" ? { ok: true, tree: clone } : { ok: false, issue: outcome.issue }
+}
+
+/**
+ * Removes the key at `path` from a deep clone of `tree`. Deleting an absent key
+ * is already the target state — a no-op success. List-ITEM deletion is refused
+ * (`SPLICE_GAP`): index shifts would silently reorder; a list removal is a
+ * whole-list write decided at the list path. `path: []` is refused.
+ */
+export function deleteAtFieldPath(tree: unknown, path: FieldPath): FieldPathWriteResult {
+  if (path.length === 0) {
+    return { ok: false, issue: { code: "ROOT_PATH", detail: "the document root is not a field" } }
+  }
+  const clone = cloneTree(tree)
+  const outcome = removeAt(clone, path)
+  return outcome.kind === "ok" ? { ok: true, tree: clone } : { ok: false, issue: outcome.issue }
+}
+
+function cloneTree(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cloneTree)
+  if (isRecord(value)) {
+    const copy: Record<string, unknown> = {}
+    for (const key of Object.keys(value)) copy[key] = cloneTree(value[key])
+    return copy
+  }
+  return value
+}
+
+function assignAt(
+  cursorNode: unknown,
+  path: FieldPath,
+  value: unknown,
+): { readonly kind: "ok" } | { readonly kind: "issue"; readonly issue: FieldPathWriteIssue } {
+  let cursor: unknown = cursorNode
+  for (let index = 0; index < path.length - 1; index += 1) {
+    const segment = path[index] as string | number
+    const nextIsIndex = typeof path[index + 1] === "number"
+    if (isRecord(cursor)) {
+      const key = String(segment)
+      if (!Object.hasOwn(cursor, key)) cursor[key] = nextIsIndex ? [] : {}
+      cursor = cursor[key]
+      continue
+    }
+    if (Array.isArray(cursor) && typeof segment === "number") {
+      if (cursor[segment] === undefined) cursor[segment] = nextIsIndex ? [] : {}
+      cursor = cursor[segment]
+      continue
+    }
+    return { kind: "issue", issue: spliceGap(path, "parent container vanished") }
+  }
+
+  const last = path[path.length - 1] as string | number
+  if (isRecord(cursor)) {
+    cursor[String(last)] = value
+    return { kind: "ok" }
+  }
+  if (Array.isArray(cursor) && typeof last === "number") {
+    if (last === cursor.length) cursor.push(value)
+    else if (last < cursor.length) cursor[last] = value
+    else return { kind: "issue", issue: spliceGap(path, `index ${last} beyond list end`) }
+    return { kind: "ok" }
+  }
+  return { kind: "issue", issue: spliceGap(path, "parent container vanished") }
+}
+
+function removeAt(
+  cursorNode: unknown,
+  path: FieldPath,
+): { readonly kind: "ok" } | { readonly kind: "issue"; readonly issue: FieldPathWriteIssue } {
+  let cursor: unknown = cursorNode
+  for (let index = 0; index < path.length - 1; index += 1) {
+    const segment = path[index] as string | number
+    const child =
+      isRecord(cursor) && Object.hasOwn(cursor, String(segment))
+        ? cursor[String(segment)]
+        : Array.isArray(cursor) && typeof segment === "number"
+          ? cursor[segment]
+          : undefined
+    if (child === undefined) {
+      // Deleting an absent key is already the new base's state — no splice.
+      return { kind: "ok" }
+    }
+    cursor = child
+  }
+  const last = path[path.length - 1] as string | number
+  if (isRecord(cursor)) {
+    delete cursor[String(last)]
+    return { kind: "ok" }
+  }
+  if (Array.isArray(cursor) && typeof last === "number") {
+    return { kind: "issue", issue: spliceGap(path, "list item deletion is a whole-list edit") }
+  }
+  return { kind: "issue", issue: spliceGap(path, "parent container vanished") }
+}
+
+function spliceGap(path: FieldPath, detail: string): FieldPathWriteIssue {
+  return {
+    code: "SPLICE_GAP",
+    detail: `${detail} (at ${path.map(String).join(".")})`,
+  }
+}
