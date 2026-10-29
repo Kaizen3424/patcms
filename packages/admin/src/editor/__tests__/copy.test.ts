@@ -9,6 +9,7 @@ import {
 import {
   ADVISORY_COPY,
   allCopyStrings,
+  FREEZE_COPY,
   fillLine,
   fillName,
   personalize,
@@ -111,6 +112,21 @@ describe("founder copy deck", () => {
       "discardLocal",
       "retrySave",
       "recheck",
+    ])
+  })
+
+  it("ships the freeze region lines (P2.9 — 'the other version', never a banned word)", () => {
+    expect(Object.keys(FREEZE_COPY)).toEqual([
+      "title",
+      "detail",
+      "otherEditsKept",
+      "theirsHeader",
+      "mineHeader",
+      "keepTheirs",
+      "keepMine",
+      "startOver",
+      "degradedTitle",
+      "degradedDetail",
     ])
   })
 

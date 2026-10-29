@@ -126,6 +126,25 @@ export const ADVISORY_COPY = {
     "Your change is saved. Tell {name} if it does not appear live within a few minutes.",
 } as const
 
+/**
+ * Conflict freeze region copy (P2.9 — ADR-0004 appendix).
+ * "conflict" is banned — the surface says "this entry changed somewhere else",
+ * "the other version".
+ */
+export const FREEZE_COPY = {
+  title: "This entry changed somewhere else.",
+  detail: "Decide which version to keep for each field before saving.",
+  otherEditsKept: "Your other edits are kept.",
+  theirsHeader: "The other version",
+  mineHeader: "Your version",
+  keepTheirs: "Keep the other version",
+  keepMine: "Keep my version",
+  startOver: "Start over from the latest version",
+  degradedTitle: "This entry changed somewhere else.",
+  degradedDetail:
+    "Your words are safe on this device. Start over from the latest version to load the latest changes.",
+} as const
+
 /** Bar buttons — same banned-word sweep as the status lines. */
 export const ACTION_COPY = {
   save: "Save changes",
@@ -179,6 +198,7 @@ export function allCopyStrings(): readonly string[] {
   walk(SAVE_BAR_COPY)
   walk(RECOVERY_COPY)
   walk(VALIDATION_COPY)
+  walk(FREEZE_COPY)
   walk(ACTION_COPY)
   walk(ADVISORY_COPY)
   return strings
