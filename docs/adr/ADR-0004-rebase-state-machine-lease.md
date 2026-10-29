@@ -302,3 +302,90 @@ stays the 5-tuple):
   Chips render one per problem entry, individually dismissible.
 - THE STANDING VETO, restated for this surface: an advisory chip never gates her save. Chip state
   lives outside the save-bar model entirely; nothing in the save path reads it.
+
+## Appendix — P2.9 conflict freeze UI + auto-merge reconciliation pins (2026-10-29)
+
+Recorded before the P2.9 mechanisms land (ADR-first law). No law above changes; two contract
+widenings are marked as such (the freeze data payload, and the published/noop verdict payload).
+
+### Freeze surface (the field-granularity UI, master-plan §5.3)
+
+- **A region, not a modal.** When the machine is `conflict` AND `SaveConflictDetails.merge` exists,
+  the editor renders a freeze region above the field grid: one row per path in
+  `merge.frozenFieldPaths`. A conflict WITHOUT a merge preview (challenge read failed, engine
+  machinery threw, rebase budget exhausted after a satisfied predicate, no draft supplied, remote
+  read/parse/rebase failed) renders the P2.6 degraded surface: honest banner + "Start over from the
+  latest version". The degraded branch invents no data.
+- **One decision per frozen row** — "Keep theirs" / "Keep mine" (copy deck: "the other version",
+  never the banned "conflict"). Frozen paths are MINIMAL COMMON NODES (appendix C.2): a row may be a
+  parent object or a whole list, not a leaf. Rows therefore render the contested subtree serialized
+  as plain text (theirs from `merge.remoteRaw`'s subtree, mine from the "mine" tree's subtree) —
+  never per-leaf widgets, and remote values are text nodes only (ADR-0006 trust policy).
+- **The "mine" tree**: for an in-flight conflict it is the live form tree (the draft's `formValue`
+  coordinate at submit time); keystrokes typed while the save ran stay in the form and REPLAY onto
+  the resolved tree after every row is decided — replay direction is always keystrokes-onto-chosen,
+  never chosen-over-keystrokes, so no keystroke is lost (P2.6 save-cycle law, restated). For a boot
+  conflict it is the stored draft's `formValue` (the live form is head-based at boot).
+- **Save stays blocked until every frozen row is decided** (`canSave: false` while any row is
+  undecided). This is a founder-clarity gate, not a correctness mechanism — the CAS below it stays
+  the sole correctness authority (standing law).
+- **Decisions edit the form only; saves stay explicit.** Applying a row's choice writes the chosen
+  subtree into the form value through the core path writers (`writeAtFieldPath`/`deleteAtFieldPath`,
+  below) and re-dirties via `computeDirtyPaths`. When the last row is decided, the editor rebinds the
+  base to the conflict's `currentHeadSha` + `merge.remoteRaw` (adopting the partner's change as the
+  substrate) and lets the founder press Save — the resolved save re-enters the machine through the
+  normal `reset` → `dirty` → `SUBMIT` path (SUBMIT stays legal only from `editing|dirty`; a conflict
+  must `reset()` before saving). No auto-save, no new transition-table edges.
+- **"Start over from the latest version" remains the escape hatch** from both the freeze region and
+  the degraded banner, with its P2.6 semantics (drop the local tree, rebind to head).
+- **No attribution, no tombstones in P2.9.** Master-plan §5.3's "saved by [Milan], 3:05 PM" row
+  metadata needs a commit-read API the backend does not expose today; the 30-day tombstone archive
+  needs a discarded-versions store. Both are deferred to P5.5 (conflict freeze completion), where the
+  master plan already routes conflict UX completion. Recorded here so spec and code cannot disagree.
+
+### Widenings — conflict data payload (core)
+
+- `ConflictMergePreview` gains `remoteRaw: string` (the freshly-read foreign bytes the rebase merged
+  onto — the UI's "theirs" source and the post-freeze base substrate) and
+  `ourFieldPaths: readonly FieldPath[]` (our dirty paths minus the frozen set — informational, for
+  the "your other edits are kept" announcement line).
+- `DraftAdjudication`'s `conflict` class gains `merge?: ConflictMergePreview` built from the same
+  `rebase()` output boot already computes, so boot conflicts feed the SAME freeze UI as in-flight
+  conflicts (one surface, two producers). Boot never writes regardless; the founder decides, then
+  saves explicitly.
+- Core gains pure `writeAtFieldPath(tree, path, value)` / `deleteAtFieldPath(tree, path)` in
+  `field-paths.ts` (Result-shaped, generalizing `rebase()`'s splice internals: parents auto-created,
+  list-item deletion refused as a whole-list edit, absent-key delete = no-op). The admin NEVER
+  hand-edits parsed JSON; the path writers are the only value-domain mutation surface, keeping the
+  one-serializer law intact.
+
+### Widening — SaveReconciliation (auto-merge base adoption; correctness fix)
+
+Found while planning: the controller's DISJOINT auto-merge path replaces the job's write bytes with
+`merge.mergedRaw` and commits against the new head, but the editor's post-publish law (P2.6) sets the
+new base to `<commitSha, the bytes IT composed>` — the PRE-merge bytes. The next save then diffs
+against a base that lacks the partner's disjoint change and silently reverts it.
+
+Fix, pinned before the mechanism:
+
+- `SaveVerdict` gains `SaveReconciliation` data on `published`/`noop`:
+  `{ reconciledRaw?: string, reconciledSha?: string }` — present ONLY when the controller replaced
+  the write bytes (disjoint auto-merge) or otherwise landed bytes differing from what the editor
+  composed. Absent in the ordinary path (no behavior change).
+- On `published` with `reconciledRaw`, the editor's new base is
+  `<verdict.commitSha, reconciledRaw>` and keystrokes typed during the save (the live form tree)
+  REPLAY onto `parse(reconciledRaw)` via `computeDirtyPaths` re-diff — the same no-keystroke-lost law
+  as `withPublishedBase`. On `noop` with `reconciledRaw`, the base rebinds to
+  `<reconciledSha, reconciledRaw>` the same way.
+- The controller computes the reconciliation payload from the job's final committed bytes — it never
+  re-reads the ref a second time (INV-P10 content truth stands).
+
+### Copy (supersession note)
+
+- The freeze region ships a `FREEZE_COPY` deck swept by the existing banned-word scan
+  (`allCopyStrings()`; "conflict" is banned — the surface says "this entry changed somewhere else",
+  "the other version"). The P2.6 bar line "Ask {name} to look at both versions before you save"
+  (SAVE_BAR_COPY.conflict) is superseded by the freeze region's decision rows once a merge preview
+  exists; the bar line remains the degraded-branch copy and keeps its `{name}` interpolation.
+- INV rows are added at design time per the invariants law: INV-P16 (freeze gate + resolved bytes)
+  and INV-P17 (auto-merge base adoption) — see `invariants.md`.
