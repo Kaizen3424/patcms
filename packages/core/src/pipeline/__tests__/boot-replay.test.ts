@@ -148,6 +148,13 @@ describe("INV-P12 — class: conflict", () => {
     if (adjudication.kind !== "conflict") return
     expect(adjudication.details.currentHeadSha).not.toBe(spec.headSha)
     expect(adjudication.verdicts.get(SITE_PATH)?.kind).toBe("field-merge")
+    // P2.9 widening: boot conflicts carry the SAME rebase preview as the save
+    // path, so one freeze UI serves both producers.
+    expect(adjudication.merge).toBeDefined()
+    expect(adjudication.merge?.path).toBe(SITE_PATH)
+    expect(adjudication.merge?.remoteRaw).toBe(foreignRaw)
+    expect(adjudication.merge?.frozenFieldPaths).toEqual([["title"]])
+    expect(adjudication.merge?.ourFieldPaths).toEqual([])
     // Boot adjudication never commits anything: exactly the foreign push's
     // own ref update exists.
     expect(successfulRefUpdates(harness.server)).toBe(1)

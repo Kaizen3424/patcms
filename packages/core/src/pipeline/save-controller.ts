@@ -22,7 +22,7 @@ import type { DraftRecord, DraftStore, SaveDraftPayload } from "../drafts"
 import { decodeUtf8, encodeUtf8 } from "../safety/encoding"
 import type { Logger } from "../safety/logger"
 import { type JsonValue, parseUntrustedJson } from "../safety/untrusted-json"
-import { computeDirtyPaths } from "./field-paths"
+import { computeDirtyPaths, fieldPathKey } from "./field-paths"
 import { type ConflictEngineResult, type OurWrite, resolveConflictPaths } from "./invariant-engine"
 import { createOneFlightQueue, type OneFlightQueue } from "./one-flight"
 import { rebase } from "./rebase"
@@ -125,6 +125,12 @@ interface Job {
   backoffIndex: number
   /** Set by `cancel()`; checked at attempt entry and after every gate wait. */
   cancelRequested: boolean
+  /**
+   * P2.9 (ADR-0004 appendix): set when a disjoint auto-merge replaced the
+   * write bytes — the editor must adopt the MERGED bytes as its post-publish
+   * base, or its next save would silently revert the partner's change.
+   */
+  reconciledRaw?: string
 }
 
 /** Coalescing wake gate (see {@link createWakeGate}). */
@@ -262,12 +268,25 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
         commitSha: verdict.commitSha,
         ...(verdict.treeSha === undefined ? {} : { treeSha: verdict.treeSha }),
       })
-      return verdict
+      return attachReconciliation(verdict, job, verdict.commitSha)
     }
     if (verdict.kind === "noop") {
       // Nothing to write — content already live; the draft has no future use.
       if (request.draft !== undefined) await options.drafts.delete(job.key)
       dispatch(job.key, { type: "PUBLISHED" })
+      // A noop after an auto-merge rebase means the MERGED bytes are already
+      // live byte-equal; the editor still needs them as its new base. The
+      // request's baseSha is the head this attempt was pinned to (fresh, per
+      // the fresh-binding law) — the honest reconciled coordinate.
+      if (job.reconciledRaw !== undefined) {
+        return {
+          kind: "noop",
+          reconciliation: {
+            reconciledRaw: job.reconciledRaw,
+            reconciledSha: baseShaOfRequest(request),
+          },
+        }
+      }
       return verdict
     }
     if (verdict.kind === "parked") {
@@ -377,7 +396,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     if (merge !== undefined && merge.frozenFieldPaths.length === 0 && job.rebaseBudget > 0) {
       // Disjoint auto-merge (non-overlapping fields) — commit the merged
       // bytes; announcements surface with the publish (founder-cry law).
+      // P2.9: record the reconciled bytes so the published verdict carries
+      // them (the editor's base would otherwise revert the partner's change).
       job.rebaseBudget -= 1
+      job.reconciledRaw = merge.mergedRaw
       job.request = {
         ...job.request,
         changes: replaceWriteBytes(job.request.changes, merge.path, merge.mergedRaw),
@@ -458,16 +480,41 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
         newBaseRaw: remoteRaw,
       })
       if (!merged.ok) return undefined
+      const frozen = new Set(merged.conflicts.map(fieldPathKey))
       return {
         path: payload.filePath,
         mergedRaw: merged.mergedRaw,
         frozenFieldPaths: merged.conflicts,
         warnings: merged.warnings,
         engineNotes: engine.notes,
+        remoteRaw,
+        ourFieldPaths: computeDirtyPaths(formValue, oldBase).filter(
+          (dirtyPath) => !frozen.has(fieldPathKey(dirtyPath)),
+        ),
       }
     } catch {
       return undefined
     }
+  }
+
+  /**
+   * P2.9: when a disjoint auto-merge replaced the write bytes, attach the
+   * reconciled payload so the editor adopts the merged base (ADR-0004
+   * appendix). Ordinary publishes pass through untouched.
+   */
+  const attachReconciliation = <T extends SaveVerdict>(
+    verdict: T,
+    job: Job,
+    reconciledSha: string,
+  ): SaveVerdict => {
+    if (job.reconciledRaw === undefined) return verdict
+    if (verdict.kind === "published") {
+      return {
+        ...verdict,
+        reconciliation: { reconciledRaw: job.reconciledRaw, reconciledSha },
+      }
+    }
+    return verdict
   }
 
   return {

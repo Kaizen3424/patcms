@@ -49,6 +49,11 @@ import { isZeroDiffChangeSet } from "./zero-diff"
  * Rebase preview carried on a conflict verdict for the freeze UI (P2.9):
  * non-overlapping fields already merged (announcements = `warnings`), the
  * overlapping ones frozen at remote bytes until the founder decides.
+ *
+ * P2.9 widening (ADR-0004 appendix): `remoteRaw` carries the freshly-read
+ * foreign bytes the rebase merged onto — the UI's "theirs" source and the
+ * post-decision base substrate; `ourFieldPaths` lists our dirty paths minus
+ * the frozen set (the "your other edits are kept" announcement input).
  */
 export interface ConflictMergePreview {
   readonly path: string
@@ -58,6 +63,25 @@ export interface ConflictMergePreview {
   readonly warnings: readonly FieldPath[]
   /** Machine-checkable commit-body warnings (mode restores, adoptions). */
   readonly engineNotes: readonly string[]
+  /** Fresh foreign bytes at decision time (theirs; also the new base raw). */
+  readonly remoteRaw: string
+  /** Our dirty paths that did NOT overlap (informational). */
+  readonly ourFieldPaths: readonly FieldPath[]
+}
+
+/**
+ * P2.9 widening (ADR-0004 appendix): present on `published`/`noop` ONLY when
+ * the controller landed bytes OTHER than what the editor composed (the disjoint
+ * auto-merge replaces the write bytes with the merged result). The editor
+ * adopts the reconciled bytes as its post-publish base and replays keystrokes
+ * typed during the save onto them — without it, the next save would silently
+ * revert the partner's change (base mismatch).
+ */
+export interface SaveReconciliation {
+  /** The bytes actually committed (or carried by the foreign head on noop). */
+  readonly reconciledRaw: string
+  /** Commit carrying them: the published sha, or the foreign head on noop. */
+  readonly reconciledSha: string
 }
 
 export interface SaveConflictDetails {
@@ -73,8 +97,14 @@ export interface SaveConflictDetails {
 }
 
 export type SaveVerdict =
-  | { readonly kind: "published"; readonly commitSha: string; readonly treeSha?: string }
-  | { readonly kind: "noop" }
+  | {
+      readonly kind: "published"
+      readonly commitSha: string
+      readonly treeSha?: string
+      /** P2.9: present when the committed bytes differ from the editor's own. */
+      readonly reconciliation?: SaveReconciliation
+    }
+  | { readonly kind: "noop"; readonly reconciliation?: SaveReconciliation }
   | { readonly kind: "conflict"; readonly details: SaveConflictDetails }
   /**
    * RATE_LIMIT with the parsed window (INV-P11): `waitMs === null` means no

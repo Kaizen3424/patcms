@@ -149,7 +149,7 @@ function recordingLogger(): Logger & { readonly debugs: string[] } {
   }
 }
 
-const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10))
+const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe("P2.5 coordinator — a satisfied predicate self-rebases (INV-P05)", () => {
   it("a foreign commit to ANOTHER file does not block our save", async () => {
@@ -204,11 +204,35 @@ describe("P2.5 coordinator — disjoint field merge auto-commits", () => {
     const verdict = await coordinator.save(siteRequest("site", spec.headSha, { title: "v2" }))
 
     expect(verdict.kind).toBe("published")
+    if (verdict.kind !== "published") return
+    // P2.9 INV-P17: the merged bytes landed, so the verdict carries the
+    // reconciliation — the editor must adopt them as its next base.
+    expect(verdict.reconciliation).toBeDefined()
+    expect(verdict.reconciliation?.reconciledRaw).toBe(
+      '{\n  "title": "v2",\n  "description": "kept"\n}\n',
+    )
+    expect(verdict.reconciliation?.reconciledSha).toBe(verdict.commitSha)
     const site = harness.server.contents(spec.defaultBranch, SITE_PATH)
     expect(site && new TextDecoder().decode(site.bytes)).toBe(
       '{\n  "title": "v2",\n  "description": "kept"\n}\n',
     )
     expect(harness.server.commitCount()).toBe(4) // seed + foreign + attempt1 + auto-merge
+  })
+
+  it("an ordinary publish (no auto-merge) carries NO reconciliation", async () => {
+    const spec = await buildSpec(BASE_CONTENT)
+    const harness = createHarness(spec)
+    const coordinator = createSaveCoordinator({
+      backend: backendOf(harness, harness.fetch),
+      branch: spec.defaultBranch,
+      drafts: memoryDrafts(),
+    })
+
+    const verdict = await coordinator.save(siteRequest("site", spec.headSha, { title: "plain" }))
+
+    expect(verdict.kind).toBe("published")
+    if (verdict.kind !== "published") return
+    expect(verdict.reconciliation).toBeUndefined()
   })
 })
 
@@ -235,6 +259,11 @@ describe("P2.5 coordinator — overlapping fields freeze (P2.9 input shape)", ()
     expect(verdict.details.currentHeadSha).toBe(foreign.commitSha)
     expect(verdict.details.merge).toBeDefined()
     expect(verdict.details.merge?.frozenFieldPaths.length).toBe(1)
+    // P2.9: the preview carries the foreign bytes (the freeze UI's "theirs").
+    // The only dirty path (`title`) IS the frozen one, so nothing survives
+    // outside the freeze — ourFieldPaths is empty by law.
+    expect(verdict.details.merge?.remoteRaw).toBe(foreignRaw)
+    expect(verdict.details.merge?.ourFieldPaths).toEqual([])
     expect(verdict.details.verdicts?.get(SITE_PATH)?.kind).toBe("field-merge")
     // Freeze, not data loss: the draft survives verbatim for the freeze UI.
     expect(await drafts.get("site")).toBeDefined()

@@ -27,9 +27,10 @@ import type { DraftRecord, SaveDraftPayload } from "../drafts"
 import { decodeUtf8, encodeUtf8 } from "../safety/encoding"
 import { parseUntrustedJson } from "../safety/untrusted-json"
 import { canonicalJson, jsonEqual } from "../serialization/document"
-import { computeDirtyPaths, type FieldPath } from "./field-paths"
+import { computeDirtyPaths, type FieldPath, fieldPathKey } from "./field-paths"
 import { type FileConflictVerdict, type OurWrite, resolveConflictPaths } from "./invariant-engine"
 import { rebase } from "./rebase"
+import type { ConflictMergePreview } from "./save-driver"
 
 export type DraftAdjudication =
   | {
@@ -56,6 +57,13 @@ export type DraftAdjudication =
         readonly changed: ReadonlyMap<string, TreeEntryTuple>
       }
       readonly verdicts: ReadonlyMap<string, FileConflictVerdict>
+      /**
+       * P2.9 widening (ADR-0004 appendix): the same rebase preview the save
+       * path attaches, so boot conflicts feed the SAME freeze UI. Absent when
+       * the merge could not be computed (blocked/unreadable classes) — the UI
+       * then degrades to the banner surface.
+       */
+      readonly merge?: ConflictMergePreview
     }
 
 export interface AdjudicateDraftInput {
@@ -185,7 +193,23 @@ export async function adjudicateDraft(input: AdjudicateDraftInput): Promise<Draf
   // remote bytes here means our contested values lost the splice, which is a
   // founder decision, never a silent convergence (ADR-0004 freeze UI).
   if (verdict?.kind === "field-merge" && merged.conflicts.length > 0) {
-    return { kind: "conflict", headSha, details: conflictDetails, verdicts: engine.verdicts }
+    const dirtyPaths = computeDirtyPaths(formValueParsed.value, oldBaseParsed.value)
+    const frozen = new Set(merged.conflicts.map(fieldPathKey))
+    return {
+      kind: "conflict",
+      headSha,
+      details: conflictDetails,
+      verdicts: engine.verdicts,
+      merge: {
+        path,
+        mergedRaw: merged.mergedRaw,
+        frozenFieldPaths: merged.conflicts,
+        warnings: merged.warnings,
+        engineNotes: engine.notes,
+        remoteRaw: headRaw,
+        ourFieldPaths: dirtyPaths.filter((dirtyPath) => !frozen.has(fieldPathKey(dirtyPath))),
+      },
+    }
   }
   if (merged.mergedRaw === headRaw) {
     // Our intended content IS the head content: converged → discard.

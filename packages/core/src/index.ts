@@ -257,6 +257,7 @@ export type {
   SaveMachineState,
   SavePauseReason,
   SavePhase,
+  SaveReconciliation,
   SaveRequest,
   SaveVerdict,
 } from "./pipeline"
