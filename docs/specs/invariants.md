@@ -55,9 +55,9 @@ Network & rate:
 
 Deploy status honesty:
 
-- [ ] INV-D01 · L1 · Check-runs primary (statuses fallback via `contexts[]`); sha-matched all-success only → "Live"; absent within grace (120s) → "unavailable", NEVER "failed" — `inv-status-truth.test.ts`
+- [x] INV-D01 · L1 · Check-runs primary (statuses fallback via `contexts[]`); sha-matched all-success only → "Live"; absent within grace (120s) → "unavailable", NEVER "failed" — `inv-status-truth.test.ts` (**P2.8 green 2026-10-29:** `src/status` 49/49 across classify/reads/truth/supersede; failure-first matrix, sha-matched all-success only → Live, neutral/skipped never mask a success, absent within 120 s grace → unavailable with cause `grace`, any read error → unavailable never failed, `per_page=100` totalCount honesty, statuses fallback only through `deploy.contexts`; admin 96/96 + the L2 live/grace/failure journeys in `e2e/specs/deploy-status.spec.ts`)
 - [x] INV-D02 · L0 · Generated/editable commit messages reject `[skip ci]`-class tokens — `inv-skip-token.test.ts` (**C.1 green 2026-10-27:** all four tokens rejected case/space-insensitively, pre-network (log empty), typed VALIDATION; safe messages pass through; machine default `chore(cms): save N file(s)`)
-- [ ] INV-D03 · L1 · Supersede: head advanced → "superseded by {sha}" annotation; per-entry chip keyed to `latestCommitSha` (newest-save-wins copy) — `inv-supersede.test.ts`
+- [x] INV-D03 · L1 · Supersede: head advanced → "superseded by {sha}" annotation; per-entry chip keyed to `latestCommitSha` (newest-save-wins copy) — `inv-supersede.test.ts` (**P2.8 green 2026-10-29:** head advancement annotates `supersededBy` and stops, and a late run on the old sha never repaints newer state; the admin registry shares one watcher per sha by refcount and refuses to paint a lease whose sha ≠ the hook's sha; the chip keys to the session journal's `latestCommitSha`, and the L2 supersede journey asserts "A newer save is live." while the chip keeps its own commit's awaiting line)
 
 Media economy:
 
