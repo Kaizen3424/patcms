@@ -40,8 +40,18 @@ async function main(): Promise<void> {
         }
       : undefined
 
+  const tokenChaos = new URLSearchParams(window.location.search).get("tokenChaos")
+  const rateLimitWrite = new URLSearchParams(window.location.search).get("rateLimitWrite")
+  const rateLimitWriteSeconds =
+    rateLimitWrite !== null && Number(rateLimitWrite) > 0 ? Number(rateLimitWrite) : undefined
+
   const { handlers, server } = createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
     requireAuth: true,
+    chaos: {
+      expireTokenOnWrite: tokenChaos === "expire-on-write",
+      invalidTokens: tokenChaos === "expire-on-write" ? ["invalid_key", "bad_pat"] : undefined,
+      ...(rateLimitWriteSeconds === undefined ? {} : { rateLimitWriteSeconds }),
+    },
     ...(beforeRefPatch === undefined ? {} : { beforeRefPatch }),
   })
   const worker = setupWorker(...handlers)

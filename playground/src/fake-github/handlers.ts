@@ -31,6 +31,12 @@ export interface FakeGithubChaos {
   readonly notFoundPaths?: readonly string[]
   /** Return 429 once for the next request (quota chaos). */
   readonly rateLimitOnce?: boolean
+  /** Return 429 on write requests with given retry-after seconds (once). */
+  readonly rateLimitWriteSeconds?: number
+  /** Specific token strings that will always receive 401 Bad credentials. */
+  readonly invalidTokens?: readonly string[]
+  /** Fail the first write request with 401 Bad credentials (INV-A01 chaos). */
+  readonly expireTokenOnWrite?: boolean
 }
 
 export interface FakeGithubOptions {
@@ -70,17 +76,21 @@ export function createFakeGithubHandlers(
     ),
   })
   let rateLimited = false
+  let writeRateLimited = false
+  let writeTokenExpired = false
 
   const guarded = (resolver: (args: RequestGuardArgs) => Response | Promise<Response>) => {
     return (args: RequestGuardArgs) => {
-      if (
-        options.requireAuth === true &&
-        !args.request.headers.get("authorization")?.startsWith("Bearer ")
-      ) {
-        return HttpResponse.json(
-          { message: "Bad credentials" },
-          { status: 401, headers: rateHeaders() },
-        )
+      const auth = args.request.headers.get("authorization") ?? ""
+      const token = auth.startsWith("Bearer ") ? auth.slice(7) : ""
+
+      if (options.requireAuth === true) {
+        if (!auth.startsWith("Bearer ") || (chaos.invalidTokens?.includes(token) ?? false)) {
+          return HttpResponse.json(
+            { message: "Bad credentials" },
+            { status: 401, headers: rateHeaders() },
+          )
+        }
       }
       if (chaos.rateLimitOnce === true && !rateLimited) {
         rateLimited = true
@@ -90,6 +100,46 @@ export function createFakeGithubHandlers(
         )
       }
       return resolver(args)
+    }
+  }
+
+  const guardedWrite = (resolver: (args: RequestGuardArgs) => Response | Promise<Response>) => {
+    return (args: RequestGuardArgs) => {
+      const auth = args.request.headers.get("authorization") ?? ""
+      const token = auth.startsWith("Bearer ") ? auth.slice(7) : ""
+
+      if (options.requireAuth === true) {
+        if (!auth.startsWith("Bearer ") || (chaos.invalidTokens?.includes(token) ?? false)) {
+          return HttpResponse.json(
+            { message: "Bad credentials" },
+            { status: 401, headers: rateHeaders() },
+          )
+        }
+        if (chaos.expireTokenOnWrite === true && !writeTokenExpired) {
+          writeTokenExpired = true
+          return HttpResponse.json(
+            { message: "Bad credentials" },
+            { status: 401, headers: rateHeaders() },
+          )
+        }
+      }
+
+      if (
+        chaos.rateLimitWriteSeconds !== undefined &&
+        chaos.rateLimitWriteSeconds > 0 &&
+        !writeRateLimited
+      ) {
+        writeRateLimited = true
+        return HttpResponse.json(
+          { message: "API rate limit exceeded" },
+          {
+            status: 429,
+            headers: { ...rateHeaders(), "retry-after": String(chaos.rateLimitWriteSeconds) },
+          },
+        )
+      }
+
+      return guarded(resolver)(args)
     }
   }
 
@@ -303,7 +353,7 @@ export function createFakeGithubHandlers(
     // ---- P2 write handlers (same reference model, hence same CAS laws) ----
     http.post(
       `${repoPath}/git/blobs`,
-      guarded(async ({ request }) => {
+      guardedWrite(async ({ request }) => {
         return toHttp(
           await server.handle({
             method: "POST",
@@ -315,7 +365,7 @@ export function createFakeGithubHandlers(
     ),
     http.post(
       `${repoPath}/git/trees`,
-      guarded(async ({ request }) => {
+      guardedWrite(async ({ request }) => {
         return toHttp(
           await server.handle({
             method: "POST",
@@ -327,7 +377,7 @@ export function createFakeGithubHandlers(
     ),
     http.post(
       `${repoPath}/git/commits`,
-      guarded(async ({ request }) => {
+      guardedWrite(async ({ request }) => {
         return toHttp(
           await server.handle({
             method: "POST",
@@ -339,7 +389,7 @@ export function createFakeGithubHandlers(
     ),
     http.patch(
       `${repoPath}/git/refs/heads/*`,
-      guarded(async ({ request }) => {
+      guardedWrite(async ({ request }) => {
         const branch = patchBranch(request.url)
         if (branch === null) return notFound()
         const body = await readJson(request)
