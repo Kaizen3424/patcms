@@ -1,0 +1,1261 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "schemaVersion": 1,
+    "recordedAt": "2026-10-29T16:50:00.670Z",
+    "owner": "test-owner",
+    "repo": "test-repo",
+    "branch": "contract-fixture",
+    "source": "synthetic",
+    "description": "Golden contract suite recorded HTTP fixture tape (deterministic seed)"
+  },
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/caec97a7cf330570582940532b747d5497bb71c8?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        },
+        "body": {
+          "sha": "caec97a7cf330570582940532b747d5497bb71c8",
+          "truncated": false,
+          "tree": [
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/caec97a7cf330570582940532b747d5497bb71c8?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        },
+        "body": {
+          "sha": "caec97a7cf330570582940532b747d5497bb71c8",
+          "truncated": false,
+          "tree": [
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/contents/src/content/site.json?ref=contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"blob-38532091fe47f5d6c8de9e80bf518a58d257a91d\""
+        },
+        "body": {
+          "name": "site.json",
+          "path": "src/content/site.json",
+          "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+          "size": 30,
+          "type": "file",
+          "encoding": "base64",
+          "content": "ewogICJ0aXRsZSI6ICJmaXh0dXJlIHNpdGUiCn0K"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/caec97a7cf330570582940532b747d5497bb71c8?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        },
+        "body": {
+          "sha": "caec97a7cf330570582940532b747d5497bb71c8",
+          "truncated": false,
+          "tree": [
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/caec97a7cf330570582940532b747d5497bb71c8?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "if-none-match": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        }
+      },
+      "response": {
+        "status": 304,
+        "statusText": "Not Modified",
+        "headers": {
+          "etag": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/contents/src/content/site.json?ref=contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"blob-38532091fe47f5d6c8de9e80bf518a58d257a91d\""
+        },
+        "body": {
+          "name": "site.json",
+          "path": "src/content/site.json",
+          "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+          "size": 30,
+          "type": "file",
+          "encoding": "base64",
+          "content": "ewogICJ0aXRsZSI6ICJmaXh0dXJlIHNpdGUiCn0K"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/contents/src/content/site.json?ref=contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "if-none-match": "\"blob-38532091fe47f5d6c8de9e80bf518a58d257a91d\""
+        }
+      },
+      "response": {
+        "status": 304,
+        "statusText": "Not Modified",
+        "headers": {
+          "etag": "\"blob-38532091fe47f5d6c8de9e80bf518a58d257a91d\""
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60/check-runs?per_page=100",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "total_count": 1,
+          "check_runs": [
+            {
+              "id": 1,
+              "name": "build",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60/status",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "state": "success",
+          "total_count": 1,
+          "statuses": [
+            {
+              "context": "ci/deploy",
+              "state": "success"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/blobs",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "content": "ewogICJjb250cmFjdCI6ICJ3cml0ZS1jaGVjayIKfQo=",
+          "encoding": "base64"
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "base_tree": "caec97a7cf330570582940532b747d5497bb71c8",
+          "tree": [
+            {
+              "path": "src/content/contract-write-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "tree": [
+            {
+              "path": "src/content/contract-write-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+            },
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "message": "chore(cms): contract suite write check",
+          "tree": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "parents": ["6f0e045fb126757691c23c8bf2e80f3cf7017d60"]
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+          "tree": {
+            "sha": "60da6c41770de3013d5971bb06ba6c35cf595784"
+          },
+          "message": "chore(cms): contract suite write check",
+          "parents": [
+            {
+              "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/refs/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+          "force": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/b28b4827aaad708814641eda2967f7faece0dc53",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+          "tree": {
+            "sha": "60da6c41770de3013d5971bb06ba6c35cf595784"
+          },
+          "parents": ["6f0e045fb126757691c23c8bf2e80f3cf7017d60"]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/caec97a7cf330570582940532b747d5497bb71c8?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        },
+        "body": {
+          "sha": "caec97a7cf330570582940532b747d5497bb71c8",
+          "truncated": false,
+          "tree": [
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/60da6c41770de3013d5971bb06ba6c35cf595784?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"tree-60da6c41770de3013d5971bb06ba6c35cf595784\""
+        },
+        "body": {
+          "sha": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "truncated": false,
+          "tree": [
+            {
+              "path": "src/content/contract-write-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+            },
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/contents/src/content/contract-write-check.json?ref=contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"blob-3c2c1208da0e21ee0d86827dcfd8b410438b8c8e\""
+        },
+        "body": {
+          "name": "contract-write-check.json",
+          "path": "src/content/contract-write-check.json",
+          "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e",
+          "size": 32,
+          "type": "file",
+          "encoding": "base64",
+          "content": "ewogICJjb250cmFjdCI6ICJ3cml0ZS1jaGVjayIKfQo="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/blobs",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "content": "ewogICJjb250cmFjdCI6ICJ3cml0ZS1jaGVjayIKfQo=",
+          "encoding": "base64"
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/b28b4827aaad708814641eda2967f7faece0dc53",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+          "tree": {
+            "sha": "60da6c41770de3013d5971bb06ba6c35cf595784"
+          },
+          "parents": ["6f0e045fb126757691c23c8bf2e80f3cf7017d60"]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "base_tree": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "tree": [
+            {
+              "path": "src/content/contract-write-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "tree": [
+            {
+              "path": "src/content/contract-write-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+            },
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "message": "chore(cms): contract suite CAS pre-step",
+          "tree": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "parents": ["b28b4827aaad708814641eda2967f7faece0dc53"]
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "b0566ed96c55e5a062011bb0157ec35ed0a8ff8b",
+          "tree": {
+            "sha": "60da6c41770de3013d5971bb06ba6c35cf595784"
+          },
+          "message": "chore(cms): contract suite CAS pre-step",
+          "parents": [
+            {
+              "sha": "b28b4827aaad708814641eda2967f7faece0dc53"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/refs/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "sha": "b0566ed96c55e5a062011bb0157ec35ed0a8ff8b",
+          "force": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "b0566ed96c55e5a062011bb0157ec35ed0a8ff8b",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/blobs",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "content": "ewogICJjb250cmFjdCI6ICJjYXMtY2hlY2siCn0K",
+          "encoding": "base64"
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6cccfaac456bdc51b1db15b91346ddf7e79a67d7"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/b28b4827aaad708814641eda2967f7faece0dc53",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "b28b4827aaad708814641eda2967f7faece0dc53",
+          "tree": {
+            "sha": "60da6c41770de3013d5971bb06ba6c35cf595784"
+          },
+          "parents": ["6f0e045fb126757691c23c8bf2e80f3cf7017d60"]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "base_tree": "60da6c41770de3013d5971bb06ba6c35cf595784",
+          "tree": [
+            {
+              "path": "src/content/contract-cas-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "6cccfaac456bdc51b1db15b91346ddf7e79a67d7"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "127a0546c214acd2f46c085186e1ac2fd2a56806",
+          "tree": [
+            {
+              "path": "src/content/contract-cas-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "6cccfaac456bdc51b1db15b91346ddf7e79a67d7"
+            },
+            {
+              "path": "src/content/contract-write-check.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+            },
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "message": "chore(cms): contract suite stale attempt",
+          "tree": "127a0546c214acd2f46c085186e1ac2fd2a56806",
+          "parents": ["b28b4827aaad708814641eda2967f7faece0dc53"]
+        }
+      },
+      "response": {
+        "status": 201,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "2f276436b8f67727e7a3ee54bbddeb67fca0e89b",
+          "tree": {
+            "sha": "127a0546c214acd2f46c085186e1ac2fd2a56806"
+          },
+          "message": "chore(cms): contract suite stale attempt",
+          "parents": [
+            {
+              "sha": "b28b4827aaad708814641eda2967f7faece0dc53"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/refs/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]",
+          "content-type": "application/json"
+        },
+        "body": {
+          "sha": "2f276436b8f67727e7a3ee54bbddeb67fca0e89b",
+          "force": false
+        }
+      },
+      "response": {
+        "status": 422,
+        "statusText": "Unprocessable Entity",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "message": "Update is not a fast forward"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "b0566ed96c55e5a062011bb0157ec35ed0a8ff8b",
+            "type": "commit"
+          }
+        }
+      }
+    }
+  ]
+}

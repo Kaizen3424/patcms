@@ -296,10 +296,13 @@ export async function createReplayFetch(
     initQueues()
   }
 
-  return Object.assign(replayFn, {
-    remainingCount,
-    isDrained,
-    pendingKeys,
-    reset,
-  })
+  const replay = replayFn as unknown as {
+    [K in keyof ReplayFetch]: ReplayFetch[K]
+  } & FetchLike
+  replay.remainingCount = remainingCount
+  replay.isDrained = isDrained
+  replay.pendingKeys = pendingKeys
+  replay.reset = reset
+
+  return replay as ReplayFetch
 }
