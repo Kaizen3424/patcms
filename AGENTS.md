@@ -2,7 +2,7 @@
 
 > **Every agent session starts here.** Read this file fully, then follow §4 Session Protocol. This file never duplicates details it can point to; it is the single tracker for project state. Agents MUST maintain §3 and the task checklists — stale docs are treated as build failures.
 
-Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.9 built & committed `5d1afcd`; next: P2.10 in a NEW chat)
+Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.10 built & committed `b0d04d5`; next: P2.11 / P2.12 in a NEW chat)
 
 ---
 
@@ -27,7 +27,7 @@ Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.9
 | P6 | yve integration cutover | ⬜ Blocked until P5 | success criteria on the real site; rollback path proven |
 | P7 | OSS publication | ⬜ Blocked until P6 | stranger completes widget exemplar unaided; release dry-run |
 
-**Current focus:** P2 checkpoint **C.3 done — P2.9 built & committed** `5d1afcd` (head of the P2.9 stack `60ddf65`→`4b6a802`→`06e9f41`→`7d59289`→`dd59de4`→`e392ea6`→`01790ff`→`19f6137`→`5d1afcd`). Core 430/430 (57 files) @ 92.54% stmts / 95.77% lines, admin 107/107, playground 18/18, `pnpm e2e` 11/11 (save · smoke · 2 lease · chip · live · grace · failed-link · supersede · 2 conflict). ADR-0004 P2.9 appendix (freeze-region UX law, per-field rows, Save blocked until all decided, decisions edit the form only, Save stays explicit, SaveReconciliation contract, degraded branch). INV-P16 and INV-P17 ticked in invariants.md; INV-P12 stays for P2.12 kill-tab journey. **P2.10 (next C.3 sub-slice: failure screens + copy composer) starts in a NEW chat — pick up from `tasks/plan.md` / phase file, not from chat history.** Evidence: `pnpm -r typecheck` + `pnpm run check` + `pnpm -r build` + `pnpm e2e` + supply-chain scans clean. C.1/C.2/C.3 all ⛔ PASSED. P0 remote: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep P7.1 — working name MyCMS until then).
+**Current focus:** P2 checkpoint **C.3 done — P2.10 built & committed** `b0d04d5` (head of the P2.10 stack `c9d8367`→`4291d21`→`e89354a`→`d003b57`→`66180ac`→`4fed5f0`→`e78e0f5`→`c54df08`→`b0d04d5`). Core 443/443 (57 files) @ 92.54% stmts / 95.71% lines, admin 126/126, playground 18/18, `pnpm e2e` 14/14 (save · smoke · 2 lease · chip · live · grace · failed-link · supersede · 2 conflict · token-death · 2 rate-limit). ADR-0004 P2.10 appendix (classifier matrix, zero-banned-word validation, in-place re-auth sheet, dynamic token seam, structured copy composer, accessible countdown UI, auto-wake resume & manual override). INV-A01, INV-A02, and INV-N01 fully green; INV-P12 stays for P2.12 kill-tab journey. **P2.11 / P2.12 starts in a NEW chat — pick up from `tasks/plan.md` / phase file, not from chat history.** Evidence: `pnpm -r typecheck` + `pnpm run check` + `pnpm -r build` + `pnpm e2e` + supply-chain scans clean. C.1/C.2/C.3 all ⛔ PASSED. P0 remote: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep P7.1 — working name MyCMS until then).
 
 *Legend: ⬜ not started · 🟨 in progress · ✅ gate passed (date) · ⛔ blocked*
 

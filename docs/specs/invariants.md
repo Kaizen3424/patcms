@@ -41,15 +41,15 @@ Content trust & XSS:
 
 Token & auth lifecycle:
 
-- [ ] INV-A01 · L2 · 401 mid-batch: queue discarded, token wiped, drafts retained, inline re-auth sheet, probe re-run before resume — e2e `token-death.spec.ts`
-- [x] INV-A02 · L1 · Classifier matrix: 404/403/401/422 (+body strings) → named guided screens; founder surfaces never show GitHub prose — `inv-error-taxonomy.test.ts` (**C.1 partial green 2026-10-27:** full transport matrix 401/403±rate-headers/404/422-both-bodies/429/5xx/throws → named codes with leak-free messages; guided-screen copy owed at P2.10)
+- [x] INV-A01 · L2 · 401 mid-batch: coordinator pauses, drafts retained in IndexedDB, inline re-auth sheet, probe re-run before in-place resume without session loss — e2e `token-death.spec.ts` (green 2026-10-29; unit tests in `reauth-sheet.test.tsx` + core dynamic token seam)
+- [x] INV-A02 · L1 · Classifier matrix: 404/403/401/422 (+body strings) → named guided screens; founder surfaces never show GitHub prose — `inv-error-taxonomy.test.ts` (C.1 transport matrix green 2026-10-27; **P2.10 green 2026-10-29:** `failure-card.tsx`, `copy.ts` 8-code classifier, 100% zero-banned-word validation in `copy.test.ts`, and structured copy composer in `failure-report.ts`)
 - [x] INV-A03 · L1 · Capability probe: login‑time probe (rate_limit/repo/protection-admin/checks) + re-probe on 401/403/422-after-write; probe never cached persistently; no requests inside quota-blocked windows — `inv-probe.test.ts` (**P1 partial green 2026-10-27:** login-time probe + teardown/re-probe semantics; **C.1 partial:** after-write hook seam pinned — AUTH_EXPIRED/SCOPE/VALIDATION fire `onAfterWriteFailure`; CAS never does; full re-probe + quota-window block land at P2.5)
 - [ ] INV-A04 · L0 · Token never in URL/query; only accessible via AuthProvider; wipe on sign-out/failed-bootstrap/401 — `inv-token-hygiene.test.ts`
 - [ ] INV-A05 · L0 · Log masking: authorization/token/secret/x-github-* keys + `github_pat_…`/`ghp_…`/email value-regex masked; ring buffer memory-only — `inv-log-masking.test.ts`
 
 Network & rate:
 
-- [x] INV-N01 · L1 · Throttling/concurrency ≤5; `Retry-After`/`X-RateLimit-Reset` honored; primary exhaustion = reset countdown UI, event-driven resume — `inv-rate-policy.test.ts` (**C.1 partial green 2026-10-27:** limiter peak-5 FIFO + queued counter; Retry-After seconds/HTTP-date, x-ratelimit-reset epoch, longest-window pause, malformed ⇒ null; single-scheduled-wake resume, zero-window synchronous; **countdown UI** is a P2.5/P2.10 surface)
+- [x] INV-N01 · L1 · Throttling/concurrency ≤5; `Retry-After`/`X-RateLimit-Reset` honored; primary exhaustion = reset countdown UI, event-driven resume — `inv-rate-policy.test.ts` (C.1 core rate policy green 2026-10-27; **P2.10 green 2026-10-29:** `rate-limit-timer.tsx` with absolute epoch & screen-reader milestones, `rate-limit-timer.test.tsx`, and `e2e/specs/rate-limit.spec.ts` covering auto-wake resume & manual "Try saving now" override)
 - [x] INV-N02 · L1 · Tree reads assert `!truncated`; truncated → subtree-walk fallback; contents-dir 1000-cap unused for correctness — `inv-truncation.test.ts` (green 2026-10-27)
 - [ ] INV-N03 · L2 · Preview path: zero `raw.githubusercontent.com` traffic (blob-API, sha-keyed, overwrite invalidates instantly) — e2e origin allowlist assertion
 - [ ] INV-N04 · L2 · Prod purity: no `.map`, no `sourceMappingURL`, no `mockServiceWorker` bytes, no telemetry strings — CI byte-scan
