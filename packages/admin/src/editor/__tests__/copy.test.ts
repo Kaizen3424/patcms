@@ -1,4 +1,11 @@
+import type { DeployStatusCause, DeployStatusKind } from "@mycms/core"
 import { describe, expect, it } from "vitest"
+import {
+  STATUS_CAUSE_COPY,
+  STATUS_COPY,
+  STATUS_DISABLED_COPY,
+  STATUS_SUPERSEDED_COPY,
+} from "../../status/copy"
 import {
   ADVISORY_COPY,
   allCopyStrings,
@@ -28,10 +35,25 @@ const BANNED = [
   "conflict",
 ] as const
 
+/**
+ * Every founder-visible string, across both decks: the editor deck owns the
+ * save/recovery surfaces, the status deck owns the deploy surfaces (P2.8).
+ * One array so both are swept by the same assertions.
+ */
+function everyFounderString(): readonly string[] {
+  return [
+    ...allCopyStrings(),
+    ...Object.values(STATUS_COPY),
+    ...Object.values(STATUS_CAUSE_COPY),
+    STATUS_SUPERSEDED_COPY,
+    STATUS_DISABLED_COPY,
+  ]
+}
+
 describe("founder copy deck", () => {
   it("never uses a banned word (whole-word, case-insensitive)", () => {
     const offenders: string[] = []
-    for (const text of allCopyStrings()) {
+    for (const text of everyFounderString()) {
       for (const word of BANNED) {
         const pattern = new RegExp(`\\b${word}\\b`, "i")
         if (pattern.test(text)) offenders.push(`${word}: ${text}`)
@@ -41,7 +63,7 @@ describe("founder copy deck", () => {
   })
 
   it("names no credential word other than 'access key'", () => {
-    const strings = allCopyStrings().join("\n")
+    const strings = everyFounderString().join("\n")
     expect(strings).toContain("access key")
     expect(strings.toLowerCase()).not.toContain("password")
     expect(strings.toLowerCase()).not.toContain("api key")
@@ -104,6 +126,29 @@ describe("founder copy deck", () => {
       "unknownTitle",
       "unknownDetail",
     ])
+  })
+
+  it("ships the deploy-status deck for every kind and cause (P2.8)", () => {
+    const kinds: readonly DeployStatusKind[] = [
+      "awaiting",
+      "building",
+      "live",
+      "failed",
+      "unavailable",
+    ]
+    const causes: readonly DeployStatusCause[] = [
+      "grace",
+      "error",
+      "incomplete",
+      "unsupported",
+      "watch-timeout",
+    ]
+    for (const kind of kinds) expect(STATUS_COPY[kind].length).toBeGreaterThan(0)
+    for (const cause of causes) expect(STATUS_CAUSE_COPY[cause].length).toBeGreaterThan(0)
+    expect(Object.keys(STATUS_COPY)).toHaveLength(kinds.length)
+    expect(Object.keys(STATUS_CAUSE_COPY)).toHaveLength(causes.length)
+    expect(STATUS_SUPERSEDED_COPY.length).toBeGreaterThan(0)
+    expect(STATUS_DISABLED_COPY.length).toBeGreaterThan(0)
   })
 
   it("fills chip placeholders inertly ($ patterns stay literal)", () => {

@@ -1,7 +1,9 @@
 /**
- * Founder-facing copy deck (P2.6). ONE module owns every save/recovery string
- * so the banned-word scan is a single sweep (01-spec §6: no "build", "commit",
- * "deploy", "token", "slug", "repository", "draft", "someone", "conflict").
+ * Founder-facing copy deck (P2.6). This module owns every save/recovery string;
+ * `status/copy.ts` owns the deploy-status strings (P2.8), and `copy.test.ts`
+ * sweeps both decks with ONE banned-word scan (01-spec §6: no "build",
+ * "commit", "deploy", "token", "slug", "repository", "draft", "someone",
+ * "conflict").
  *
  * Rules encoded here:
  *  - the named human always comes from `support.name` via `{name}` — never
