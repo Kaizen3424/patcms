@@ -389,3 +389,73 @@ Fix, pinned before the mechanism:
   exists; the bar line remains the degraded-branch copy and keeps its `{name}` interpolation.
 - INV rows are added at design time per the invariants law: INV-P16 (freeze gate + resolved bytes)
   and INV-P17 (auto-merge base adoption) — see `invariants.md`.
+
+## Appendix — P2.10 failure screens, in-place re-auth sheet, and structured copy composer (2026-10-29)
+
+Recorded before the P2.10 mechanisms land (ADR-first law). Fulfills INV-A01, INV-A02, and INV-N01.
+
+### 1. Dynamic Token Seam on GithubBackend (INV-A01)
+
+- The P2.5 save controller parks an `AUTH_EXPIRED` (401) write failure at `await job.gate.wait()`,
+  setting `authPaused = true`. The draft is retained on device in IndexedDB (`INV-P11`).
+- To prevent coordinator or backend recreation (which would orphan in-flight jobs or desync the
+  active state machine), `GithubBackend` supports in-place token updates via:
+  - `GithubBackendOptions.token`: `string | (() => string | undefined)`, and
+  - `GithubBackend.setToken(token: string): void`.
+- The admin runtime wires the dynamic accessor (`() => auth.getToken()`) and passes `setToken` to
+  the re-auth flow. When the founder enters a valid new key, `reauthenticate()` probes it, updates
+  the store and backend token, and calls `coordinator.resumeAuth()`. The parked job wakes, loops, and
+  re-attempts the write with the new credential, completing without draft or session loss.
+
+### 2. In-Place Re-auth Sheet
+
+- Triggered when `state.phase === "paused" && state.reason === "auth"`, when SaveBar shows `authExpired`,
+  or when an entry read fails with 401.
+- Modal dialog with backdrop blur:
+  - Masked access key input with reveal toggle.
+  - "Remember on this device" checkbox (honors ADR-0002 persistence opt-in).
+  - Primary button: "Check key and save" (or "Check key" for read failures).
+  - Secondary button: "Sign out" (drafts remain safe in IDB; boot replay offers restore on next login).
+  - Cancel / close keeps the editor and its unsaved changes intact on device.
+- Re-probe before accept: if the new key fails capability probe, the error displays inline in the sheet;
+  the coordinator stays parked and no invalid token is stored.
+
+### 3. Error Classifier Matrix & Zero-Banned-Word Decks (INV-A02)
+
+- Every `WriteErrorCode` and `ReadErrorCode` maps to a human-phrased title and explanation:
+  - `AUTH_EXPIRED`: "Your access key needs checking."
+  - `SCOPE`: "This access key cannot update the site." / "Ask {name} to give this access key permission to update files."
+  - `RATE_LIMIT`: "The site is busy right now." / "Saving will continue in a moment. You can keep editing."
+  - `NOT_FOUND`: "The site files could not be reached." / "The site files may have moved. Ask {name} to check the site connection."
+  - `VALIDATION`: "The site files could not accept this change." / "Your words are safe on this device. Ask {name} to check the entry format."
+  - `NETWORK`: "Internet connection problem." / "We could not reach the site. Check your internet connection and try again."
+  - `UNKNOWN`: "Saving did not go through." / "Your changes are still on this device. Try again, or ask {name} for help."
+- Decks `FAILURE_COPY`, `REAUTH_COPY`, and `RATE_COPY` join `allCopyStrings()` and are enforced by
+  `copy.test.ts`: zero banned words (*build*, *commit*, *deploy*, *token*, *slug*, *repository*, *draft*,
+  *someone*, *conflict*), credential word is strictly *"access key"*, and `{name}` interpolates from
+  `support.name`.
+
+### 4. Rate-Limit Reset Countdown UI (INV-N01)
+
+- Primary exhaustion (403 with `X-RateLimit-Reset` / 429 with `Retry-After`) yields `phase === "paused"`
+  and `reason === "quota"` with `waitMs !== null`.
+- Calculation uses absolute target epoch `Date.now() + waitMs` to prevent clock drift in throttled tabs.
+- Visual ticker: updates second-by-second with `aria-hidden="true"`.
+- Accessible live region: `aria-live="polite"` announces start, 10-second warning, and resumption,
+  preventing screen-reader spamming.
+- Automatic resume fires when the scheduled wake elapses; manual override "Try saving now" calls
+  `coordinator.resume(draftKey)` immediately.
+- Form remains fully interactive during quota pause; edits made while parked are preserved and replayed.
+
+### 5. Structured Copy Composer & Docked Failure Card
+
+- The minimal inline clipboard string in `advisory-chip.tsx` is superseded by `composeFailureReport(context)`:
+  - Part 1: Plain conversational greeting for `{support.name}` describing the issue without jargon.
+  - Part 2: Technical bulleted diagnostics for the developer (entry title & path, repository coordinates,
+    branch, base revision SHA, changed field paths, typed error code, HTTP status, timestamp, and
+    actionable developer guidance).
+- Safe clipboard copy via `navigator.clipboard.writeText` with hidden textarea fallback; displays
+  transient visual confirmation ("Copied to clipboard").
+- Docked failure card renders directly above the SaveBar on non-quota failures, displaying the classified
+  cause, reassurance ("Your changes are kept on this device"), primary recovery button, and "Copy message".
+
