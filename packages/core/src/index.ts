@@ -86,8 +86,25 @@ export {
   isBackendWriteError,
   networkWriteError,
 } from "./backend/write-errors"
-export type { GithubBackendOptions } from "./backends/github"
-export { encodeBranch, GithubBackend } from "./backends/github"
+export type {
+  GithubBackendOptions,
+  RecordedInteraction,
+  RecordedRequest,
+  RecordedResponse,
+  RecordedTape,
+  RecordedTapeMeta,
+  ReplayFetch,
+  ReplayFetchOptions,
+} from "./backends/github"
+export {
+  buildMatchKey,
+  canonicalizeJson,
+  createReplayFetch,
+  encodeBranch,
+  GithubBackend,
+  normalizeBodyString,
+  normalizeRequestPath,
+} from "./backends/github"
 export type { FixtureFile, FixtureRepoSpec } from "./backends/reference-fixture-backend"
 export {
   ContractStubNotImplementedError,

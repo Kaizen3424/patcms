@@ -722,3 +722,20 @@ function parseTreeEntries(record: Record<string, JsonValue> | undefined): TreeEn
     .filter((child) => child.type === "blob" || child.type === "commit")
     .map((child) => ({ path: child.path, sha: child.sha, mode: child.mode, type: child.type }))
 }
+
+export type {
+  RecordedInteraction,
+  RecordedRequest,
+  RecordedResponse,
+  RecordedTape,
+  RecordedTapeMeta,
+  ReplayFetch,
+  ReplayFetchOptions,
+} from "./recorded-replay"
+export {
+  buildMatchKey,
+  canonicalizeJson,
+  createReplayFetch,
+  normalizeBodyString,
+  normalizeRequestPath,
+} from "./recorded-replay"
