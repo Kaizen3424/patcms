@@ -18,6 +18,8 @@
     "scan:prod-purity": "node scripts/prod-purity-scan.mjs",
     "fixtures:sync": "node scripts/sync-yve-fixtures.mjs",
     "fixtures:check": "node scripts/sync-yve-fixtures.mjs --check",
+    "fixtures:capture": "node scripts/capture-recorded-fixtures.mjs",
+    "fixtures:tape-check": "node scripts/capture-recorded-fixtures.mjs --check",
     "changeset": "changeset"
   },
   "devDependencies": {
