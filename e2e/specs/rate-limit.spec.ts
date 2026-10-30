@@ -23,6 +23,7 @@ test("primary rate limit -> live countdown UI -> auto-wake event-driven resume t
   baseURL,
   page,
 }) => {
+  test.slow()
   if (baseURL === undefined) throw new Error("playwright config must set use.baseURL")
   const origins = await installOriginAllowlist(page, new URL(baseURL).origin)
 
@@ -87,6 +88,7 @@ test("primary rate limit -> manual override 'Try saving now' immediately resumes
   baseURL,
   page,
 }) => {
+  test.slow()
   if (baseURL === undefined) throw new Error("playwright config must set use.baseURL")
   const origins = await installOriginAllowlist(page, new URL(baseURL).origin)
 

@@ -2,7 +2,7 @@
 
 > **Every agent session starts here.** Read this file fully, then follow §4 Session Protocol. This file never duplicates details it can point to; it is the single tracker for project state. Agents MUST maintain §3 and the task checklists — stale docs are treated as build failures.
 
-Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.11 built & committed; next: P2.12 in a NEW chat)
+Maintained by: agent sessions · Last updated: 2026-10-30 (P2 C.3 sub-slice P2.12 built & verified; Phase 2 Exit Gate ready for owner confirmation; next: Phase 3 in a NEW chat)
 
 ---
 
@@ -20,14 +20,14 @@ Maintained by: agent sessions · Last updated: 2026-10-29 (P2 C.3 sub-slice P2.1
 |---|---|---|---|
 | P0 | Scaffold & laws | ✅ Gate passed 2026-10-27 | CI-verifiable scaffold green; ADRs 0001–0010 signed; specs runnable |
 | P1 | Config schema + read path | ✅ Gate passed 2026-10-27 (owner-confirmed) | yve fixture library browses offline; lenient parse contract green |
-| P2 | Save pipeline + editor v0 | ✅ Gate passed 2026-10-27 | e2e publish loop green incl. conflict + failure paths |
+| P2 | Save pipeline + editor v0 | 🟨 Gate ready for owner confirmation | e2e publish loop green incl. conflict + failure paths |
 | P3 | Widget system complete | ⬜ Not started | yve exact config editable on fixtures, zero code change |
 | P4 | Media system | ⬜ Not started | 9-photo slow-wifi e2e green; no-raw-URL invariant proven |
 | P5 | Founder polish & IA | ⬜ Not started | founder-cry triad simulations green; a11y checklist green |
 | P6 | yve integration cutover | ⬜ Blocked until P5 | success criteria on the real site; rollback path proven |
 | P7 | OSS publication | ⬜ Blocked until P6 | stranger completes widget exemplar unaided; release dry-run |
 
-**Current focus:** P2 checkpoint **C.3 done — P2.11 built & committed** (ADR-0005 P2.11 addendum `5f9dfe9`, `createReplayFetch` `dcd2224`, `capture-recorded-fixtures.mjs` `a4c0873`, golden tape `recorded-contract-tape.json` + replay suite `ccd5cc9`, contract README). Core 454/454 (60 files) @ 92.53% stmts / 95.71% lines, admin 126/126, playground 18/18, `pnpm e2e` 14/14. ADR-0005 P2.11 addendum (Keyed-Endpoint FIFO Queue matching, body hashing for concurrency resilience, monotonic sequential queueing, case-insensitive headers, 4-stage secret/PII scrubbing, fail-closed regex validation, parameterization, and contract suite README short "how to run"). Exit gate recorded fixtures requirement satisfied. **P2.12 (kill-tab recovery, parked tx recovery, final publish-loop demo) starts in a NEW chat — pick up from `tasks/plan.md` / phase file, not from chat history.** Evidence: `pnpm -r typecheck` + `pnpm run check` + `pnpm -r build` + `pnpm e2e` + supply-chain scans clean. C.1/C.2/C.3 all ⛔ PASSED. P0 remote: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep P7.1 — working name MyCMS until then).
+**Current focus:** P2 checkpoint **C.3 done — P2.12 built & verified** (ADR-0004/0005 verification notes, `e2e/support/idb.ts`, `?bootDraftDemo=equal` query seam, `kill-tab.spec.ts` [INV-P12], `parked-tx.spec.ts` [INV-P11], and `publish-loop.spec.ts` [full publish loop demo]). Core 454/454 (60 files) @ 92.53% stmts / 95.71% lines, admin 126/126, playground 18/18, `pnpm e2e` 19/19 (all 10 specs pass in parallel). All Phase 2 invariants (INV-P01–P17, INV-A01/A02, INV-N01, INV-D01–D03) are fully green. **Phase 2 Exit Gate is ready for owner sign-off. Phase 3 (Widget system) starts in a NEW chat after owner confirmation.** Evidence: `pnpm -r typecheck` + `pnpm run check` + `pnpm -r build` + `pnpm -r test` + `pnpm e2e` + supply-chain scans clean. P0 remote: `https://github.com/Kaizen3424/pagesmith.git` (final naming sweep P7.1 — working name MyCMS until then).
 
 *Legend: ⬜ not started · 🟨 in progress · ✅ gate passed (date) · ⛔ blocked*
 

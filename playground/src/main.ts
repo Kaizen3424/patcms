@@ -95,6 +95,42 @@ async function main(): Promise<void> {
     }
   }
 
+  const bootDraftDemo = new URLSearchParams(window.location.search).get("bootDraftDemo")
+  if (bootDraftDemo === "equal") {
+    const targetPath = "src/content/products/the-rock-pendant.json"
+    const file = server.contents(snapshot.defaultBranch, targetPath)
+    if (file) {
+      await pushForeignEntryCommit({
+        server,
+        branch: snapshot.defaultBranch,
+        path: targetPath,
+        mutator: (content) => ({
+          ...content,
+          material: "Wool felt · Leather (already live on site)",
+        }),
+        message: "already live commit pre-boot (equal draft demo)",
+      })
+
+      const liveFile = server.contents(snapshot.defaultBranch, targetPath)
+      if (liveFile) {
+        const liveText = new TextDecoder().decode(liveFile.bytes)
+        const liveParsed = JSON.parse(liveText) as Record<string, unknown>
+
+        const draftStore = createIdbDraftStore()
+        await draftStore.put<SaveDraftPayload>({
+          key: `${DEFAULT_TAGS.repo}/products/the-rock-pendant`,
+          savedAt: new Date().toISOString(),
+          value: {
+            filePath: targetPath,
+            baseSha: snapshot.headSha,
+            baseRaw: new TextDecoder().decode(file.bytes),
+            formValue: liveParsed,
+          },
+        })
+      }
+    }
+  }
+
   const host = document.getElementById("app")
   if (host === null) {
     const message = "playground host element missing"

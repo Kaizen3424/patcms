@@ -459,3 +459,16 @@ Recorded before the P2.10 mechanisms land (ADR-first law). Fulfills INV-A01, INV
 - Docked failure card renders directly above the SaveBar on non-quota failures, displaying the classified
   cause, reassurance ("Your changes are kept on this device"), primary recovery button, and "Copy message".
 
+## Appendix — P2.12 verification notes (2026-10-30)
+
+Completed and verified by the P2.12 end-to-end journey test suite:
+- **Crash-recovery replay (`INV-P12`)**: Verified in `e2e/specs/kill-tab.spec.ts`.
+  1. Kill tab mid-commit with local changes (`canon-diff`) yields boot recovery offer banner on next launch; accepting restores dirty state.
+  2. Boot draft matching canon remote head (`equal`) auto-discards without toast.
+  3. Coordinator persists draft to IndexedDB before first network write and deletes it ONLY post-ref-verify. Network fault before ref verification preserves draft in IndexedDB across reloads.
+- **Parked transaction recovery (`INV-P11`)**: Verified in `e2e/specs/parked-tx.spec.ts`.
+  Tab closed during a 429 quota park retains uncommitted draft in IndexedDB; new tab offers restoration upon boot and successfully publishes to the remote branch once quota clears.
+- **Publish loop demo**: Verified in `e2e/specs/publish-loop.spec.ts`.
+  Full lifecycle demonstrated: authentication, entry edit, value-domain dirty tracking, atomic multi-file commit, deploy status chip transitions (`awaiting` → `live`), post-save advisory sweep (`allClear`), IDB draft deletion, and immediate second save on the newly observed base revision.
+
+

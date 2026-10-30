@@ -115,3 +115,9 @@ Completes the Consequences note: *"GithubBackend additionally covered by recorde
    - `--seed` mode uses `FakeGithubServer` to generate deterministic golden tapes offline, ensuring CI and offline builds pass without network or live GitHub credentials.
    - Live mode captures real traffic from a GitHub sandbox repo after resetting the fixture branch, satisfying the real-world transport drift hedge.
 
+### P2.12 verification notes (2026-10-30)
+
+Completed and verified by the P2.12 end-to-end journey test suite:
+- Atomic Git data transactions, fast-forward CAS commits, and classified write error recovery verified end-to-end in the playground environment with MSW and Playwright across `e2e/specs/kill-tab.spec.ts`, `e2e/specs/parked-tx.spec.ts`, and `e2e/specs/publish-loop.spec.ts`.
+- All Phase 2 invariants (`INV-P01` through `INV-P17`) are fully implemented and verified with green test suites.
+

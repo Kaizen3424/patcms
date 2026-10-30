@@ -177,6 +177,15 @@ C.3  P2.5 state machine + lease + drafts + boot replay (L) → P2.6 editor v0 + 
 - Files: `docs/adr/ADR-0005-transactional-backend.md`, `packages/core/src/backends/github/recorded-replay.ts`, `packages/core/src/backends/github/__tests__/recorded-replay.test.ts`, `packages/core/src/backends/github/__tests__/github-backend-replay.test.ts`, `packages/core/src/backends/github/__tests__/fixtures/recorded-contract-tape.json`, `packages/core/src/backends/github/index.ts`, `packages/core/src/index.ts`, `scripts/capture-recorded-fixtures.mjs`, `package.json`, `packages/core/src/backend/contract-suite/README.md`.
 - Size: S — 5 commits: ADR addendum → replay transport → capture script → golden tape & replay tests → contract README & docs sync.
 
+### P2.12 — E2E journeys: kill-tab recovery, parked tx recovery, final publish-loop demo (M, after P2.11)
+
+- Acceptance (ADR-0004/0005 verification notes FIRST): Typed IndexedDB inspector `e2e/support/idb.ts` safe for Node TS; playground `?bootDraftDemo=equal` query seam pre-seeding matching draft and commit in `mycms` IndexedDB; `e2e/specs/kill-tab.spec.ts` proving `INV-P12` (kill tab mid-commit triggers boot offer on canon-diff, equal draft auto-discards without toast, and draft persists across network fault before ref-verify then gets cleaned up only post-ref-verify); `e2e/specs/parked-tx.spec.ts` proving `INV-P11` (429 quota park tab closed/reopened, draft restored via boot offer, clean publish); `e2e/specs/publish-loop.spec.ts` proving full publish loop demo (authentication, multi-field edit, value-domain dirtiness tracking, atomic commit, `deploy-status-chip` polling/live transition, post-save advisory sweep `allClear`, IDB draft deletion, and immediate second save on observed base); `test.slow()` on rate-limit tests for parallel worker headroom.
+- Verify: `pnpm -r typecheck && pnpm run check && pnpm -r build`; full unit tests `pnpm -r test` (core 454/454 @ ≥90% stmts & lines, admin 126/126, playground 18/18); `pnpm e2e` (all 19 tests across all 10 specs pass in parallel); supply-chain scans (`scan:workflows`, `scan:prod-purity`, `audit:waivers`); INV-P12 row ticked with evidence; Phase 2 Exit gate checklist verified.
+- Dependencies: ADR-0004/0005 verification notes committed.
+- Files: `docs/adr/ADR-0004-rebase-state-machine-lease.md`, `docs/adr/ADR-0005-transactional-backend.md`, `playground/src/main.ts`, `e2e/support/idb.ts`, `e2e/specs/kill-tab.spec.ts`, `e2e/specs/parked-tx.spec.ts`, `e2e/specs/publish-loop.spec.ts`, `e2e/specs/rate-limit.spec.ts`, `docs/specs/invariants.md`, `docs/specs/phases/P2-save-pipeline.md`.
+- Size: M — completed 2026-10-30.
+
+
 ## Phase 3 — Widgets (see `P3-widgets.md`)
 
 Tasks P3.1–P3.9 in the phase file; sizes S/M; parity golden (INV-C01 initial) is the phase goal.
