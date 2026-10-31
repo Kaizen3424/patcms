@@ -15,6 +15,10 @@ export const MESSAGE_MAP_COPY = {
   listTooShort: "Keep at least {min} item{plural}",
   listTooLong: "At most {max} item{plural} allowed",
   missingRequired: "Please fill in {label}",
+  outOfRange: "This value is outside the allowed range",
+  virtualKeyIgnored: "This web address is calculated automatically",
+  unmodeledKey: "This extra setting is preserved behind the scenes",
+  unknownFieldType: "This field type is not recognized. Ask {name} for help.",
   fallbackError: "Please check this value",
 } as const
 
@@ -72,6 +76,18 @@ export function humanizeIssue(
 
     case "MISSING_REQUIRED":
       return MESSAGE_MAP_COPY.missingRequired.replace("{label}", label)
+
+    case "OUT_OF_RANGE":
+      return MESSAGE_MAP_COPY.outOfRange
+
+    case "VIRTUAL_KEY_IGNORED":
+      return MESSAGE_MAP_COPY.virtualKeyIgnored
+
+    case "UNMODELED_KEY":
+      return MESSAGE_MAP_COPY.unmodeledKey
+
+    case "UNKNOWN_FIELD_TYPE":
+      return MESSAGE_MAP_COPY.unknownFieldType.replace("{name}", supportName)
 
     default:
       return issue.message || MESSAGE_MAP_COPY.fallbackError
