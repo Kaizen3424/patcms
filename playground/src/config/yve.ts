@@ -71,6 +71,47 @@ const featuredProduct = fields.relation({
   displayFields: ["title"],
 })
 
+const swatchOptions = [
+  { label: "Gold", value: "accent" },
+  { label: "Neutral", value: "muted" },
+  { label: "Deep blue", value: "secondary" },
+] as const
+
+const productOptions = fields.list({
+  label: "Options",
+  required: false,
+  min: 1,
+  summary: "{{fields.name}}",
+  fields: {
+    name: fields.string({ label: "Name", required: true }),
+    values: fields.list({
+      label: "Values",
+      required: true,
+      min: 1,
+      summary: "{{fields.label}}",
+      fields: {
+        label: fields.string({ label: "Label", required: true }),
+        swatch: fields.select({
+          label: "Color Swatch",
+          required: false,
+          defaultValue: "accent",
+          options: swatchOptions,
+        }),
+      },
+    }),
+  },
+})
+
+const productAccordions = fields.list({
+  label: "Accordions",
+  required: false,
+  summary: "{{fields.title}}",
+  fields: {
+    title: fields.string({ label: "Title", required: true }),
+    body: fields.text({ label: "Body", required: true }),
+  },
+})
+
 const productsSchema = z.object({
   title,
   slug: fields.slug(),
@@ -86,13 +127,14 @@ const productsSchema = z.object({
   specs: fields.list({
     label: "Specs",
     required: false,
+    summary: "{{fields.label}}: {{fields.value}}",
     fields: {
       label: fields.string({ label: "Label", required: false }),
       value: fields.string({ label: "Value", required: false }),
     },
   }),
-  options: fields.hidden({ label: "Options" }),
-  accordions: fields.hidden({ label: "Accordions" }),
+  options: productOptions,
+  accordions: productAccordions,
   seo,
 })
 
@@ -171,6 +213,19 @@ const collectionsPageSchema = z.object({
   seo,
 })
 
+const craftFeatures = fields.list({
+  label: "Features",
+  required: false,
+  min: 4,
+  max: 4,
+  summary: "{{fields.title}}",
+  fields: {
+    title: fields.string({ label: "Title", required: true }),
+    text: fields.text({ label: "Text", required: true }),
+    icon: fields.hidden({ label: "Icon" }),
+  },
+})
+
 const craftSchema = z.object({
   kicker: fields.hidden({ label: "Kicker", defaultValue: "" }),
   titleLine1: fields.string({ label: "Title line 1", required: false }),
@@ -180,7 +235,7 @@ const craftSchema = z.object({
   statValue: optionalString("Stat value"),
   statTitle: optionalString("Stat title"),
   statBody: optionalText("Stat body"),
-  features: fields.hidden({ label: "Features" }),
+  features: craftFeatures,
   ceramicKicker: fields.hidden({ label: "Ceramic kicker", defaultValue: "" }),
   ceramicTitleLine1: optionalString("Ceramic title line 1"),
   ceramicTitleLine2: optionalString("Ceramic title line 2"),
@@ -220,6 +275,28 @@ const aboutSchema = z.object({
   seo,
 })
 
+const bespokeDiameters = fields.list({
+  label: "Diameters",
+  required: false,
+  min: 1,
+  summary: "{{fields.value}} cm",
+  fields: {
+    value: fields.number({ label: "Diameter (cm)", required: true, min: 1 }),
+    surcharge: fields.number({ label: "Surcharge (€)", required: true, int: true, min: 0 }),
+  },
+})
+
+const bespokeFinishes = fields.list({
+  label: "Finishes",
+  required: false,
+  min: 1,
+  summary: "{{fields.label}}",
+  fields: {
+    label: fields.string({ label: "Label", required: true }),
+    surcharge: fields.number({ label: "Surcharge (€)", required: true, int: true, min: 0 }),
+  },
+})
+
 const bespokeSchema = z.object({
   kicker: fields.hidden({ label: "Kicker", defaultValue: "" }),
   titleLine1: optionalString("Title line 1"),
@@ -229,8 +306,8 @@ const bespokeSchema = z.object({
   imageAlt,
   steps: fields.hidden({ label: "Steps" }),
   shapes: fields.hidden({ label: "Shapes" }),
-  diameters: fields.hidden({ label: "Diameters" }),
-  finishes: fields.hidden({ label: "Finishes" }),
+  diameters: bespokeDiameters,
+  finishes: bespokeFinishes,
   piping: fields.hidden({ label: "Piping" }),
   basePrice: fields.number({ label: "Base price", required: true, int: true, min: 0 }),
   backLabel: optionalString("Back label"),
@@ -302,7 +379,7 @@ export const yveConfig = defineConfig({
       icon: "lamp",
       folder: "src/content/products",
       format: "json",
-      create: false,
+      create: true,
       delete: false,
       identifierField: "title",
       summary: "{{title}} · € {{price}}",
@@ -333,7 +410,7 @@ export const yveConfig = defineConfig({
       icon: "layers",
       folder: "src/content/collections",
       format: "json",
-      create: false,
+      create: true,
       delete: false,
       identifierField: "title",
       summary: "{{number}} — {{title}}",
@@ -371,7 +448,7 @@ export const yveConfig = defineConfig({
       icon: "science",
       folder: "src/content/drift",
       format: "json",
-      create: false,
+      create: true,
       delete: false,
       identifierField: "title",
       summary: "{{title}}",
