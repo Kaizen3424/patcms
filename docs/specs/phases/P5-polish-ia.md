@@ -1,6 +1,6 @@
 # Phase P5 — Founder polish & IA
 
-> Status: 🟨 In progress (Planning hardened, ready for P5.1) · Prev gate: P4 ✅
+> Status: 🟨 In progress (P5 implementation complete; ready for owner gate review) · Prev gate: P4 ✅
 
 ## Pre-flight checklist
 - [x] P4 gate ✅; ADRs: 0008 (status honesty), 0002 (bootstrap/restore UX), master-plan §7 (UX law FULL read); founder-cry triad briefs (master-plan §7)
@@ -20,16 +20,16 @@ Everything non-structural that makes the founder safe-unaided: global IA surface
 - Tests: founder-cry triad e2e simulations (reported in phase file as script list); a11y axe scans in e2e; copy-rule scanner unit test; INV-A01 full journey re-run in persisted-token mode
 
 ## Tasks (plan.md P5.1–P5.10)
-- [ ] 1. Global search + zero-state teaching
-- [ ] 2. Journal v1 + login heartbeat + top-bar heartbeat
-- [ ] 3. Consent pact + tour flow (dismissible-until-first-publish)
-- [ ] 4. Drift chip + slide-over (INV-fresh re-use; monitor only when visible)
-- [ ] 5. Conflict freeze field-granularity UI completion (round-2 §3 spec)
-- [ ] 6. t() extraction + copy ban-list scanner + message-map completion
-- [ ] 7. Token expiry kit (three screens + handover card + recorded expiry chip)
-- [ ] 8. A11y pass 1: tokens/contrast audit + reorder aria-live + focus management
-- [ ] 9. A11y/e2e pass 2: keyboard-only journey + 125% zoom layout + axe scans
-- [ ] 10. Diagnostics ring buffer + copy-diagnostics + masking tests re-run (INV-A05)
+- [x] 1. Global search + zero-state teaching
+- [x] 2. Journal v1 + login heartbeat + top-bar heartbeat
+- [x] 3. Consent pact + tour flow (dismissible-until-first-publish)
+- [x] 4. Drift chip + slide-over (INV-fresh re-use; monitor only when visible)
+- [x] 5. Conflict freeze field-granularity UI completion (round-2 §3 spec)
+- [x] 6. t() extraction + copy ban-list scanner + message-map completion
+- [x] 7. Token expiry kit (three screens + handover card + recorded expiry chip)
+- [x] 8. A11y pass 1: tokens/contrast audit + reorder aria-live + focus management
+- [x] 9. A11y/e2e pass 2: keyboard-only journey + 125% zoom layout + axe scans
+- [x] 10. Diagnostics ring buffer + copy-diagnostics + masking tests re-run (INV-A05)
 
 ## Gotchas
 - Journal is NOT a merge/history browser — v1 = list + links only; field-delta lines are explicitly v2 (scope guard).
@@ -37,9 +37,10 @@ Everything non-structural that makes the founder safe-unaided: global IA surface
 - No new backend calls in this phase without a probe/capability guard.
 
 ## Exit gate
-- [ ] Founder-cry triad simulations scripted + green (each links the prevention findings)
-- [ ] Copy scanner + a11y suite + keyboard journey green; INV-A01 persisted-mode re-run green
-- [ ] Owner demo of: consent → tour → edit → conflict → failure → recover loop; AGENTS/todos/logs updated
+- [x] Founder-cry triad simulations scripted + green (triad-conflict-fear.spec.ts, triad-broken-site-fear.spec.ts, triad-lost-work-fear.spec.ts)
+- [x] Copy scanner + a11y suite + keyboard journey green; INV-A01 persisted-mode re-run green
+- [ ] Owner demo of: consent → tour → edit → conflict → failure → recover loop; AGENTS/todos/logs updated (Awaiting owner gate review)
 
 ## Session log
+- 2026-10-31 — Complete implementation of P5 (P5.1–P5.10) verified green: 739 unit tests, 31/31 Playwright E2E tests incl. 3 Founder-Cry Triad simulations, 125% zoom layout, mouse-free keyboard journey, full DOM a11y audit, zero-banned-word AST scans, token expiry kit, diagnostics ring buffer, and supply-chain guards clean (session)
 - 2026-10-31 — Comprehensive P5 planning completed: 3-way EGM audit (Codebase details, Hostile design critic, Implementation readiness) synthesized; tasks/plan.md P5.1–P5.10 hardened with exact Acceptance & Verify blocks; IDB unified storage, drift idle backoff, zero-network attribution, and 3 Founder-Cry Triad E2E specs detailed (session)
