@@ -44,6 +44,9 @@ async function main(): Promise<void> {
   const rateLimitWrite = new URLSearchParams(window.location.search).get("rateLimitWrite")
   const rateLimitWriteSeconds =
     rateLimitWrite !== null && Number(rateLimitWrite) > 0 ? Number(rateLimitWrite) : undefined
+  const failBlobParam = new URLSearchParams(window.location.search).get("failBlobUploadIndex")
+  const failBlobUploadIndex =
+    failBlobParam !== null && Number(failBlobParam) > 0 ? Number(failBlobParam) : undefined
 
   const { handlers, server } = createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
     requireAuth: true,
@@ -51,6 +54,7 @@ async function main(): Promise<void> {
       expireTokenOnWrite: tokenChaos === "expire-on-write",
       invalidTokens: tokenChaos === "expire-on-write" ? ["invalid_key", "bad_pat"] : undefined,
       ...(rateLimitWriteSeconds === undefined ? {} : { rateLimitWriteSeconds }),
+      ...(failBlobUploadIndex === undefined ? {} : { failBlobUploadIndex }),
     },
     ...(beforeRefPatch === undefined ? {} : { beforeRefPatch }),
   })

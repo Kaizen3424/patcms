@@ -37,6 +37,8 @@ export interface FakeGithubChaos {
   readonly invalidTokens?: readonly string[]
   /** Fail the first write request with 401 Bad credentials (INV-A01 chaos). */
   readonly expireTokenOnWrite?: boolean
+  /** Fail the N-th POST /git/blobs call (1-indexed) with a 503 error (INV-M02 slow-wifi test). */
+  readonly failBlobUploadIndex?: number
 }
 
 export interface FakeGithubOptions {
@@ -78,6 +80,7 @@ export function createFakeGithubHandlers(
   let rateLimited = false
   let writeRateLimited = false
   let writeTokenExpired = false
+  let blobUploadCount = 0
 
   const guarded = (resolver: (args: RequestGuardArgs) => Response | Promise<Response>) => {
     return (args: RequestGuardArgs) => {
@@ -354,6 +357,16 @@ export function createFakeGithubHandlers(
     http.post(
       `${repoPath}/git/blobs`,
       guardedWrite(async ({ request }) => {
+        blobUploadCount++
+        if (
+          chaos.failBlobUploadIndex !== undefined &&
+          blobUploadCount === chaos.failBlobUploadIndex
+        ) {
+          return HttpResponse.json(
+            { message: "Network connection lost (slow-wifi fault injection)" },
+            { status: 503 },
+          )
+        }
         return toHttp(
           await server.handle({
             method: "POST",
