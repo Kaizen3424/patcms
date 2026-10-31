@@ -17,7 +17,10 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        (event.key?.toLowerCase() === "k" || event.code === "KeyK")
+      ) {
         event.preventDefault()
         setSearchOpen((prev) => !prev)
       }

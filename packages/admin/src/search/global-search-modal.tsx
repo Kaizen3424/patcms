@@ -117,6 +117,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={SEARCH_COPY.placeholder}
+              aria-label={SEARCH_COPY.placeholder}
               data-testid="global-search-input"
               className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
             />

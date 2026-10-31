@@ -271,6 +271,7 @@ export function MediaLibraryScreen() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={MEDIA_COPY.searchPlaceholder}
+              aria-label={MEDIA_COPY.searchPlaceholder}
               className="w-full rounded-lg border border-border-soft bg-surface px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
             />
           </div>
@@ -360,6 +361,7 @@ export function MediaLibraryScreen() {
                 <input
                   readOnly
                   value={selectedItem.publicPath}
+                  aria-label={MEDIA_COPY.publicPath}
                   className="w-full rounded border border-border-soft bg-surface-raised px-2 py-1 font-mono text-[11px] text-text-primary"
                 />
                 <button
@@ -624,6 +626,7 @@ export function MediaPickerModal({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={MEDIA_COPY.searchPlaceholder}
+            aria-label={MEDIA_COPY.searchPlaceholder}
             className="w-full rounded-lg border border-border-soft bg-surface-raised px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
           />
         </div>
