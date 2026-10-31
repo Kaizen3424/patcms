@@ -419,6 +419,18 @@ export const EXPIRY_COPY = {
   settingsSaved: "Saved",
 } as const
 
+/** Studio diagnostics copy (P5.10). */
+export const DIAGNOSTICS_COPY = {
+  title: "Studio diagnostics",
+  subtitle:
+    "Technical details from this session. Access keys and personal emails are always hidden.",
+  empty: "No diagnostics recorded in this session yet.",
+  copyButton: "Copy diagnostics",
+  copiedSuccess: "Diagnostics copied to clipboard. You can paste this to {name}.",
+  close: "Close",
+  systemLabel: "Studio information",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -482,5 +494,6 @@ export function allCopyStrings(): readonly string[] {
   walk(ONBOARDING_COPY)
   walk(DRIFT_COPY)
   walk(EXPIRY_COPY)
+  walk(DIAGNOSTICS_COPY)
   return strings
 }

@@ -1,6 +1,7 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
+import { DiagnosticsModal } from "../diagnostics/diagnostics-modal"
 import { JournalDrawer } from "../journal/journal-drawer"
 import { useEntryIndex, useRuntime } from "../runtime/context"
 import { GlobalSearchModal } from "../search/global-search-modal"
@@ -14,6 +15,7 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
   const collections = config.collections.filter((collection) => collection.kind !== "divider")
   const [searchOpen, setSearchOpen] = useState(false)
   const [journalOpen, setJournalOpen] = useState(false)
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -33,6 +35,7 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
     <div className="flex min-h-dvh flex-col bg-bg text-text-primary md:flex-row">
       <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <JournalDrawer open={journalOpen} onOpenChange={setJournalOpen} />
+      <DiagnosticsModal open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen} />
       <aside className="flex shrink-0 flex-col border-b border-border-soft bg-surface/80 md:min-h-dvh md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <span
@@ -154,13 +157,23 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
             <Badge tone={probe?.repo === "ok" ? "good" : "warn"}>Read access</Badge>
             <Badge tone="neutral">Read-only preview</Badge>
           </div>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="mt-4 rounded-lg border border-border-soft px-3 py-2 text-xs font-medium text-text-muted transition-colors hover:border-border-strong hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            Sign out
-          </button>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="rounded-lg border border-border-soft px-3 py-2 text-xs font-medium text-text-muted transition-colors hover:border-border-strong hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Sign out
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiagnosticsOpen(true)}
+              data-testid="diagnostics-trigger"
+              className="text-xs text-text-muted hover:text-text-primary focus-visible:outline-2 focus-visible:outline-accent underline"
+            >
+              Diagnostics
+            </button>
+          </div>
         </div>
       </aside>
 
