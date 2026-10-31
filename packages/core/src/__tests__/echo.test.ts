@@ -15,6 +15,7 @@ function stubDeps() {
     get: async () => undefined,
     put: async () => {},
     delete: async () => {},
+    deletePrefix: async () => {},
     list: async () => [],
   }
   const clock = () => new Date("2026-10-27T00:00:00Z")

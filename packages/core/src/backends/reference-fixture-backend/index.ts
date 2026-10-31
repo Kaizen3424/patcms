@@ -122,7 +122,7 @@ export class FixtureBackend implements GitBackend {
       const file = snapshot.get(path)
       if (file === undefined)
         throw new BackendReadError("UNKNOWN", `fixture file vanished: ${path}`)
-      return { path, sha: file.sha, mode: "100644", type: "blob" }
+      return { path, sha: file.sha, mode: "100644", type: "blob", size: file.bytes.length }
     })
     return {
       kind: "tree",
@@ -157,6 +157,15 @@ export class FixtureBackend implements GitBackend {
       size: file.bytes.length,
     }
     return { kind: "file", file: read, ...(file.etag === undefined ? {} : { etag: file.etag }) }
+  }
+
+  async readBlob(sha: string): Promise<Uint8Array> {
+    for (const snapshot of this.#snapshots.values()) {
+      for (const file of snapshot.values()) {
+        if (file.sha === sha) return file.bytes
+      }
+    }
+    throw new BackendReadError("NOT_FOUND", `fixture blob not found: ${sha}`)
   }
 
   async listChangedFiles(

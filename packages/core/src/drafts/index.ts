@@ -20,6 +20,8 @@ export interface DraftStore {
   put<T>(record: DraftRecord<T>): Promise<void>
   delete(key: DraftKey): Promise<void>
   list(prefix?: string): Promise<readonly DraftRecord[]>
+  /** Deletes all records whose key starts with `prefix` (ADR-0007 §1 child tile cleanup). */
+  deletePrefix(prefix: string): Promise<void>
 }
 
 /**

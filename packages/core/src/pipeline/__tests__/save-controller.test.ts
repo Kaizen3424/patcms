@@ -370,6 +370,7 @@ describe("P2.5 coordinator — degraded adjudication yields honest conflicts", (
         return moving.readTree(branch, sha, options)
       },
       readFile: (branch, path, sha, options) => moving.readFile(branch, path, sha, options),
+      readBlob: (sha) => moving.readBlob(sha),
       listChangedFiles: (branch, baseSha, headSha) =>
         moving.listChangedFiles(branch, baseSha, headSha),
       commitChanges: (changes, baseHeadSha, branch, options) =>
@@ -711,6 +712,11 @@ function memoryDrafts(): DraftStore {
     async delete(key: string): Promise<void> {
       store.delete(key)
     },
+    async deletePrefix(prefix: string): Promise<void> {
+      for (const k of store.keys()) {
+        if (k.startsWith(prefix)) store.delete(k)
+      }
+    },
     async list(): Promise<readonly DraftRecord[]> {
       return [...store.values()]
     },
@@ -726,6 +732,7 @@ function dummyBackend(): GitBackend {
       kind: "file",
       file: { path: "p", sha: "s", bytes: new Uint8Array(), size: 0 },
     }),
+    readBlob: async () => new Uint8Array(),
     listChangedFiles: async () => new Map(),
     commitChanges: async () => ({ commitSha: "c", treeSha: "t" }),
     readCheckRuns: async () => ({ kind: "ok", totalCount: 0, runs: [] }),

@@ -104,6 +104,11 @@ function memoryDrafts(): DraftStore {
     async delete(key: string): Promise<void> {
       store.delete(key)
     },
+    async deletePrefix(prefix: string): Promise<void> {
+      for (const key of store.keys()) {
+        if (key.startsWith(prefix)) store.delete(key)
+      }
+    },
     async list(): Promise<readonly DraftRecord[]> {
       return [...store.values()]
     },

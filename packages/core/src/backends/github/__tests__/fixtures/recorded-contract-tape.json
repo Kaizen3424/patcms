@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "meta": {
     "schemaVersion": 1,
-    "recordedAt": "2026-10-29T16:50:00.670Z",
+    "recordedAt": "2026-10-31T02:34:43.008Z",
     "owner": "test-owner",
     "repo": "test-repo",
     "branch": "contract-fixture",
@@ -88,7 +88,8 @@
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -172,7 +173,8 @@
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -285,7 +287,118 @@
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/blobs/38532091fe47f5d6c8de9e80bf518a58d257a91d",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+          "size": 30,
+          "encoding": "base64",
+          "content": "ewogICJ0aXRsZSI6ICJmaXh0dXJlIHNpdGUiCn0K"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+          "tree": {
+            "sha": "caec97a7cf330570582940532b747d5497bb71c8"
+          },
+          "parents": []
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/trees/caec97a7cf330570582940532b747d5497bb71c8?recursive=1",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0",
+          "etag": "\"tree-caec97a7cf330570582940532b747d5497bb71c8\""
+        },
+        "body": {
+          "sha": "caec97a7cf330570582940532b747d5497bb71c8",
+          "truncated": false,
+          "tree": [
+            {
+              "path": "src/content/site.json",
+              "mode": "100644",
+              "type": "blob",
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -608,13 +721,15 @@
               "path": "src/content/contract-write-check.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e",
+              "size": 32
             },
             {
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -792,7 +907,8 @@
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -824,13 +940,15 @@
               "path": "src/content/contract-write-check.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e",
+              "size": 32
             },
             {
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -980,13 +1098,15 @@
               "path": "src/content/contract-write-check.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e",
+              "size": 32
             },
             {
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }
@@ -1149,19 +1269,22 @@
               "path": "src/content/contract-cas-check.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "6cccfaac456bdc51b1db15b91346ddf7e79a67d7"
+              "sha": "6cccfaac456bdc51b1db15b91346ddf7e79a67d7",
+              "size": 30
             },
             {
               "path": "src/content/contract-write-check.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e"
+              "sha": "3c2c1208da0e21ee0d86827dcfd8b410438b8c8e",
+              "size": 32
             },
             {
               "path": "src/content/site.json",
               "mode": "100644",
               "type": "blob",
-              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d"
+              "sha": "38532091fe47f5d6c8de9e80bf518a58d257a91d",
+              "size": 30
             }
           ]
         }

@@ -55,6 +55,7 @@ export interface GitTreeEntry {
   readonly mode: string
   readonly type: string
   readonly sha: string
+  readonly size?: number
 }
 
 /**

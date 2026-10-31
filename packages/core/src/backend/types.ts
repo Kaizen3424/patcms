@@ -24,6 +24,8 @@ export interface TreeEntryTuple {
   readonly sha: string
   readonly mode: string
   readonly type: string
+  /** Byte size of blob entries from git trees (ADR-0005 P4 addendum). */
+  readonly size?: number
 }
 
 /** Recursive root-tree read result (ADR-0005 §reads). Callers MUST run `assertNotTruncated` (INV-N02). */
@@ -156,6 +158,8 @@ export interface GitBackend {
     blobSha: string,
     options?: ReadFileOptions,
   ): Promise<ReadFileResult>
+  /** Content-addressed blob read (never takes branch or path; ADR-0007 §4). */
+  readBlob(sha: string): Promise<Uint8Array>
   listChangedFiles(
     branch: string,
     baseSha: string,

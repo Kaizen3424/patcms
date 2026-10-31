@@ -439,10 +439,16 @@ export class GithubBackend implements GitBackend {
           sha: child.sha,
           mode: child.mode,
           type: child.type,
+          ...(child.size !== undefined ? { size: child.size } : {}),
         })
       }
     }
     return entries
+  }
+
+  async readBlob(sha: string): Promise<Uint8Array> {
+    const result = await this.#readBlob(sha)
+    return result.bytes
   }
 
   async #readBlob(sha: string): Promise<{ bytes: Uint8Array; size: number }> {
@@ -694,6 +700,7 @@ interface TreeChild {
   readonly sha: string
   readonly mode: string
   readonly type: string
+  readonly size?: number
 }
 
 function treeChildren(record: Record<string, JsonValue> | undefined): TreeChild[] {
@@ -706,8 +713,15 @@ function treeChildren(record: Record<string, JsonValue> | undefined): TreeChild[
     const sha = getString(child, "sha")
     const mode = getString(child, "mode")
     const type = getString(child, "type")
+    const size = getNumber(child, "size")
     if (path !== undefined && sha !== undefined && mode !== undefined && type !== undefined) {
-      children.push({ path, sha, mode, type })
+      children.push({
+        path,
+        sha,
+        mode,
+        type,
+        ...(size !== undefined ? { size } : {}),
+      })
     }
   }
   return children
@@ -720,7 +734,13 @@ function parseTreeEntries(record: Record<string, JsonValue> | undefined): TreeEn
   // addendum; INV-P06).
   return treeChildren(record)
     .filter((child) => child.type === "blob" || child.type === "commit")
-    .map((child) => ({ path: child.path, sha: child.sha, mode: child.mode, type: child.type }))
+    .map((child) => ({
+      path: child.path,
+      sha: child.sha,
+      mode: child.mode,
+      type: child.type,
+      ...(child.size !== undefined ? { size: child.size } : {}),
+    }))
 }
 
 export type {

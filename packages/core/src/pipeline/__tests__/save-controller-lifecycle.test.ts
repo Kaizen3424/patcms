@@ -50,6 +50,11 @@ function memoryDrafts(): DraftStore & { readonly size: () => number } {
     async delete(key: string): Promise<void> {
       store.delete(key)
     },
+    async deletePrefix(prefix: string): Promise<void> {
+      for (const k of store.keys()) {
+        if (k.startsWith(prefix)) store.delete(k)
+      }
+    },
     async list(): Promise<readonly DraftRecord[]> {
       return [...store.values()]
     },

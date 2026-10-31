@@ -109,7 +109,13 @@ export class FakeGithubServer {
     }
     const seeded: GitTreeEntry[] = [...spec.files]
       .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-      .map(([path, file]) => ({ path, mode: "100644", type: "blob", sha: file.sha }))
+      .map(([path, file]) => ({
+        path,
+        mode: "100644",
+        type: "blob",
+        sha: file.sha,
+        size: file.bytes.byteLength,
+      }))
     this.#trees.set(spec.treeSha, seeded)
     this.#commits.set(spec.headSha, { treeSha: spec.treeSha, parentShas: [], message: "seed" })
   }
@@ -432,7 +438,8 @@ export class FakeGithubServer {
       } else {
         return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
       }
-      byPath.set(path, { path, mode, type, sha })
+      const size = type === "blob" ? this.#blobs.get(sha)?.byteLength : undefined
+      byPath.set(path, { path, mode, type, sha, ...(size !== undefined ? { size } : {}) })
     }
 
     const entries = [...byPath.values()].sort((left, right) => (left.path < right.path ? -1 : 1))

@@ -38,6 +38,14 @@ function recordingDrafts(events: string[]): DraftStore {
       events.push(`draft:delete:${key}`)
       store.delete(key)
     },
+    async deletePrefix(prefix: string): Promise<void> {
+      for (const key of store.keys()) {
+        if (key.startsWith(prefix)) {
+          events.push(`draft:delete:${key}`)
+          store.delete(key)
+        }
+      }
+    },
     async list(): Promise<readonly DraftRecord[]> {
       return [...store.values()]
     },
@@ -170,6 +178,7 @@ describe("INV-P11 — the draft exists before the save's first network call", ()
       async delete() {
         events.push("draft:delete")
       },
+      async deletePrefix() {},
       async list() {
         return []
       },

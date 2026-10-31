@@ -262,7 +262,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
 
     if (verdict.kind === "published") {
       // Ref observed carrying the commit (by content) — NOW the draft may die.
-      if (request.draft !== undefined) await options.drafts.delete(job.key)
+      if (request.draft !== undefined) {
+        await options.drafts.delete(job.key)
+        await options.drafts.deletePrefix(`${job.key}/media/`)
+      }
       dispatch(job.key, {
         type: "PUBLISHED",
         commitSha: verdict.commitSha,
@@ -272,7 +275,10 @@ export function createSaveCoordinator(options: SaveCoordinatorOptions): SaveCoor
     }
     if (verdict.kind === "noop") {
       // Nothing to write — content already live; the draft has no future use.
-      if (request.draft !== undefined) await options.drafts.delete(job.key)
+      if (request.draft !== undefined) {
+        await options.drafts.delete(job.key)
+        await options.drafts.deletePrefix(`${job.key}/media/`)
+      }
       dispatch(job.key, { type: "PUBLISHED" })
       // A noop after an auto-merge rebase means the MERGED bytes are already
       // live byte-equal; the editor still needs them as its new base. The

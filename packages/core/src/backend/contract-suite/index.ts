@@ -97,6 +97,7 @@ export const SHAPE_CHECK: ContractCheck = {
       "getRef",
       "readTree",
       "readFile",
+      "readBlob",
       "listChangedFiles",
       "commitChanges",
       "readCheckRuns",
@@ -131,6 +132,30 @@ export const READ_TREE_CHECK: ContractCheck = {
       if (!entry.path.startsWith("src/") && !entry.path.startsWith("public/")) continue
       if (!/^[0-9a-f]{40}$/.test(entry.sha)) {
         throw new Error(`tree entry ${entry.path} has a non-40-hex sha`)
+      }
+      if (entry.type === "blob" && (typeof entry.size !== "number" || entry.size < 0)) {
+        throw new Error(`blob tree entry ${entry.path} missing non-negative size`)
+      }
+    }
+  },
+}
+
+export const BLOB_READ_CHECK: ContractCheck = {
+  name: "backend-reads/blob-bytes",
+  async run({ backend, branch, expectedPaths, expectedFileBytes }) {
+    if (expectedPaths.length === 0) return
+    const path = expectedPaths[0] as string
+    const ref = await backend.getRef(branch)
+    const tree = await backend.readTree(branch, ref.object.sha)
+    if (tree.kind !== "tree") throw new Error("tree read returned 304 during blob check")
+    const entry = tree.tree.entries.find((candidate) => candidate.path === path)
+    if (entry === undefined) throw new Error(`tree read is missing ${path}`)
+    const bytes = await backend.readBlob(entry.sha)
+    if (!(bytes instanceof Uint8Array)) throw new Error("readBlob must return a Uint8Array")
+    if (expectedFileBytes !== undefined) {
+      if (bytes.length !== expectedFileBytes.length) throw new Error("blob bytes length mismatch")
+      for (let index = 0; index < bytes.length; index += 1) {
+        if (bytes[index] !== expectedFileBytes[index]) throw new Error("blob bytes mismatch")
       }
     }
   },
@@ -317,6 +342,7 @@ export const CORE_CONTRACT_SUITE = defineContractSuite([
   SHAPE_CHECK,
   READ_TREE_CHECK,
   READ_FILE_CHECK,
+  BLOB_READ_CHECK,
   ETAG_CHECK,
   EMPTY_DIFF_CHECK,
   STATUS_READ_CHECK,

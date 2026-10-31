@@ -30,6 +30,7 @@ export type {
   ContractReport,
 } from "./backend/contract-suite"
 export {
+  BLOB_READ_CHECK,
   CORE_CONTRACT_SUITE,
   defineContractSuite,
   runContractSuite,
@@ -239,6 +240,32 @@ export {
   unwrapFieldSchema,
   validateEntryForSave,
 } from "./fields"
+export type {
+  DeleteCheckResult,
+  MediaBudget,
+  ReferenceLocation,
+  ReferenceQuery,
+  RestoreChangesResult,
+  SearchableEntry,
+  StagedMediaTileRecord,
+} from "./media"
+export {
+  CLIENT_BLOCK_BYTES,
+  calculateMediaBudget,
+  canDeleteMedia,
+  createRestoreChanges,
+  createTrashChanges,
+  findReferences,
+  isUploadSizeBlocked,
+  publicPathToRepoPath,
+  repoPathToPublicPath,
+  resolveMediaFolders,
+  restoreMediaPath,
+  TRASH_PREFIX,
+  trashMediaPath,
+  WARNING_THRESHOLD_BYTES,
+  WARNING_THRESHOLD_COUNT,
+} from "./media"
 // pipeline (C.1 driver, C.2 engine, P2.5 coordinator): save laws + policy
 export type {
   AdjudicateDraftInput,

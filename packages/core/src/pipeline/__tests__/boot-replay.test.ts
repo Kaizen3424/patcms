@@ -410,6 +410,7 @@ function stubBackend(
       (shape.file ?? "file") === "not-modified"
         ? { kind: "not-modified", etag: "x" }
         : { kind: "file", file: { path: SITE_PATH, sha: "b", bytes: new Uint8Array(), size: 0 } },
+    readBlob: async () => new Uint8Array(),
     listChangedFiles: async () => new Map(),
     commitChanges: async () => {
       throw new Error("boot never writes")

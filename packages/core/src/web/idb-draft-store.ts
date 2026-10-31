@@ -37,6 +37,14 @@ export function createIdbDraftStore(options: IdbDraftStoreOptions = {}): DraftSt
     async delete(key: DraftKey): Promise<void> {
       await del(key, store)
     },
+    async deletePrefix(prefix: string): Promise<void> {
+      const all = await keys(store)
+      for (const key of all) {
+        if (typeof key === "string" && key.startsWith(prefix)) {
+          await del(key, store)
+        }
+      }
+    },
     async list(prefix?: string): Promise<readonly DraftRecord[]> {
       const all = await keys(store)
       const records: DraftRecord[] = []
