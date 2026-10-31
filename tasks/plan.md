@@ -251,7 +251,78 @@ Tasks P3.1–P3.9 in the phase file; sizes S/M; parity golden (INV-C01 initial) 
 **Checkpoint: P4** — 9-photo slow-wifi journey green; tombstone restore green.
 
 ## Phase 5 — Polish + IA (see `P5-polish-ia.md`) — Tasks P5.1–P5.10; founder-cry triad scripts; copy scanner; a11y suites.
-**Checkpoint: P5** — owner demo of consent→edit→conflict→failure→recover loop.
+
+### P5.1 — Global ⌘K search & zero-state teaching (M)
+- Acceptance: Universal command palette triggered via `⌘K` / `Ctrl+K` global keyboard shortcut or header button; pure `searchIndex(query, entries, config)` searches across `EntryIndex` (all folder and file collections), matching titles, numbers (prices, dimensions, codes), materials, image alt texts, and body descriptions using case-insensitive token matching; initial state renders teaching prompt explaining searchable fields; zero-results state provides actionable guidance ("No entries match... Try searching whole-euro prices e.g. 1450, materials, or title words"); results grouped by collection; snippet highlighting rendered via React text/mark elements (zero `dangerouslySetInnerHTML`); keyboard navigation (`ArrowUp`/`ArrowDown` cycle selection, `Enter` navigates to `{ to: "/c/$collection/e/$entry", params: { collection, entry: slug } }`, `Escape` closes and returns focus to trigger); offline indicator displays "Showing last-seen copy" when disconnected.
+- Verify: `pnpm --filter @mycms/admin test -- src/search/__tests__/search-index.test.ts src/search/__tests__/global-search-modal.test.tsx` + `pnpm -r typecheck && pnpm run check`.
+- Dependencies: None.
+- Files: `packages/admin/src/search/search-index.ts`, `packages/admin/src/search/global-search-modal.tsx`, `packages/admin/src/search/__tests__/search-index.test.ts`, `packages/admin/src/search/__tests__/global-search-modal.test.tsx`, `packages/admin/src/screens/app-shell.tsx`.
+- Size: M.
+
+### P5.2 — Publish journal v1, login heartbeat & top-bar heartbeat (M)
+- Acceptance: `MYCMS_IDB_STORES` in `packages/core/src/web/idb-store.ts` widened with `"journal"`; `createIdbJournalStore` and in-memory fallback implemented in `@mycms/core/web`; `JournalDrawer` slide-over renders two sections: "My changes" (filtered to local user publishes) and "Updates by {support.name}" (recorded from drift observations); each item shows entry title, collection label, short commit SHA (`abc1234`), relative time ("10 minutes ago" or "Tue 4 Feb" via pure `formatRelativeTime(date, now)`), and "See on site" link; scope guard: list + links only, zero field-delta diff lines; `TopBarHeartbeat` in `AppShell` header displays ambient status ("Site ✓ live · Last edit yours, Tue 4 Feb" or "[Milan], 3:05 PM"), integrated with `StatusWatcher` and the publish journal; `LoginHeartbeat` on `LoginScreen` displays known-good state surface (repository identity, connectivity indicator, and last known good sync time).
+- Verify: `pnpm --filter @mycms/core test -- src/web/__tests__/idb-journal-store.test.ts` + `pnpm --filter @mycms/admin test -- src/journal/__tests__/journal-store.test.ts src/journal/__tests__/journal-drawer.test.tsx src/status/__tests__/heartbeat.test.tsx`.
+- Dependencies: P5.1.
+- Files: `packages/core/src/web/idb-store.ts`, `packages/core/src/web/idb-journal-store.ts`, `packages/core/src/safety/dates.ts`, `packages/core/src/index.ts`, `packages/admin/src/journal/journal-store.ts`, `packages/admin/src/journal/journal-drawer.tsx`, `packages/admin/src/status/heartbeat.tsx`, `packages/admin/src/screens/app-shell.tsx`, `packages/admin/src/screens/login-screen.tsx`.
+- Size: M.
+
+### P5.3 — Consent pact & 60-second read-only tour (M)
+- Acceptance: `MYCMS_IDB_STORES` in `packages/core/src/web/idb-store.ts` widened with `"onboarding"`; `OnboardingStore` tracks `{ pactDismissed: boolean, tourCompleted: boolean, firstPublishCompleted: boolean }`; `ConsentPactCard` renders at top of `LibraryScreen` until `firstPublishCompleted` is true (or explicitly dismissed); displays refined 3-sentence gallery copy (site connection, save-only publish, device safety); includes "Take a 60-second tour" button and subtle "Dismiss" action; `ProductTourDialog` is an accessible self-contained `<Dialog>` with 4 carousel steps (Content Fields, Save Bar, Behind the Scenes, Live Preview) with illustrations/callouts; strictly read-only, leaves form clean; publishing any entry sets `firstPublishCompleted = true` and permanently retires the pact card.
+- Verify: `pnpm --filter @mycms/admin test -- src/onboarding/__tests__/consent-pact.test.tsx src/onboarding/__tests__/product-tour.test.tsx`.
+- Dependencies: None.
+- Files: `packages/core/src/web/idb-store.ts`, `packages/core/src/web/idb-onboarding-store.ts`, `packages/admin/src/onboarding/consent-pact.tsx`, `packages/admin/src/onboarding/product-tour.tsx`, `packages/admin/src/onboarding/onboarding-state.ts`, `packages/admin/src/screens/library-screen.tsx`, `packages/admin/src/editor/entry-editor.tsx`.
+- Size: M.
+
+### P5.4 — Drift monitor & slide-over (INV-fresh re-use) (M)
+- Acceptance: `useDriftMonitor({ branch, baseHeadSha, entryPath, backend, enabled })` polls `backend.getRef(branch)` every 60s while `document.visibilityState === 'visible'`; adaptive idle backoff: backs off to 300s after 5 minutes of inactivity (`pointermove`, `keydown`), halts after 30 minutes idle, pauses if `rateLimit.remaining < 100`; path-level filtering: when `ref.object.sha !== baseHeadSha`, invokes `await backend.listChangedFiles(baseHeadSha, ref.object.sha)`; surfaces entry amber banner ONLY if `entryPath` is in the returned paths; reserved 24px line in `EntryEditor` chrome renders banner without layout shift; three visual states (hidden, amber banner "This page's files changed ({name}, [time])", and slide-over "What changed" drawer); slide-over compares remote tree against editor base, lists changed field names, provides "Keep editing" (reassurance copy) and "Reload latest" (if clean); partner name `{name}` from `support.name`, never "someone", zero red until data risk, zero audio/popup interruptions while typing.
+- Verify: `pnpm --filter @mycms/admin test -- src/editor/__tests__/drift-monitor.test.ts src/editor/__tests__/drift-banner.test.tsx`.
+- Dependencies: P5.2.
+- Files: `packages/admin/src/editor/drift-monitor.ts`, `packages/admin/src/editor/drift-banner.tsx`, `packages/admin/src/editor/drift-drawer.tsx`, `packages/admin/src/editor/__tests__/drift-monitor.test.ts`, `packages/admin/src/editor/__tests__/drift-banner.test.tsx`, `packages/admin/src/editor/entry-editor.tsx`.
+- Size: M.
+
+### P5.5 — Conflict freeze UI completion & 30-day discard archive (M)
+- Acceptance: `FreezePanel` updated to display auto-merge announcements mapping `conflict.merge.warnings` to "Kept [Milan]'s {field}" and `conflict.merge.ourFieldPaths` to "Kept your {field}"; conflict rows render attribution: "Saved by [Milan], 3:05 PM" vs "Your version (edited just now)" using `support.name` and drift observation timestamp (zero un-guarded GitHub API calls); `MYCMS_IDB_STORES` widened with `"discards"`; `createIdbDiscardStore` implemented in `@mycms/core/web`; when user resolves conflict or chooses "Keep theirs" / "Start over", discarded values are archived with 30-day TTL (`{ id, draftKey, timestamp, discardedAt, fieldPath, formattedPreview }`); eviction sweep runs on boot + discard write (purges records older than 30 days, caps at 50 records per repo); UI renders visible "Copy discarded version" button copying clean formatted text (never raw JSON).
+- Verify: `pnpm --filter @mycms/core test -- src/web/__tests__/idb-discard-store.test.ts` + `pnpm --filter @mycms/admin test -- src/editor/__tests__/discard-archive.test.ts src/editor/__tests__/freeze-panel.test.tsx src/editor/__tests__/freeze-model.test.ts`.
+- Dependencies: P5.4.
+- Files: `packages/core/src/web/idb-store.ts`, `packages/core/src/web/idb-discard-store.ts`, `packages/admin/src/editor/discard-archive.ts`, `packages/admin/src/editor/freeze-model.ts`, `packages/admin/src/editor/freeze-panel.tsx`, `packages/admin/src/editor/entry-editor.tsx`.
+- Size: M.
+
+### P5.6 — t() extraction, copy ban-list scanner & message map (M)
+- Acceptance: `packages/admin/src/i18n/t.ts` exports typed interpolation helper wrapping `fillLine(template, values)` with split/join (zero `$` regex corruption, zero string concatenation); all remaining chrome strings across `app-shell.tsx`, `library-screen.tsx`, `login-screen.tsx`, `new-entry-screen.tsx`, `media-library-screen.tsx`, `recently-deleted-screen.tsx` extracted into copy decks; all copy decks registered in `allCopyStrings()`; two-pronged automated scanner `copy-ban-scanner.test.ts` (Prong A scans `allCopyStrings()` with inflection-aware regex for build, commit, deploy, token, slug, repository, draft, someone, conflict; Prong B parses `.tsx` files in `packages/admin/src/` via TypeScript AST checking strictly `JSXText` and visible string attributes `placeholder`, `title`, `aria-label`, `alt`, explicitly ignoring `className`, `data-testid`, identifiers, and imports); complete `ParseIssueCode` enum mapping in `message-map.ts` (adding `OUT_OF_RANGE`, `VIRTUAL_KEY_IGNORED`, `UNMODELED_KEY`, `UNKNOWN_FIELD_TYPE`).
+- Verify: `pnpm --filter @mycms/admin test -- src/editor/__tests__/copy.test.ts src/editor/__tests__/copy-ban-scanner.test.ts`.
+- Dependencies: P5.1–P5.5.
+- Files: `packages/admin/src/i18n/t.ts`, `packages/admin/src/editor/copy.ts`, `packages/admin/src/editor/message-map.ts`, `packages/admin/src/editor/__tests__/copy.test.ts`, `packages/admin/src/editor/__tests__/copy-ban-scanner.test.ts`, screen component refactors.
+- Size: M.
+
+### P5.7 — Token expiry kit (M)
+- Acceptance: Handover rotation duration stored in `"auth"` store under `"token_expiry_config"`; `HandoverCard` allows setting key creation date + duration (30/60/90 days); header and library screen render "Renew after [Tue 2 Feb]" chip when within 14 days of expiry; three landing screens with distinct copy: 1) Library bar proactive warning within 7 days ("Access key renewal coming up after [date] — ask [Milan] for a fresh code"), 2) Editor Re-Auth Sheet in-flight expiration preserving drafts ("Your access key needs checking. Your changes are kept safe on this device — enter a fresh access key to resume without losing anything"), 3) Login Card pre-written partner note on 401 ("Copy note for [Milan]: 'Hi Milan, my studio access key for the website has expired. Could you generate a fresh access key for me?'") with 1-click clipboard copy (INV-A04 & A05: never exposes PAT values).
+- Verify: `pnpm --filter @mycms/admin test -- src/auth/__tests__/token-expiry.test.ts`.
+- Dependencies: P5.2, P5.6.
+- Files: `packages/admin/src/auth/token-expiry.ts`, `packages/admin/src/auth/handover-card.tsx`, `packages/admin/src/screens/login-screen.tsx`, `packages/admin/src/screens/library-screen.tsx`, `packages/admin/src/editor/reauth-sheet.tsx`.
+- Size: M.
+
+### P5.8 — A11y pass 1: tokens/contrast audit, reorder announcements & focus management (M)
+- Acceptance: Automated contrast tests verify `--color-text-primary` and `--color-text-muted` achieve $\ge 4.5:1$ contrast against background surfaces; audit verifies gold (`#d4af37`) is restricted to accents, $\ge 18\text{px}$ or semibold typography, or 2px focus rings (zero thin body text in gold); `ListWidget` reordering announcements refined to `"Item X of Y moved to position Z"` with `aria-live="polite"`; all dialogs, drawers, and sheets trap focus cleanly; `Escape` key closes dialogs and returns focus to trigger element; `EntryEditor` scroll container carries `scroll-padding-bottom: 5rem` so focused fields are never hidden by the sticky save bar.
+- Verify: `pnpm --filter @mycms/admin test -- src/styles/__tests__/contrast-tokens.test.ts src/widgets/__tests__/reorder-a11y.test.tsx`.
+- Dependencies: None.
+- Files: `packages/admin/src/styles/tokens.css`, `packages/admin/src/styles/__tests__/contrast-tokens.test.ts`, `packages/admin/src/widgets/list-widget.tsx`, `packages/admin/src/widgets/__tests__/reorder-a11y.test.tsx`, `packages/admin/src/editor/entry-editor.tsx`.
+- Size: M.
+
+### P5.9 — A11y pass 2: keyboard-only journey, 125% zoom layout & axe scans (M)
+- Acceptance: 1280 effective px layout test (Playwright at 1024px viewport) verifies zero horizontal scrollbar and responsive drawer collapse; `keyboard-journey.spec.ts` executes a complete browse → edit → save cycle using strictly `Tab`, `Shift+Tab`, `Enter`, `Space`, `Arrows`, and `Escape` without a single mouse click; automated `@axe-core/playwright` accessibility audit (`a11y-audit.spec.ts`) across login, library, editor, media, trash, and conflict dialogs with zero critical or serious violations.
+- Verify: `pnpm e2e -- e2e/specs/keyboard-journey.spec.ts e2e/specs/zoom-layout.spec.ts e2e/specs/a11y-audit.spec.ts`.
+- Dependencies: P5.1–P5.8.
+- Files: `pnpm-workspace.yaml`, `e2e/package.json`, `e2e/specs/keyboard-journey.spec.ts`, `e2e/specs/zoom-layout.spec.ts`, `e2e/specs/a11y-audit.spec.ts`.
+- Size: M.
+
+### P5.10 — Diagnostics ring buffer, copy diagnostics & invariant re-runs (INV-A04 & INV-A05) (S)
+- Acceptance: `packages/core/src/safety/logger.ts` verified to satisfy INV-A05 via `inv-log-masking.test.ts` (memory-only, authorization headers, `github_pat_...`, `ghp_...`, emails, and secrets masked); INV-A04 verified via `inv-token-hygiene.test.ts` (token never in URL/query, wiped on sign-out/401); `AdminMountOptions` in `packages/admin/src/admin/types.ts` accepts `logger?: Logger`; `RuntimeValue` in `context.tsx` exposes `readonly logger: Logger` and instantiates `createLogger()` by default; `DiagnosticsModal` in `AppShell` displays masked diagnostic preview and provides 1-click clipboard copy: "Diagnostics copied to clipboard. You can paste this to [Milan]".
+- Verify: `pnpm --filter @mycms/core test -- src/safety/__tests__/inv-log-masking.test.ts src/auth/__tests__/inv-token-hygiene.test.ts` + `pnpm --filter @mycms/admin test -- src/diagnostics/__tests__/diagnostics-modal.test.tsx`.
+- Dependencies: None.
+- Files: `packages/core/src/safety/__tests__/inv-log-masking.test.ts`, `packages/core/src/auth/__tests__/inv-token-hygiene.test.ts`, `packages/admin/src/admin/types.ts`, `packages/admin/src/runtime/context.tsx`, `packages/admin/src/diagnostics/diagnostics-modal.tsx`, `packages/admin/src/diagnostics/__tests__/diagnostics-modal.test.tsx`, `packages/admin/src/screens/app-shell.tsx`.
+- Size: S.
+
+**Checkpoint: P5** — founder-cry triad e2e simulations green (`triad-conflict-fear.spec.ts`, `triad-broken-site-fear.spec.ts`, `triad-lost-work-fear.spec.ts`); copy scanner + a11y suite + keyboard journey green; owner demo of consent→tour→edit→conflict→failure→recover loop.
 
 ## Phase 6 — Cutover (see `P6-cutover.md`) — ordered stop-and-confirm stages 1–7; yve writes are Ask-first.
 **Checkpoint: P6 = Stage A done.**

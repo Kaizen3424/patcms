@@ -1,10 +1,10 @@
 # Phase P5 — Founder polish & IA
 
-> Status: ⬜ · Prev gate: P4 ✅ · NEW chat required
+> Status: 🟨 In progress (Planning hardened, ready for P5.1) · Prev gate: P4 ✅
 
 ## Pre-flight checklist
-- [ ] P4 gate ✅; ADRs: 0008 (status honesty), 0002 (bootstrap/restore UX), master-plan §7 (UX law FULL read); founder-cry triad briefs (master-plan §7)
-- [ ] `tasks/todo.md` § P5 loaded
+- [x] P4 gate ✅; ADRs: 0008 (status honesty), 0002 (bootstrap/restore UX), master-plan §7 (UX law FULL read); founder-cry triad briefs (master-plan §7)
+- [x] `tasks/todo.md` § P5 loaded
 
 ## Goal
 Everything non-structural that makes the founder safe-unaided: global IA surfaces (search/journal/heartbeat/recently-deleted), first-run consent + tour, drift chip, conflict freeze UX completion, copy-law audit, a11y + zoom/keyboard hardening, diagnostics. Ship-blocking rule: **nothing in v1 leaks jargon or raw ids.**
@@ -42,4 +42,4 @@ Everything non-structural that makes the founder safe-unaided: global IA surface
 - [ ] Owner demo of: consent → tour → edit → conflict → failure → recover loop; AGENTS/todos/logs updated
 
 ## Session log
-- (none yet)
+- 2026-10-31 — Comprehensive P5 planning completed: 3-way EGM audit (Codebase details, Hostile design critic, Implementation readiness) synthesized; tasks/plan.md P5.1–P5.10 hardened with exact Acceptance & Verify blocks; IDB unified storage, drift idle backoff, zero-network attribution, and 3 Founder-Cry Triad E2E specs detailed (session)

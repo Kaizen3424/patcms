@@ -74,7 +74,16 @@
 - [x] ⛔ GATE P4: INV-M01/02/03 + T04/T05 + N03 green; 9-photo demo — OWNER CONFIRMED in chat 2026-10-31; evidence green (all P4.1–P4.9 tasks verified; 595/595 unit tests passed; 22/22 e2e tests passed; supply chain scans clean)
 
 ## P5 — Founder polish & IA (status: ⬜)
-- [ ] P5.1 global search · P5.2 journal + heartbeats · P5.3 consent pact + tour · P5.4 drift chip · P5.5 conflict freeze completion · P5.6 t() + copy scanner + message map · P5.7 token expiry kit · P5.8 a11y tokens/focus/reorder · P5.9 keyboard/zoom/axe e2e · P5.10 diagnostics + masking re-run
+- [ ] P5.1 global search + zero-state teaching (⌘K over EntryIndex, zero dangerouslySetInnerHTML)
+- [ ] P5.2 publish journal v1 + login heartbeat + top-bar heartbeat (IDB journal, relative time helper, StatusWatcher integration)
+- [ ] P5.3 consent pact + tour flow (gallery typography, self-contained tour Dialog, dismissible-until-first-publish)
+- [ ] P5.4 drift monitor + slide-over (getRef poll with idle backoff, path-level listChangedFiles filtering, reserved 24px line)
+- [ ] P5.5 conflict freeze completion + 30-day discard archive (auto-merge chips, dual-actor attribution, IDB discard store w/ eviction)
+- [ ] P5.6 t() extraction + copy ban-list scanner + message map (fillLine split/join, 2-prong AST scanner, complete ParseIssueCode enum)
+- [ ] P5.7 token expiry kit (handover card, auth store config, proactive expiry chip, 3 distinct landing screens)
+- [ ] P5.8 a11y pass 1: tokens/contrast audit + reorder aria-live + focus management (contrast test, scroll-padding-bottom)
+- [ ] P5.9 a11y pass 2: keyboard-only journey + 125% zoom layout + axe scans (e2e keyboard journey, axe scan suite)
+- [ ] P5.10 diagnostics ring buffer + copy-diagnostics + masking tests re-run (INV-A04 & INV-A05, context logger plumbing)
 - [ ] ⛔ GATE P5: founder-cry triad scripted; full consent→edit→conflict→failure→recover demo
 
 ## P6 — yve cutover (status: ⬜ blocked)
