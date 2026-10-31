@@ -35,6 +35,7 @@ describe("freeze-panel component", () => {
       <FreezePanel
         rows={sampleRows}
         ourFieldPaths={[["description"]]}
+        mergeWarnings={[["author"]]}
         onChoose={onChoose}
         onStartOver={onStartOver}
         supportName="Ada"
@@ -44,9 +45,25 @@ describe("freeze-panel component", () => {
     // Accessible container
     expect(screen.getByRole("region", { name: "Field decisions" })).toBeTruthy()
 
-    // Title and announcement
+    // Title and announcement chips
     expect(screen.getByText(FREEZE_COPY.title)).toBeTruthy()
-    expect(screen.getByText(FREEZE_COPY.otherEditsKept)).toBeTruthy()
+    expect(screen.getByTestId("chip-kept-our-description").textContent).toContain(
+      "Kept your description",
+    )
+    expect(screen.getByTestId("chip-kept-partner-author").textContent).toContain(
+      "Kept Ada's author",
+    )
+
+    // Author attribution headers
+    expect(screen.getAllByText("Saved by Ada").length).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByText("Your version (edited on this device)").length,
+    ).toBeGreaterThanOrEqual(1)
+
+    // Discard copy button on decided row
+    const copyDiscardedBtn = screen.getByTestId("copy-discarded-tags")
+    expect(copyDiscardedBtn).toBeTruthy()
+    expect(copyDiscardedBtn.textContent).toContain(FREEZE_COPY.copyDiscarded)
 
     // Row 1 checks: text safety (no script tag executed/created as element)
     const scriptText = screen.getByText("Remote Title <script>alert(1)</script>")

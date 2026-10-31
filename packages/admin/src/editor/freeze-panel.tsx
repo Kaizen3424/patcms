@@ -8,12 +8,15 @@
  *    and degraded branches.
  */
 import type { FieldPath } from "@mycms/core"
-import { FREEZE_COPY, personalize, SAVE_BAR_COPY } from "./copy"
+import { useState } from "react"
+import { FREEZE_COPY, fillName, personalize, SAVE_BAR_COPY } from "./copy"
+import { copyToClipboard } from "./failure-report"
 import type { FreezeRow } from "./freeze-model"
 
 export interface FreezePanelProps {
   readonly rows?: readonly FreezeRow[]
   readonly ourFieldPaths?: readonly FieldPath[]
+  readonly mergeWarnings?: readonly FieldPath[]
   readonly onChoose?: (path: FieldPath, choice: "theirs" | "mine") => void
   readonly onStartOver: () => void
   readonly degraded?: boolean
@@ -23,11 +26,23 @@ export interface FreezePanelProps {
 export function FreezePanel({
   rows,
   ourFieldPaths,
+  mergeWarnings,
   onChoose,
   onStartOver,
   degraded,
   supportName,
 }: FreezePanelProps) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  const handleCopyDiscarded = async (row: FreezeRow) => {
+    const textToCopy = row.choice === "theirs" ? row.mineRaw : row.theirsRaw
+    await copyToClipboard(textToCopy)
+    setCopiedKey(row.key)
+    setTimeout(() => {
+      setCopiedKey(null)
+    }, 2000)
+  }
+
   if (degraded || rows === undefined || rows.length === 0) {
     const conflictCopy = personalize(SAVE_BAR_COPY.conflict, supportName)
     return (
@@ -58,8 +73,36 @@ export function FreezePanel({
       <div>
         <h2 className="text-base font-semibold text-text-primary">{FREEZE_COPY.title}</h2>
         <p className="mt-1 text-sm text-text-muted">{FREEZE_COPY.detail}</p>
-        {ourFieldPaths !== undefined && ourFieldPaths.length > 0 ? (
-          <p className="mt-2 text-xs font-medium text-accent">{FREEZE_COPY.otherEditsKept}</p>
+
+        {(ourFieldPaths !== undefined && ourFieldPaths.length > 0) ||
+        (mergeWarnings !== undefined && mergeWarnings.length > 0) ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {ourFieldPaths?.map((path) => {
+              const fieldStr = Array.isArray(path) ? path.join(".") : String(path)
+              return (
+                <span
+                  key={`our-${fieldStr}`}
+                  data-testid={`chip-kept-our-${fieldStr}`}
+                  className="inline-flex items-center rounded-full border border-border-soft bg-surface-raised px-2.5 py-1 text-xs font-medium text-text-primary"
+                >
+                  ✓ {FREEZE_COPY.keptYourField.replace("{field}", fieldStr)}
+                </span>
+              )
+            })}
+            {mergeWarnings?.map((path) => {
+              const fieldStr = Array.isArray(path) ? path.join(".") : String(path)
+              return (
+                <span
+                  key={`partner-${fieldStr}`}
+                  data-testid={`chip-kept-partner-${fieldStr}`}
+                  className="inline-flex items-center rounded-full border border-border-soft bg-surface-raised px-2.5 py-1 text-xs font-medium text-text-muted"
+                >
+                  ✓{" "}
+                  {fillName(FREEZE_COPY.keptPartnerField, supportName).replace("{field}", fieldStr)}
+                </span>
+              )
+            })}
+          </div>
         ) : null}
       </div>
 
@@ -77,7 +120,9 @@ export function FreezePanel({
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col justify-between rounded border border-border bg-surface-raised p-3">
                 <div>
-                  <p className="text-xs font-medium text-text-muted">{FREEZE_COPY.theirsHeader}</p>
+                  <p className="text-xs font-medium text-text-muted">
+                    {fillName(FREEZE_COPY.savedByHeader, supportName)}
+                  </p>
                   <pre className="mt-1 max-h-48 overflow-auto font-mono text-xs text-text-primary whitespace-pre-wrap break-all">
                     {row.theirsRaw}
                   </pre>
@@ -98,7 +143,9 @@ export function FreezePanel({
 
               <div className="flex flex-col justify-between rounded border border-border bg-surface-raised p-3">
                 <div>
-                  <p className="text-xs font-medium text-text-muted">{FREEZE_COPY.mineHeader}</p>
+                  <p className="text-xs font-medium text-text-muted">
+                    {FREEZE_COPY.yourVersionHeader}
+                  </p>
                   <pre className="mt-1 max-h-48 overflow-auto font-mono text-xs text-text-primary whitespace-pre-wrap break-all">
                     {row.mineRaw}
                   </pre>
@@ -117,6 +164,19 @@ export function FreezePanel({
                 </button>
               </div>
             </div>
+
+            {row.choice !== undefined ? (
+              <div className="mt-3 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handleCopyDiscarded(row)}
+                  data-testid={`copy-discarded-${row.key}`}
+                  className="text-xs text-text-muted hover:text-text-primary underline cursor-pointer"
+                >
+                  {copiedKey === row.key ? FREEZE_COPY.copiedDiscarded : FREEZE_COPY.copyDiscarded}
+                </button>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

@@ -143,6 +143,12 @@ export const FREEZE_COPY = {
   degradedTitle: "This entry changed somewhere else.",
   degradedDetail:
     "Your words are safe on this device. Start over from the latest version to load the latest changes.",
+  savedByHeader: "Saved by {name}",
+  yourVersionHeader: "Your version (edited on this device)",
+  keptYourField: "Kept your {field}",
+  keptPartnerField: "Kept {name}'s {field}",
+  copyDiscarded: "Copy discarded version",
+  copiedDiscarded: "Discarded text copied to clipboard",
 } as const
 
 /** Bar buttons — same banned-word sweep as the status lines. */

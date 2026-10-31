@@ -24,14 +24,16 @@ import {
   probeGithubCapabilities,
   SnapshotStore,
 } from "@mycms/core"
-import type { JournalStore, OnboardingStore } from "@mycms/core/web"
+import type { DiscardStore, JournalStore, OnboardingStore } from "@mycms/core/web"
 import {
   createAutoCarrier,
   createBroadcastCarrier,
+  createIdbDiscardStore,
   createIdbDraftStore,
   createIdbJournalStore,
   createIdbOnboardingStore,
   createIdbTokenStore,
+  createMemoryDiscardStore,
   createMemoryJournalStore,
   createMemoryOnboardingStore,
 } from "@mycms/core/web"
@@ -69,6 +71,8 @@ interface RuntimeValue {
   readonly journalStore: JournalStore
   /** Onboarding status store (P5.3). */
   readonly onboardingStore: OnboardingStore
+  /** Discard archive store (P5.5). */
+  readonly discardStore: DiscardStore
   /** Memory-only diagnostics logger (P5.10). */
   readonly logger: Logger
   /** Save orchestration for this backend generation (P2.6 editor). */
@@ -173,7 +177,17 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
         : createMemoryOnboardingStore()),
     [options.onboardingStore],
   )
+  const discardStore = useMemo(
+    () =>
+      options.discardStore ??
+      (typeof indexedDB !== "undefined" ? createIdbDiscardStore() : createMemoryDiscardStore()),
+    [options.discardStore],
+  )
   const logger = useMemo(() => options.logger ?? createLogger(), [options.logger])
+
+  useEffect(() => {
+    void discardStore.evictStale()
+  }, [discardStore])
 
   const signIn = async (token: string, remember: boolean): Promise<CapabilityProbeResult> => {
     const result = await auth.signIn(token, { remember })
@@ -296,6 +310,7 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     publishStore,
     journalStore,
     onboardingStore,
+    discardStore,
     logger,
     coordinator,
     lease,
@@ -329,6 +344,10 @@ export function useJournalStore(): JournalStore {
 
 export function useOnboardingStore(): OnboardingStore {
   return useRuntime().onboardingStore
+}
+
+export function useDiscardStore(): DiscardStore {
+  return useRuntime().discardStore
 }
 
 export function useLogger(): Logger {

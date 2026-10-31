@@ -134,6 +134,12 @@ describe("founder copy deck", () => {
       "startOver",
       "degradedTitle",
       "degradedDetail",
+      "savedByHeader",
+      "yourVersionHeader",
+      "keptYourField",
+      "keptPartnerField",
+      "copyDiscarded",
+      "copiedDiscarded",
     ])
   })
 

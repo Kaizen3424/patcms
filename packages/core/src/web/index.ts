@@ -16,6 +16,15 @@ export type {
   LeaseCarrier,
   LeaseMessage,
 } from "../pipeline/save-lease"
+export type {
+  DiscardRecord,
+  DiscardStore,
+  IdbDiscardStoreOptions,
+} from "./idb-discard-store"
+export {
+  createIdbDiscardStore,
+  createMemoryDiscardStore,
+} from "./idb-discard-store"
 export type { IdbDraftStoreOptions } from "./idb-draft-store"
 export { clearIdbDraftStore, createIdbDraftStore } from "./idb-draft-store"
 export type {

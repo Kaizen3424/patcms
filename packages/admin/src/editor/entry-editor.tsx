@@ -38,7 +38,7 @@ import {
 } from "@mycms/core"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { usePublishEntry, useRuntime, useSnapshot } from "../runtime/context"
+import { useDiscardStore, usePublishEntry, useRuntime, useSnapshot } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
 import { StatusChip } from "../status/chip"
 import { usePublishedSha } from "../status/provider"
@@ -135,6 +135,7 @@ export function EntryEditor({
   const { backend, config, repository, drafts, coordinator, lease, support, probe, signOut } =
     useRuntime()
   const publishEntry = usePublishEntry()
+  const discardStore = useDiscardStore()
   const snapshot = useSnapshot()
   const [currentSlug, setCurrentSlug] = useState(entry.slug)
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
@@ -601,6 +602,18 @@ export function EntryEditor({
     const nextChoices = new Map(conflict.choices)
     nextChoices.set(key, choice)
 
+    const targetRow = conflict.rows.find((r) => r.key === key)
+    if (targetRow) {
+      const discardedRaw = choice === "theirs" ? targetRow.mineRaw : targetRow.theirsRaw
+      void discardStore.record({
+        draftKey,
+        entryPath,
+        fieldPath: key,
+        discardedValue: discardedRaw,
+        formattedPreview: discardedRaw,
+      })
+    }
+
     const nextRows = conflict.rows.map((r) => (r.key === key ? { ...r, choice } : r))
 
     if (!allFreezeRowsDecided(nextRows)) {
@@ -852,6 +865,7 @@ export function EntryEditor({
           <FreezePanel
             rows={conflict.rows}
             ourFieldPaths={conflict.merge?.ourFieldPaths}
+            mergeWarnings={conflict.merge?.warnings}
             onChoose={handleFreezeChoice}
             onStartOver={() => void startOver()}
             degraded={conflict.merge === undefined}

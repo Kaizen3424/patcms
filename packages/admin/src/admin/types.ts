@@ -8,7 +8,7 @@ import type {
   StatusTiming,
   TokenStore,
 } from "@mycms/core"
-import type { JournalStore, OnboardingStore } from "@mycms/core/web"
+import type { DiscardStore, JournalStore, OnboardingStore } from "@mycms/core/web"
 
 export interface SupportContext {
   /** The named human every founder-facing surface references — never "someone" (master-plan §7). */
@@ -38,6 +38,8 @@ export interface AdminMountOptions {
   readonly journalStore?: JournalStore
   /** Injectable onboarding store (tests). Defaults to IDB with memory fallback (P5.3). */
   readonly onboardingStore?: OnboardingStore
+  /** Injectable discard store (tests). Defaults to IDB with memory fallback (P5.5). */
+  readonly discardStore?: DiscardStore
   /** Injectable memory logger (tests). Defaults to createLogger() (P5.10). */
   readonly logger?: Logger
   /** Injectable cross-tab lease carrier (tests / hosts without BroadcastChannel). */
