@@ -36,7 +36,11 @@ export function EntryScreen() {
       ? undefined
       : index.data?.bySlug.get(params.collection)?.get(params.entry)
 
-  if (index.isLoading || snapshot.isLoading) {
+  if (
+    index.isLoading ||
+    snapshot.isLoading ||
+    ((snapshot.isFetching || index.isFetching) && entry === undefined)
+  ) {
     return <p className="text-sm text-text-muted">Reading the entry...</p>
   }
 
@@ -359,7 +363,7 @@ function FieldView({
   )
 }
 
-function FieldValue({
+export function FieldValue({
   field,
   raw,
   entry,

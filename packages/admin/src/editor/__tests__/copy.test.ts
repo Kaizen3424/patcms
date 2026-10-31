@@ -22,6 +22,7 @@ import {
   SAVE_BAR_COPY,
   type SaveBarStatus,
 } from "../copy"
+import { MESSAGE_MAP_COPY } from "../message-map"
 
 /**
  * The copy deck is a HARD product boundary (01-spec §6, master-plan §7):
@@ -49,6 +50,7 @@ const BANNED = [
 function everyFounderString(): readonly string[] {
   return [
     ...allCopyStrings(),
+    ...Object.values(MESSAGE_MAP_COPY),
     ...Object.values(STATUS_COPY),
     ...Object.values(STATUS_CAUSE_COPY),
     STATUS_SUPERSEDED_COPY,

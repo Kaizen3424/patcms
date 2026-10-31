@@ -5,6 +5,7 @@ import { AppShell } from "../screens/app-shell"
 import { EntryScreen } from "../screens/entry-screen"
 import { LibraryScreen } from "../screens/library-screen"
 import { LoginScreen } from "../screens/login-screen"
+import { NewEntryScreen } from "../screens/new-entry-screen"
 
 function RootLayout() {
   const { status } = useRuntime()
@@ -63,10 +64,24 @@ const collectionRoute = createRoute({
   component: LibraryScreen,
 })
 
+const newEntryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/c/$collection/new",
+  component: NewEntryScreen,
+  validateSearch: (search: Record<string, unknown>) => ({
+    from: typeof search.from === "string" ? search.from : undefined,
+  }),
+})
+
 const entryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/c/$collection/e/$entry",
   component: EntryScreen,
 })
 
-export const routeTree = rootRoute.addChildren([indexRoute, collectionRoute, entryRoute])
+export const routeTree = rootRoute.addChildren([
+  indexRoute,
+  collectionRoute,
+  newEntryRoute,
+  entryRoute,
+])

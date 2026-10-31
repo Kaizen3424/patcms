@@ -8,8 +8,19 @@
  * Standing veto: no `backend`, no credential, no transport in `WidgetProps`.
  * A widget is a pure function of its value + descriptor.
  */
-import type { FieldDescriptor } from "@mycms/core"
+import type { FieldDescriptor, ParseIssue } from "@mycms/core"
 import type { ComponentType } from "react"
+import type { IndexedEntry } from "../runtime/entry-index"
+
+export interface WidgetServices {
+  readonly getEntries: (collection: string) => readonly IndexedEntry[]
+  readonly getEntryBySlug: (collection: string, slug: string) => IndexedEntry | undefined
+  readonly searchEntries: (
+    collection: string,
+    query: string,
+    fields: readonly string[],
+  ) => readonly IndexedEntry[]
+}
 
 export interface WidgetProps<F extends FieldDescriptor = FieldDescriptor> {
   readonly value: unknown
@@ -18,23 +29,24 @@ export interface WidgetProps<F extends FieldDescriptor = FieldDescriptor> {
   /** Save-gate message for this field, when one applies. */
   readonly error: string | undefined
   readonly fieldConfig: F
+  readonly services?: WidgetServices
+  readonly nestedIssues?: readonly ParseIssue[]
 }
 
+export type WidgetTypeName = FieldDescriptor["type"] | (string & {})
+
 export interface WidgetBinding {
-  readonly fieldTypeName: FieldDescriptor["type"]
+  readonly fieldTypeName: WidgetTypeName
   readonly Component: ComponentType<WidgetProps>
 }
 
 /**
  * Registers one component for one field type. The cast is the seam ADR-0009
  * describes: React props are contravariant, so per-type props cannot be stored
- * in a homogeneous table. The table is closed (12 names), the renderer looks
- * bindings up by `field.type`, and the parity test below keeps the names in
- * lockstep with the core vocabulary — a mismatched descriptor cannot reach a
- * widget at runtime.
+ * in a homogeneous table.
  */
-export function defineWidget<F extends FieldDescriptor>(input: {
-  readonly fieldTypeName: F["type"]
+export function defineWidget<F extends FieldDescriptor = FieldDescriptor>(input: {
+  readonly fieldTypeName: WidgetTypeName
   readonly Component: ComponentType<WidgetProps<F>>
 }): WidgetBinding {
   return {

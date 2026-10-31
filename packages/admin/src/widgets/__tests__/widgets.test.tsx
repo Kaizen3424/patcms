@@ -1,13 +1,26 @@
-import type { FieldDescriptor } from "@mycms/core"
+import type {
+  FieldDescriptor,
+  ImageFieldDescriptor,
+  ListFieldDescriptor,
+  ObjectFieldDescriptor,
+  RelationFieldDescriptor,
+  SelectFieldDescriptor,
+} from "@mycms/core"
 import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { BooleanWidget } from "../boolean-widget"
-import { createWidgetRegistry, defineWidget } from "../contract"
+import { WidgetRegistryProvider } from "../context"
+import { createWidgetRegistry, defineWidget, type WidgetServices } from "../contract"
 import { DatetimeWidget, fromLocalInput, toDateInput, toLocalInput } from "../datetime-widget"
-import { EDITABLE_FIELD_TYPES, WIDGETS } from "../index"
+import { ImageWidget } from "../image-widget"
+import { defaultWidgetRegistry, EDITABLE_FIELD_TYPES, WIDGETS } from "../index"
+import { ListWidget } from "../list-widget"
 import { NumberWidget } from "../number-widget"
+import { ObjectWidget } from "../object-widget"
+import { ReferenceSwatchWidget } from "../reference-swatch/reference-swatch"
+import { RelationWidget } from "../relation-widget"
 import { SelectWidget } from "../select-widget"
 import { StringWidget } from "../string-widget"
 import { TextWidget } from "../text-widget"
@@ -25,29 +38,29 @@ function Harness<F extends FieldDescriptor>({
   component: Component,
   error,
   onChange,
+  services,
 }: {
   readonly initial: unknown
   readonly field: F
-  readonly component: (props: {
-    value: unknown
-    onChange: (value: unknown) => void
-    error: string | undefined
-    fieldConfig: F
-  }) => React.ReactNode
+  readonly component: (props: import("../contract").WidgetProps<F>) => React.ReactNode
   readonly error?: string
   readonly onChange?: (value: unknown) => void
+  readonly services?: WidgetServices
 }) {
   const [value, setValue] = useState<unknown>(initial)
   return (
-    <Component
-      value={value}
-      fieldConfig={field}
-      error={error}
-      onChange={(next) => {
-        setValue(next)
-        onChange?.(next)
-      }}
-    />
+    <WidgetRegistryProvider registry={defaultWidgetRegistry}>
+      <Component
+        value={value}
+        fieldConfig={field}
+        error={error}
+        services={services}
+        onChange={(next: unknown) => {
+          setValue(next)
+          onChange?.(next)
+        }}
+      />
+    </WidgetRegistryProvider>
   )
 }
 
@@ -60,7 +73,7 @@ const STRING: FieldDescriptor = {
 }
 
 describe("widget registry", () => {
-  it("binds exactly the six P2.6 types, all editable", () => {
+  it("binds all 11 Phase 3 types, all editable", () => {
     expect(WIDGETS.map((binding) => binding.fieldTypeName)).toEqual([
       "string",
       "text",
@@ -68,15 +81,43 @@ describe("widget registry", () => {
       "boolean",
       "select",
       "datetime",
+      "list",
+      "object",
+      "image",
+      "relation",
+      "swatch",
     ])
     expect([...EDITABLE_FIELD_TYPES].sort()).toEqual([
       "boolean",
       "datetime",
+      "image",
+      "list",
       "number",
+      "object",
+      "relation",
       "select",
       "string",
+      "swatch",
       "text",
     ])
+  })
+
+  it("ADR-0009: matches the frozen registry snapshot", () => {
+    expect(defaultWidgetRegistry.fieldTypeNames).toMatchInlineSnapshot(`
+      [
+        "string",
+        "text",
+        "number",
+        "boolean",
+        "select",
+        "datetime",
+        "list",
+        "object",
+        "image",
+        "relation",
+        "swatch",
+      ]
+    `)
   })
 
   it("refuses a duplicate binding instead of silently shadowing one", () => {
@@ -87,7 +128,9 @@ describe("widget registry", () => {
   it("looks widgets up by field type name", () => {
     const registry = createWidgetRegistry(WIDGETS)
     expect(registry.get("select")).toBeDefined()
-    expect(registry.get("image")).toBeUndefined()
+    expect(registry.get("image")).toBeDefined()
+    expect(registry.get("swatch")).toBeDefined()
+    expect(registry.get("unknown_custom")).toBeUndefined()
   })
 })
 
@@ -266,5 +309,247 @@ describe("datetime widget", () => {
   it("keeps an unparseable value visible instead of blanking it", () => {
     expect(toDateInput("not-a-date")).toBe("not-a-date")
     expect(toLocalInput("not-a-date")).toBe("not-a-date")
+  })
+})
+
+describe("reference swatch widget", () => {
+  const swatchField: SelectFieldDescriptor = {
+    name: "swatch",
+    label: "Color Swatch",
+    required: false,
+    type: "select",
+    options: [
+      { label: "Gold", value: "accent" },
+      { label: "Neutral", value: "muted" },
+      { label: "Deep blue", value: "secondary" },
+    ],
+  }
+
+  it("renders default yve swatches and handles selection", async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Harness
+        initial="accent"
+        field={swatchField}
+        component={ReferenceSwatchWidget}
+        onChange={onChange}
+      />,
+    )
+    const accentBtn = screen.getByTestId("swatch-option-accent")
+    expect(accentBtn.getAttribute("aria-pressed")).toBe("true")
+
+    const mutedBtn = screen.getByTestId("swatch-option-muted")
+    expect(mutedBtn.getAttribute("aria-pressed")).toBe("false")
+    await user.click(mutedBtn)
+    expect(onChange).toHaveBeenLastCalledWith("muted")
+
+    // Clicking active option when not required deselects to undefined
+    await user.click(mutedBtn)
+    expect(onChange).toHaveBeenLastCalledWith(undefined)
+  })
+})
+
+describe("image widget", () => {
+  const imageField: ImageFieldDescriptor = {
+    name: "photo",
+    label: "Product Photo",
+    required: false,
+    type: "image",
+  }
+
+  it("renders preview and writes typed file path", async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Harness
+        initial="/images/products/lamp.jpg"
+        field={imageField}
+        component={ImageWidget}
+        onChange={onChange}
+      />,
+    )
+    const input = screen.getByPlaceholderText("/images/products/example.jpg")
+    expect((input as HTMLInputElement).value).toBe("/images/products/lamp.jpg")
+    await user.clear(input)
+    expect(onChange).toHaveBeenLastCalledWith(undefined)
+    await user.type(input, "/images/products/new.png")
+    expect(onChange).toHaveBeenLastCalledWith("/images/products/new.png")
+  })
+})
+
+describe("relation widget", () => {
+  const relationField: RelationFieldDescriptor = {
+    name: "featuredProduct",
+    label: "Featured Product",
+    required: false,
+    type: "relation",
+    collection: "products",
+  }
+
+  const mockServices: WidgetServices = {
+    getEntries: vi.fn().mockReturnValue([
+      {
+        slug: "iris-no-7",
+        title: "Iris No. 7",
+        collection: "products",
+        value: {},
+      } as unknown as import("../../runtime/entry-index").IndexedEntry,
+      {
+        slug: "the-rock-no-1",
+        title: "The Rock No. 1",
+        collection: "products",
+        value: {},
+      } as unknown as import("../../runtime/entry-index").IndexedEntry,
+    ]),
+    getEntryBySlug: vi.fn((_coll, slug) => {
+      if (slug === "iris-no-7") {
+        return {
+          slug: "iris-no-7",
+          title: "Iris No. 7",
+          collection: "products",
+          value: {},
+        } as unknown as import("../../runtime/entry-index").IndexedEntry
+      }
+      return undefined
+    }),
+    searchEntries: vi.fn().mockReturnValue([]),
+  }
+
+  it("resolves and renders the selected relation title", () => {
+    render(
+      <Harness
+        initial="iris-no-7"
+        field={relationField}
+        component={RelationWidget}
+        services={mockServices}
+      />,
+    )
+    expect(screen.getByText("Iris No. 7")).toBeDefined()
+  })
+
+  it("displays warning chip and remove action for removed references", async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Harness
+        initial="deleted-item"
+        field={relationField}
+        component={RelationWidget}
+        services={mockServices}
+        onChange={onChange}
+      />,
+    )
+    expect(screen.getByText("Reference to a removed product")).toBeDefined()
+    const removeBtn = screen.getByLabelText(/Remove reference/i)
+    await user.click(removeBtn)
+    expect(onChange).toHaveBeenLastCalledWith(undefined)
+  })
+
+  it("filters candidate entries and selects one", async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Harness
+        initial={undefined}
+        field={relationField}
+        component={RelationWidget}
+        services={mockServices}
+        onChange={onChange}
+      />,
+    )
+    const searchInput = screen.getByPlaceholderText(/search/i)
+    await user.type(searchInput, "rock")
+    const option = screen.getByText("The Rock No. 1")
+    await user.click(option)
+    expect(onChange).toHaveBeenLastCalledWith("the-rock-no-1")
+  })
+})
+
+describe("object widget", () => {
+  const objectField: ObjectFieldDescriptor = {
+    name: "contact",
+    label: "Contact",
+    required: false,
+    type: "object",
+    fields: [
+      { name: "email", label: "Email", required: false, type: "string" },
+      { name: "phone", label: "Phone", required: false, type: "string" },
+    ],
+  }
+
+  it("renders subfields and updates record immutably", async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Harness
+        initial={{ email: "info@example.com" }}
+        field={objectField}
+        component={ObjectWidget}
+        onChange={onChange}
+      />,
+    )
+    const emailInput = screen.getByLabelText("Email")
+    expect((emailInput as HTMLInputElement).value).toBe("info@example.com")
+
+    const phoneInput = screen.getByLabelText("Phone")
+    await user.type(phoneInput, "123456")
+    expect(onChange).toHaveBeenLastCalledWith({
+      email: "info@example.com",
+      phone: "123456",
+    })
+  })
+})
+
+describe("list widget", () => {
+  const listField: ListFieldDescriptor = {
+    name: "images",
+    label: "Images",
+    required: false,
+    type: "list",
+    itemMode: "object",
+    min: 1,
+    max: 3,
+    summary: "{{fields.alt}}",
+    fields: [{ name: "alt", label: "Alt Text", required: false, type: "string" }],
+  }
+
+  it("renders items, summary text, and handles drag-free reordering", async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    const initialItems = [{ alt: "First image" }, { alt: "Second image" }]
+    render(
+      <Harness
+        initial={initialItems}
+        field={listField}
+        component={ListWidget}
+        onChange={onChange}
+      />,
+    )
+    expect(screen.getByText("First image")).toBeDefined()
+    expect(screen.getByText("Second image")).toBeDefined()
+
+    // Move first item down
+    const moveDownBtn = screen.getByLabelText("Move item 1 down")
+    await user.click(moveDownBtn)
+    expect(onChange).toHaveBeenLastCalledWith([{ alt: "Second image" }, { alt: "First image" }])
+  })
+
+  it("enforces min guardrail (disables remove button when at min)", () => {
+    render(<Harness initial={[{ alt: "Only one" }]} field={listField} component={ListWidget} />)
+    const removeBtn = screen.getByLabelText("Remove item 1")
+    expect((removeBtn as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("enforces max guardrail (disables add button when at max)", () => {
+    render(
+      <Harness
+        initial={[{ alt: "Item 1" }, { alt: "Item 2" }, { alt: "Item 3" }]}
+        field={listField}
+        component={ListWidget}
+      />,
+    )
+    expect(screen.queryByText("+ Add Image")).toBeNull()
+    expect(screen.getByText("At most 3 items allowed")).toBeDefined()
   })
 })

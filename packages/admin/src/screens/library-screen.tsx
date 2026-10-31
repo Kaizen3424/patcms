@@ -22,11 +22,18 @@ export function LibraryScreen() {
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState("title")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [templateModalOpen, setTemplateModalOpen] = useState(false)
 
   if (collection === undefined || collection.kind === "divider") {
     return <EmptyState title="Folder not found" body="That folder is not part of this studio." />
   }
 
+  if (index.isLoading) {
+    return <p className="text-sm text-text-muted">Loading entries...</p>
+  }
+
+  const canCreate =
+    collection.kind === "folder" && (collection as FolderCollectionDescriptor).create !== false
   const entries = index.data?.byCollection.get(collection.name) ?? []
   const sortable = collection.kind === "folder" ? sortOptions(collection) : ["title"]
   const filtered = entries.filter((entry) => matchesSearch(entry, search))
@@ -49,9 +56,33 @@ export function LibraryScreen() {
               : "The fixed pages and settings for this site."}
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface px-3 py-2 text-xs text-text-muted">
-          <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-          {entries.length} {entries.length === 1 ? "entry" : "entries"}
+        <div className="flex items-center gap-3">
+          {canCreate ? (
+            entries.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setTemplateModalOpen(true)}
+                className="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-[#111] transition-colors hover:bg-accent/90 focus-visible:outline-2 focus-visible:outline-accent"
+                data-testid="new-entry-button"
+              >
+                + New {(collection as FolderCollectionDescriptor).labelSingular || "item"}
+              </button>
+            ) : (
+              <Link
+                to="/c/$collection/new"
+                params={{ collection: collection.name }}
+                className="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-[#111] transition-colors hover:bg-accent/90 focus-visible:outline-2 focus-visible:outline-accent"
+                data-testid="new-entry-button"
+              >
+                + New {(collection as FolderCollectionDescriptor).labelSingular || "item"}
+              </Link>
+            )
+          ) : null}
+
+          <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface px-3 py-2 text-xs text-text-muted">
+            <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+            {entries.length} {entries.length === 1 ? "entry" : "entries"}
+          </div>
         </div>
       </header>
 
@@ -136,6 +167,71 @@ export function LibraryScreen() {
           ))}
         </div>
       )}
+
+      {templateModalOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="template-picker-title"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-lg rounded-card border border-border-soft bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border-soft pb-3">
+              <h2 id="template-picker-title" className="text-base font-semibold text-text-primary">
+                New {(collection as FolderCollectionDescriptor).labelSingular || "item"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setTemplateModalOpen(false)}
+                className="rounded p-1 text-text-muted hover:text-text-primary"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <Link
+                to="/c/$collection/new"
+                params={{ collection: collection.name }}
+                onClick={() => setTemplateModalOpen(false)}
+                className="flex items-center justify-between rounded-lg border border-border-soft bg-surface-raised p-3 text-xs transition-colors hover:border-accent hover:bg-accent/10"
+                data-testid="start-from-blank"
+              >
+                <div>
+                  <p className="font-semibold text-text-primary">Start from blank</p>
+                  <p className="mt-0.5 text-text-muted">
+                    Create a fresh entry with default settings
+                  </p>
+                </div>
+                <span className="text-accent font-semibold">→</span>
+              </Link>
+
+              <div>
+                <p className="text-xs font-medium text-text-muted mb-2">
+                  Or start from an existing item:
+                </p>
+                <div className="max-h-60 overflow-y-auto divide-y divide-border-soft/60 rounded-lg border border-border-soft">
+                  {entries.map((item) => (
+                    <Link
+                      key={item.slug}
+                      to="/c/$collection/new"
+                      params={{ collection: collection.name }}
+                      search={{ from: item.slug }}
+                      onClick={() => setTemplateModalOpen(false)}
+                      className="flex items-center justify-between p-2.5 text-xs transition-colors hover:bg-surface-raised"
+                      data-testid={`start-from-${item.slug}`}
+                    >
+                      <span className="font-medium text-text-primary">{item.title}</span>
+                      <span className="text-[11px] text-accent">Use as template</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

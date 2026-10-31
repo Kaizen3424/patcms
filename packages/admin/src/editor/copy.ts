@@ -244,6 +244,36 @@ export const READ_ERROR_COPY = {
   copyMessage: "Copy message for {name}",
 } as const
 
+/** Web address lifecycle copy (P3.5). */
+export const SLUG_COPY = {
+  webAddress: "web address:",
+  fixableUntilSave: "— still fixable until Save",
+  changeInfo: "Need to change this?",
+  closeInfo: "Close info",
+  lockedExplanation:
+    "This web address is already live. Changing it directly could break bookmarks or links from other websites. To keep your visitors happy, address changes are best handled with an automatic redirect.",
+  copyNote: "Copy note for {name}",
+  copied: "Copied note to clipboard!",
+  collision:
+    "An address with this name already exists. We recommend choosing a distinct name before saving.",
+} as const
+
+/** Template and new-entry flow copy (P3.7). */
+export const TEMPLATE_COPY = {
+  newEntry: "New entry",
+  startFromBlank: "Start from blank",
+  startFromTemplate: "Start from an existing item",
+  nothingPublished: "Nothing published until you Save",
+  creatingNew: "Creating new entry",
+} as const
+
+/** Behind-the-scenes drawer copy (P3.4). */
+export const BEHIND_THE_SCENES_COPY = {
+  title: "Behind the scenes — managed by {name}",
+  description: "These settings work quietly behind the scenes to keep your website looking sharp.",
+  notShown: "Not shown on your site right now",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -296,5 +326,8 @@ export function allCopyStrings(): readonly string[] {
   walk(RATE_COPY)
   walk(FAILURE_CARD_COPY)
   walk(READ_ERROR_COPY)
+  walk(SLUG_COPY)
+  walk(TEMPLATE_COPY)
+  walk(BEHIND_THE_SCENES_COPY)
   return strings
 }

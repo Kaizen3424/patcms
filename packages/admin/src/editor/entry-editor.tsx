@@ -15,6 +15,7 @@ import type {
   ConflictMergePreview,
   FieldDescriptor,
   FieldPath,
+  FolderCollectionDescriptor,
   ParseIssue,
   SaveDraftPayload,
   SaveMachineState,
@@ -31,14 +32,21 @@ import {
   validateEntryForSave,
 } from "@mycms/core"
 import type { ReactNode } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { usePublishEntry, useRuntime } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
 import { StatusChip } from "../status/chip"
 import { usePublishedSha } from "../status/provider"
-import { defaultWidgetRegistry, EDITABLE_FIELD_TYPES } from "../widgets"
+import {
+  defaultWidgetRegistry,
+  EDITABLE_FIELD_TYPES,
+  stripIssuePrefix,
+  WidgetRegistryProvider,
+  type WidgetServices,
+} from "../widgets"
 import { AdvisoryChips } from "./advisory-chip"
-import { personalize, RECOVERY_COPY, SAVE_BAR_COPY } from "./copy"
+import { BehindTheScenesDrawer } from "./behind-the-scenes"
+import { personalize, RECOVERY_COPY, SAVE_BAR_COPY, TEMPLATE_COPY } from "./copy"
 import { FailureCard } from "./failure-card"
 import { composeFailureReport, copyToClipboard } from "./failure-report"
 import type { EntryFormState } from "./form-value"
@@ -61,12 +69,14 @@ import {
   replayLateKeystrokes,
 } from "./freeze-model"
 import { FreezePanel } from "./freeze-panel"
+import { humanizeIssue } from "./message-map"
 import { RateLimitTimer } from "./rate-limit-timer"
 import { ReauthSheet } from "./reauth-sheet"
 import { SaveBar } from "./save-bar"
 import { describeSaveBar } from "./save-bar-model"
 import type { SweepVerdict } from "./save-sweep"
 import { sweepSite } from "./save-sweep"
+import { deriveSlugFromTitle, SlugChip } from "./slug-chip"
 
 /** Draft debounce — crash protection only; saving is always explicit. */
 const DRAFT_WRITE_DELAY_MS = 800
@@ -101,13 +111,62 @@ export interface EntryEditorProps {
   readonly index: EntryIndex | undefined
   /** Read-only renderer for list/object/image/relation/slug/hidden fields. */
   readonly renderReadOnly: (field: FieldDescriptor, value: unknown) => ReactNode
+  readonly isNew?: boolean
+  readonly onCreated?: (collectionName: string, slug: string) => void
 }
 
-export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEditorProps) {
+export function EntryEditor({
+  entry,
+  headSha,
+  index,
+  renderReadOnly,
+  isNew = false,
+  onCreated,
+}: EntryEditorProps) {
   const { backend, config, repository, drafts, coordinator, lease, support, signOut } = useRuntime()
   const publishEntry = usePublishEntry()
-  const publishedSha = usePublishedSha(entry.path)
-  const draftKey = `${repository.repo}/${entry.collectionName}/${entry.slug}`
+  const [currentSlug, setCurrentSlug] = useState(entry.slug)
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
+
+  const existingSlugs = useMemo(() => {
+    const collSlugs = index?.bySlug.get(entry.collectionName)
+    return collSlugs ? [...collSlugs.keys()] : []
+  }, [index, entry.collectionName])
+
+  const folderColl =
+    entry.collection.kind === "folder"
+      ? (entry.collection as FolderCollectionDescriptor)
+      : undefined
+  const collectionFolder = folderColl?.folder ?? ""
+  const ext =
+    (folderColl?.format as string) === "yaml" || (folderColl?.format as string) === "yml"
+      ? "yml"
+      : "json"
+  const entryPath = isNew
+    ? `${collectionFolder.replace(/\/+$/, "")}/${currentSlug}.${ext}`
+    : entry.path
+
+  const publishedSha = usePublishedSha(entryPath)
+  const draftKey = `${repository.repo}/${entry.collectionName}/${currentSlug}`
+
+  const widgetServices: WidgetServices | undefined = useMemo(() => {
+    if (!index) return undefined
+    return {
+      getEntries: (collName) => index.byCollection.get(collName) ?? [],
+      getEntryBySlug: (collName, s) => index.bySlug.get(collName)?.get(s),
+      searchEntries: (collName, query, searchFields) => {
+        const list = index.byCollection.get(collName) ?? []
+        const q = query.trim().toLowerCase()
+        if (!q) return list
+        return list.filter((e) =>
+          searchFields.some((f) => {
+            const val = e.value[f] ?? (e as unknown as Record<string, unknown>)[f]
+            return typeof val === "string" && val.toLowerCase().includes(q)
+          }),
+        )
+      },
+    }
+  }, [index])
 
   const [form, setForm] = useState<EntryFormState | null>(() => {
     const created = createEntryForm(entry, headSha)
@@ -313,6 +372,14 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
     if (isFormDirty(next)) coordinator?.markDirty(draftKey, next.baseSha)
   }
 
+  const handleFieldChange = (fieldName: string, value: unknown) => {
+    if (isNew && fieldName === "title" && !slugManuallyEdited && typeof value === "string") {
+      const derived = deriveSlugFromTitle(value, existingSlugs)
+      setCurrentSlug(derived)
+    }
+    handleChange(fieldName, value)
+  }
+
   const save = async (): Promise<void> => {
     const current = formRef.current
     if (current === null || coordinator === undefined) return
@@ -324,7 +391,7 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
       const validation = await validateEntryForSave({
         fields: entry.fields,
         raw: current.formValue,
-        filePath: entry.path,
+        filePath: entryPath,
         media: entry.media,
         ...(index === undefined ? {} : { services: { hasEntry: hasEntryIn(index) } }),
       })
@@ -335,11 +402,15 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
       }
       setValidationIssues([])
 
+      const changes = isNew
+        ? { adds: [{ path: entryPath, bytes: encodeUtf8(bytes) }] }
+        : { updates: [{ path: entryPath, bytes: encodeUtf8(bytes) }] }
+
       const verdict = await coordinator.save({
         draftKey,
-        changes: { updates: [{ path: entry.path, bytes: encodeUtf8(bytes) }] },
+        changes,
         baseSha: current.baseSha,
-        draft: draftPayload(entry, current),
+        draft: draftPayload({ ...entry, path: entryPath, slug: currentSlug }, current),
       })
       if (!mounted.current) return
 
@@ -365,11 +436,14 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
         setJustSaved(true)
         setJustNoop(false)
         setConflict(undefined)
-        publishEntry(entry.path, verdict.commitSha)
+        publishEntry(entryPath, verdict.commitSha)
         // P2.7: sweep what the site does with the OBSERVED commit (her path
         // excluded). Never on noop; never in the save path's way — the sweep
         // reads standalone and its verdict can never gate a save.
         runSweep(verdict.commitSha)
+        if (isNew && onCreated) {
+          onCreated(entry.collectionName, currentSlug)
+        }
       } else if (verdict.kind === "noop") {
         const latest = formRef.current
         if (latest !== null && verdict.reconciliation !== undefined) {
@@ -624,161 +698,199 @@ export function EntryEditor({ entry, headSha, index, renderReadOnly }: EntryEdit
   }
 
   return (
-    <div>
-      {boot === undefined ? null : (
-        <BootBanner
-          boot={boot}
+    <WidgetRegistryProvider registry={defaultWidgetRegistry}>
+      <div>
+        {isNew ? (
+          <div
+            className="mb-4 rounded-card border border-accent/30 bg-accent/10 px-4 py-2.5 text-xs text-text-secondary"
+            data-testid="new-entry-banner"
+          >
+            <span className="font-semibold text-text-primary">{TEMPLATE_COPY.newEntry}</span> —{" "}
+            {TEMPLATE_COPY.nothingPublished}
+          </div>
+        ) : null}
+
+        <SlugChip
+          isNew={isNew}
+          collection={entry.collectionName}
+          slug={currentSlug}
+          onSlugChange={(newSlug) => {
+            setCurrentSlug(newSlug)
+            setSlugManuallyEdited(true)
+          }}
+          existingSlugs={existingSlugs}
           supportName={support.name}
-          onRestore={() => void restore()}
-          onDismiss={dismissOffer}
-          onStartOver={() => void startOver()}
+          entryTitle={String(form.formValue.title || entry.title || "this item")}
         />
-      )}
 
-      {conflict === undefined ? null : (
-        <FreezePanel
-          rows={conflict.rows}
-          ourFieldPaths={conflict.merge?.ourFieldPaths}
-          onChoose={handleFreezeChoice}
-          onStartOver={() => void startOver()}
-          degraded={conflict.merge === undefined}
-          supportName={support.name}
-        />
-      )}
-
-      {validationIssues.length === 0 ? null : (
-        <div
-          role="alert"
-          className="mt-6 rounded-card border border-danger/40 bg-danger/10 p-4 text-sm"
-        >
-          <p className="font-semibold">This entry cannot be saved yet.</p>
-          <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-text-muted">
-            {validationIssues.map((issue, position) => (
-              <li key={`${issue.path}-${issue.code}-${position}`}>
-                <span className="font-mono text-text-primary">{issue.path || "entry"}</span>{" "}
-                {issue.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-2">
-        {entry.fields
-          .filter((field) => field.type !== "divider" && field.type !== "hidden")
-          .map((field) => {
-            const binding = EDITABLE_FIELD_TYPES.has(field.type)
-              ? defaultWidgetRegistry.get(field.type)
-              : undefined
-            const error = validationIssues.find((issue) => issue.path === field.name)?.message
-            return (
-              <div
-                key={field.name}
-                className={field.width === "half" ? "sm:col-span-1" : "sm:col-span-2"}
-              >
-                {binding === undefined ? (
-                  <>
-                    <p className="text-xs font-medium uppercase tracking-[0.1em] text-text-muted">
-                      {field.label}
-                    </p>
-                    <div className="mt-1.5 text-sm leading-6 text-text-primary">
-                      {renderReadOnly(field, form.formValue[field.name])}
-                    </div>
-                  </>
-                ) : (
-                  <binding.Component
-                    value={form.formValue[field.name]}
-                    onChange={(value) => handleChange(field.name, value)}
-                    error={error}
-                    fieldConfig={field}
-                  />
-                )}
-              </div>
-            )
-          })}
-      </div>
-
-      <AdvisoryChips verdict={sweep} supportName={support.name} />
-
-      <StatusChip sha={publishedSha} />
-
-      {/* Rate limit live countdown (INV-N01) */}
-      {machine?.phase === "paused" && machine.reason === "quota" && machine.waitMs !== null ? (
-        <div className="mt-6">
-          <RateLimitTimer
-            waitMs={machine.waitMs}
-            onManualResume={() => coordinator?.resume(draftKey)}
-          />
-        </div>
-      ) : null}
-
-      {/* Docked failure card (INV-A02) */}
-      {machine?.phase === "failed" ||
-      (machine?.phase === "paused" &&
-        (machine.reason === "auth" ||
-          machine.reason === "network" ||
-          (machine.reason === "quota" && machine.waitMs === null))) ? (
-        <div className="mt-6">
-          <FailureCard
-            errorCode={
-              machine.phase === "failed"
-                ? machine.error.code
-                : machine.reason === "auth"
-                  ? "AUTH_EXPIRED"
-                  : machine.reason === "quota"
-                    ? "RATE_LIMIT"
-                    : "NETWORK"
-            }
-            httpStatus={machine.phase === "failed" ? machine.error.status : undefined}
+        {boot === undefined ? null : (
+          <BootBanner
+            boot={boot}
             supportName={support.name}
-            onRetry={retry}
-            onCheckKey={
-              (machine.phase === "failed" && machine.error.code === "AUTH_EXPIRED") ||
-              (machine.phase === "paused" && machine.reason === "auth")
-                ? () => setReauthOpen(true)
-                : undefined
-            }
+            onRestore={() => void restore()}
+            onDismiss={dismissOffer}
             onStartOver={() => void startOver()}
-            onCopyMessage={() => void handleCopyMessage()}
-            copied={reportCopied}
-            technicalContext={
-              formRef.current
-                ? {
-                    entryTitle: entry.title,
-                    filePath: entry.path,
-                    branch: repository.branch,
-                    repo: `${repository.owner}/${repository.repo}`,
-                    baseSha: machine.baseSha,
-                    changedFields: computeDirtyPaths(
-                      formRef.current.formValue,
-                      formRef.current.baseValue,
-                    ).map((p) => p.join(".")),
-                  }
-                : undefined
-            }
           />
+        )}
+
+        {conflict === undefined ? null : (
+          <FreezePanel
+            rows={conflict.rows}
+            ourFieldPaths={conflict.merge?.ourFieldPaths}
+            onChoose={handleFreezeChoice}
+            onStartOver={() => void startOver()}
+            degraded={conflict.merge === undefined}
+            supportName={support.name}
+          />
+        )}
+
+        {validationIssues.length === 0 ? null : (
+          <div
+            role="alert"
+            className="mt-6 rounded-card border border-danger/40 bg-danger/10 p-4 text-sm"
+          >
+            <p className="font-semibold">This entry cannot be saved yet.</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-text-muted">
+              {validationIssues.map((issue, position) => (
+                <li key={`${issue.path}-${issue.code}-${position}`}>
+                  <span className="font-mono text-text-primary">{issue.path || "entry"}</span>{" "}
+                  {issue.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+          {entry.fields
+            .filter((field) => field.type !== "divider" && field.type !== "hidden")
+            .map((field) => {
+              const widgetKey =
+                (field as { widget?: string }).widget ||
+                (defaultWidgetRegistry.get(field.name) ? field.name : field.type)
+              const binding = EDITABLE_FIELD_TYPES.has(widgetKey)
+                ? defaultWidgetRegistry.get(widgetKey)
+                : undefined
+              const childIssues = stripIssuePrefix(validationIssues, field.name)
+              const rawIssue = validationIssues.find((issue) => issue.path === field.name)
+              const error = rawIssue ? humanizeIssue(rawIssue, field, support.name) : undefined
+              return (
+                <div
+                  key={field.name}
+                  className={field.width === "half" ? "sm:col-span-1" : "sm:col-span-2"}
+                >
+                  {binding === undefined ? (
+                    <>
+                      <p className="text-xs font-medium uppercase tracking-[0.1em] text-text-muted">
+                        {field.label}
+                      </p>
+                      <div className="mt-1.5 text-sm leading-6 text-text-primary">
+                        {renderReadOnly(field, form.formValue[field.name])}
+                      </div>
+                    </>
+                  ) : (
+                    <binding.Component
+                      value={form.formValue[field.name]}
+                      onChange={(value) => handleFieldChange(field.name, value)}
+                      error={error}
+                      fieldConfig={field}
+                      services={widgetServices}
+                      nestedIssues={childIssues}
+                    />
+                  )}
+                </div>
+              )
+            })}
         </div>
-      ) : null}
 
-      <ReauthSheet
-        open={reauthOpen}
-        supportName={support.name}
-        onReauthenticated={() => setReauthOpen(false)}
-        onCancel={() => setReauthOpen(false)}
-        onSignOut={() => void signOut()}
-      />
+        <BehindTheScenesDrawer
+          fields={entry.fields}
+          value={form.formValue}
+          supportName={support.name}
+        />
 
-      <SaveBar
-        model={model}
-        supportName={support.name}
-        validationBlocked={validationIssues.length > 0}
-        onSave={() => void save()}
-        onRetry={retry}
-        onStartOver={() => void startOver()}
-        onRecheck={recheckLease}
-        onSignOut={() => void signOut()}
-      />
-    </div>
+        <AdvisoryChips verdict={sweep} supportName={support.name} />
+
+        <StatusChip sha={publishedSha} />
+
+        {/* Rate limit live countdown (INV-N01) */}
+        {machine?.phase === "paused" && machine.reason === "quota" && machine.waitMs !== null ? (
+          <div className="mt-6">
+            <RateLimitTimer
+              waitMs={machine.waitMs}
+              onManualResume={() => coordinator?.resume(draftKey)}
+            />
+          </div>
+        ) : null}
+
+        {/* Docked failure card (INV-A02) */}
+        {machine?.phase === "failed" ||
+        (machine?.phase === "paused" &&
+          (machine.reason === "auth" ||
+            machine.reason === "network" ||
+            (machine.reason === "quota" && machine.waitMs === null))) ? (
+          <div className="mt-6">
+            <FailureCard
+              errorCode={
+                machine.phase === "failed"
+                  ? machine.error.code
+                  : machine.reason === "auth"
+                    ? "AUTH_EXPIRED"
+                    : machine.reason === "quota"
+                      ? "RATE_LIMIT"
+                      : "NETWORK"
+              }
+              httpStatus={machine.phase === "failed" ? machine.error.status : undefined}
+              supportName={support.name}
+              onRetry={retry}
+              onCheckKey={
+                (machine.phase === "failed" && machine.error.code === "AUTH_EXPIRED") ||
+                (machine.phase === "paused" && machine.reason === "auth")
+                  ? () => setReauthOpen(true)
+                  : undefined
+              }
+              onStartOver={() => void startOver()}
+              onCopyMessage={() => void handleCopyMessage()}
+              copied={reportCopied}
+              technicalContext={
+                formRef.current
+                  ? {
+                      entryTitle: entry.title,
+                      filePath: entryPath,
+                      branch: repository.branch,
+                      repo: `${repository.owner}/${repository.repo}`,
+                      baseSha: machine.baseSha,
+                      changedFields: computeDirtyPaths(
+                        formRef.current.formValue,
+                        formRef.current.baseValue,
+                      ).map((p) => p.join(".")),
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        ) : null}
+
+        <ReauthSheet
+          open={reauthOpen}
+          supportName={support.name}
+          onReauthenticated={() => setReauthOpen(false)}
+          onCancel={() => setReauthOpen(false)}
+          onSignOut={() => void signOut()}
+        />
+
+        <SaveBar
+          model={model}
+          supportName={support.name}
+          validationBlocked={validationIssues.length > 0}
+          onSave={() => void save()}
+          onRetry={retry}
+          onStartOver={() => void startOver()}
+          onRecheck={recheckLease}
+          onSignOut={() => void signOut()}
+        />
+      </div>
+    </WidgetRegistryProvider>
   )
 }
 
