@@ -1,8 +1,11 @@
 import type { CollectionDescriptor, FolderCollectionDescriptor } from "@mycms/core"
 import { compareValues, mustacheLite, readPath } from "@mycms/core"
+import type { OnboardingState } from "@mycms/core/web"
 import { Link, useParams } from "@tanstack/react-router"
-import { useState } from "react"
-import { useEntryIndex, useRuntime } from "../runtime/context"
+import { useEffect, useState } from "react"
+import { ConsentPactCard } from "../onboarding/consent-pact"
+import { ProductTourDialog } from "../onboarding/product-tour"
+import { useEntryIndex, useOnboardingStore, useRuntime } from "../runtime/context"
 import type { IndexedEntry } from "../runtime/entry-index"
 import { issueCounts } from "../runtime/entry-index"
 import { imageSource } from "../runtime/media"
@@ -19,10 +22,29 @@ export function LibraryScreen() {
     (candidate) => candidate.kind !== "divider" && candidate.name === params.collection,
   )
   const index = useEntryIndex()
+  const onboardingStore = useOnboardingStore()
+  const [onboarding, setOnboarding] = useState<OnboardingState | undefined>(undefined)
+  const [tourOpen, setTourOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState("title")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      const state = await onboardingStore.get()
+      if (active) setOnboarding(state)
+    }
+    void load()
+    const unsubscribe = onboardingStore.subscribe(() => {
+      void load()
+    })
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [onboardingStore])
 
   if (collection === undefined || collection.kind === "divider") {
     return <EmptyState title="Folder not found" body="That folder is not part of this studio." />
@@ -44,6 +66,17 @@ export function LibraryScreen() {
 
   return (
     <div className="mx-auto max-w-6xl">
+      <ProductTourDialog
+        open={tourOpen}
+        onOpenChange={setTourOpen}
+        onComplete={() => void onboardingStore.update({ tourCompleted: true })}
+      />
+      {onboarding && !onboarding.firstPublishCompleted && !onboarding.pactDismissed ? (
+        <ConsentPactCard
+          onTakeTour={() => setTourOpen(true)}
+          onDismiss={() => void onboardingStore.update({ pactDismissed: true })}
+        />
+      ) : null}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent">

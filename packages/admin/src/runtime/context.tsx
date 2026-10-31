@@ -24,14 +24,16 @@ import {
   probeGithubCapabilities,
   SnapshotStore,
 } from "@mycms/core"
-import type { JournalStore } from "@mycms/core/web"
+import type { JournalStore, OnboardingStore } from "@mycms/core/web"
 import {
   createAutoCarrier,
   createBroadcastCarrier,
   createIdbDraftStore,
   createIdbJournalStore,
+  createIdbOnboardingStore,
   createIdbTokenStore,
   createMemoryJournalStore,
+  createMemoryOnboardingStore,
 } from "@mycms/core/web"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
@@ -65,6 +67,8 @@ interface RuntimeValue {
   readonly publishStore: PublishStore
   /** Persistent publish journal store (P5.2). */
   readonly journalStore: JournalStore
+  /** Onboarding status store (P5.3). */
+  readonly onboardingStore: OnboardingStore
   /** Memory-only diagnostics logger (P5.10). */
   readonly logger: Logger
   /** Save orchestration for this backend generation (P2.6 editor). */
@@ -160,6 +164,14 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
       options.journalStore ??
       (typeof indexedDB !== "undefined" ? createIdbJournalStore() : createMemoryJournalStore()),
     [options.journalStore],
+  )
+  const onboardingStore = useMemo(
+    () =>
+      options.onboardingStore ??
+      (typeof indexedDB !== "undefined"
+        ? createIdbOnboardingStore()
+        : createMemoryOnboardingStore()),
+    [options.onboardingStore],
   )
   const logger = useMemo(() => options.logger ?? createLogger(), [options.logger])
 
@@ -283,6 +295,7 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     drafts,
     publishStore,
     journalStore,
+    onboardingStore,
     logger,
     coordinator,
     lease,
@@ -314,6 +327,10 @@ export function useJournalStore(): JournalStore {
   return useRuntime().journalStore
 }
 
+export function useOnboardingStore(): OnboardingStore {
+  return useRuntime().onboardingStore
+}
+
 export function useLogger(): Logger {
   return useRuntime().logger
 }
@@ -334,10 +351,11 @@ export function usePublishEntry(): (
   commitSha: string,
   meta?: PublishEntryMeta,
 ) => void {
-  const { publishStore, journalStore, support } = useRuntime()
+  const { publishStore, journalStore, onboardingStore, support } = useRuntime()
   return useCallback(
     (entryId: string, commitSha: string, meta?: PublishEntryMeta) => {
       publishStore.publish(entryId, commitSha)
+      void onboardingStore.update({ firstPublishCompleted: true })
       void journalStore.append({
         commitSha,
         entryId,
@@ -349,7 +367,7 @@ export function usePublishEntry(): (
         ...(meta?.publicUrl ? { publicUrl: meta.publicUrl } : {}),
       })
     },
-    [publishStore, journalStore, support.name],
+    [publishStore, journalStore, onboardingStore, support.name],
   )
 }
 

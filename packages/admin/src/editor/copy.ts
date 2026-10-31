@@ -355,6 +355,32 @@ export const HEARTBEAT_COPY = {
   loginLastSeen: "Last connected {time}",
 } as const
 
+/** Onboarding consent pact and 60-second tour copy (P5.3). */
+export const ONBOARDING_COPY = {
+  pactTitle: "Welcome to your content studio",
+  pactSentence1: "You are connected to this site's live content.",
+  pactSentence2: "Changes you make only publish when you choose to save them.",
+  pactSentence3: "Your edits are kept safe on this device while you work.",
+  takeTour: "Take a 60-second tour",
+  dismiss: "Dismiss",
+  tourTitle: "How this studio works",
+  stepOf: "Step {current} of {total}",
+  close: "Close tour",
+  next: "Next",
+  back: "Back",
+  finish: "Finish tour",
+  step1Title: "Clear, simple fields",
+  step1Body: "Every field is checked as you type, keeping everything clean and in order.",
+  step2Title: "You are in control",
+  step2Body:
+    "Changes stay on your device until you choose to save. Nothing goes live without your say-so.",
+  step3Title: "Special settings when needed",
+  step3Body:
+    "Advanced settings stay quietly tucked away behind the scenes so you can focus on writing.",
+  step4Title: "Ambient confidence",
+  step4Body: "A heartbeat indicator lets you know your public site is up to date.",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -415,5 +441,6 @@ export function allCopyStrings(): readonly string[] {
   walk(SEARCH_COPY)
   walk(JOURNAL_COPY)
   walk(HEARTBEAT_COPY)
+  walk(ONBOARDING_COPY)
   return strings
 }

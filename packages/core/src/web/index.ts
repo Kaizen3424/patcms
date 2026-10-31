@@ -27,6 +27,15 @@ export {
   createIdbJournalStore,
   createMemoryJournalStore,
 } from "./idb-journal-store"
+export type {
+  IdbOnboardingStoreOptions,
+  OnboardingState,
+  OnboardingStore,
+} from "./idb-onboarding-store"
+export {
+  createIdbOnboardingStore,
+  createMemoryOnboardingStore,
+} from "./idb-onboarding-store"
 export {
   closeMycmsDatabases,
   createSharedStore,
