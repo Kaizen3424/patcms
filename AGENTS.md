@@ -2,7 +2,7 @@
 
 > **Every agent session starts here.** Read this file fully, then follow §4 Session Protocol. This file never duplicates details it can point to; it is the single tracker for project state. Agents MUST maintain §3 and the task checklists — stale docs are treated as build failures.
 
-Maintained by: agent sessions · Last updated: 2026-10-31 (Phase 5 complete; ready for owner gate review)
+Maintained by: agent sessions · Last updated: 2026-10-31 (Phase 5 gate passed; ready for Phase 6)
 
 ---
 
@@ -23,11 +23,11 @@ Maintained by: agent sessions · Last updated: 2026-10-31 (Phase 5 complete; rea
 | P2 | Save pipeline + editor v0 | ✅ Gate passed 2026-10-30 (owner-confirmed) | e2e publish loop green incl. conflict + failure paths |
 | P3 | Widget system complete | ✅ Gate passed 2026-10-31 (owner-confirmed) | yve exact config editable on fixtures, zero code change |
 | P4 | Media system | ✅ Gate passed 2026-10-31 (owner-confirmed) | 9-photo slow-wifi e2e green; no-raw-URL invariant proven |
-| P5 | Founder polish & IA | 🟨 Ready for owner review | founder-cry triad simulations green; a11y checklist green; 31/31 e2e passing |
-| P6 | yve integration cutover | ⬜ Blocked until P5 | success criteria on the real site; rollback path proven |
+| P5 | Founder polish & IA | ✅ Gate passed 2026-10-31 (owner-confirmed) | founder-cry triad simulations green; a11y checklist green; 31/31 e2e passing |
+| P6 | yve integration cutover | ⬜ Ready to start | success criteria on the real site; rollback path proven |
 | P7 | OSS publication | ⬜ Blocked until P6 | stranger completes widget exemplar unaided; release dry-run |
 
-**Current focus:** **Phase 5 — Founder polish & IA (Implementation complete, all tests and simulations green; awaiting owner gate review).**
+**Current focus:** **Phase 6 — yve integration cutover (Phase 5 complete and owner-confirmed; ready to begin Phase 6 planning and execution).**
 
 *Legend: ⬜ not started · 🟨 in progress · ✅ gate passed (date) · ⛔ blocked*
 

@@ -1,6 +1,6 @@
 # Phase P5 — Founder polish & IA
 
-> Status: 🟨 In progress (P5 implementation complete; ready for owner gate review) · Prev gate: P4 ✅
+> Status: ✅ Gate passed 2026-10-31 (owner-confirmed) · Prev gate: P4 ✅
 
 ## Pre-flight checklist
 - [x] P4 gate ✅; ADRs: 0008 (status honesty), 0002 (bootstrap/restore UX), master-plan §7 (UX law FULL read); founder-cry triad briefs (master-plan §7)
@@ -39,8 +39,9 @@ Everything non-structural that makes the founder safe-unaided: global IA surface
 ## Exit gate
 - [x] Founder-cry triad simulations scripted + green (triad-conflict-fear.spec.ts, triad-broken-site-fear.spec.ts, triad-lost-work-fear.spec.ts)
 - [x] Copy scanner + a11y suite + keyboard journey green; INV-A01 persisted-mode re-run green
-- [ ] Owner demo of: consent → tour → edit → conflict → failure → recover loop; AGENTS/todos/logs updated (Awaiting owner gate review)
+- [x] Owner demo of: consent → tour → edit → conflict → failure → recover loop; AGENTS/todos/logs updated (OWNER CONFIRMED in chat 2026-10-31)
 
 ## Session log
+- 2026-10-31 — Phase 5 exit gate passed: OWNER CONFIRMED in chat; all 10 tasks, 3 triad simulations, and full test/e2e/a11y/guard suites verified green (session)
 - 2026-10-31 — Complete implementation of P5 (P5.1–P5.10) verified green: 739 unit tests, 31/31 Playwright E2E tests incl. 3 Founder-Cry Triad simulations, 125% zoom layout, mouse-free keyboard journey, full DOM a11y audit, zero-banned-word AST scans, token expiry kit, diagnostics ring buffer, and supply-chain guards clean (session)
 - 2026-10-31 — Comprehensive P5 planning completed: 3-way EGM audit (Codebase details, Hostile design critic, Implementation readiness) synthesized; tasks/plan.md P5.1–P5.10 hardened with exact Acceptance & Verify blocks; IDB unified storage, drift idle backoff, zero-network attribution, and 3 Founder-Cry Triad E2E specs detailed (session)
