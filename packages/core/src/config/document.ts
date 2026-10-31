@@ -309,7 +309,11 @@ function descriptorFromMeta(name: string, meta: FieldMeta, context: string): Fie
         ...(meta.searchFields === undefined ? {} : { searchFields: meta.searchFields }),
       }
     case "hidden":
-      return { ...base, type: "hidden" }
+      return {
+        ...base,
+        type: "hidden",
+        ...(meta.siteEffect === undefined ? {} : { siteEffect: meta.siteEffect }),
+      }
     case "slug":
       return { ...base, type: "slug" }
   }

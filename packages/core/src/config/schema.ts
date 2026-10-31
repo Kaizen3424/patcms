@@ -93,7 +93,11 @@ export const fieldDescriptorSchema: z.ZodType<FieldDescriptor> = z.lazy(() =>
       displayFields: z.array(z.string().min(1)).optional(),
       searchFields: z.array(z.string().min(1)).optional(),
     }),
-    z.strictObject({ ...fieldCommon, type: z.literal("hidden") }),
+    z.strictObject({
+      ...fieldCommon,
+      type: z.literal("hidden"),
+      siteEffect: z.string().optional(),
+    }),
     z.strictObject({ ...fieldCommon, type: z.literal("slug") }),
     z.strictObject({
       type: z.literal("divider"),

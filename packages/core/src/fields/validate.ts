@@ -30,14 +30,52 @@ export async function validateEntryForSave(
   const parsed = parseEntry(options)
   const issues = [...parsed.issues]
 
+  // Repair-on-save: missing hidden fields with default values are backfilled (ADR-0003 P3 addendum)
+  const value = backfillHiddenDefaults(options.fields, parsed.value)
+
   if (options.services?.hasEntry !== undefined) {
-    await checkRelations(options.fields, parsed.value, options.services, issues, "")
+    await checkRelations(options.fields, value, options.services, issues, "")
   }
 
   if (issues.some((issue) => issue.severity === "error")) {
     return { ok: false, issues }
   }
-  return { ok: true, value: parsed.value, untouched: parsed.untouched }
+  return { ok: true, value, untouched: parsed.untouched }
+}
+
+function backfillHiddenDefaults(
+  fields: readonly FieldDescriptor[],
+  value: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...value }
+  for (const field of fields) {
+    if (field.type === "divider" || field.type === "slug") continue
+
+    if (field.type === "hidden") {
+      if (!Object.hasOwn(result, field.name) && field.defaultValue !== undefined) {
+        result[field.name] = cloneJson(field.defaultValue)
+      }
+      continue
+    }
+
+    if (field.type === "object") {
+      const child = result[field.name]
+      if (isRecord(child)) {
+        result[field.name] = backfillHiddenDefaults(field.fields, child)
+      }
+      continue
+    }
+
+    if (field.type === "list" && field.itemMode === "object") {
+      const list = result[field.name]
+      if (Array.isArray(list)) {
+        result[field.name] = list.map((item) =>
+          isRecord(item) ? backfillHiddenDefaults(field.fields, item) : item,
+        )
+      }
+    }
+  }
+  return result
 }
 
 async function checkRelations(

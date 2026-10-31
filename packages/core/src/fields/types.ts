@@ -106,6 +106,7 @@ export interface RelationFieldMeta extends BaseFieldMeta {
 
 export interface HiddenFieldMeta extends BaseFieldMeta {
   readonly type: "hidden"
+  readonly siteEffect?: string
 }
 
 export interface SlugFieldMeta extends BaseFieldMeta {
@@ -202,6 +203,7 @@ export interface RelationFieldDescriptor extends BaseFieldDescriptor {
 
 export interface HiddenFieldDescriptor extends BaseFieldDescriptor {
   readonly type: "hidden"
+  readonly siteEffect?: string
 }
 
 export interface SlugFieldDescriptor extends BaseFieldDescriptor {

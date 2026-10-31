@@ -46,9 +46,18 @@ describe("INV-T01 golden XSS payloads", () => {
         "{{fields.preview_path}}",
         "{{fields.alt}}",
         "{{fields.group}}",
+        "{{fields.label}}: {{fields.value}}",
       ]) {
-        const output = mustacheLite(template, values)
-        expect(output).toBe(payload)
+        const itemValues = {
+          fields: {
+            ...values.fields,
+            label: payload,
+            value: payload,
+            swatch: payload,
+          },
+        }
+        const output = mustacheLite(template, itemValues)
+        expect(output).toContain(payload)
       }
     })
   }

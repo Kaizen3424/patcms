@@ -76,7 +76,9 @@ export interface RelationFieldOptions extends BaseFieldOptions {
   readonly searchFields?: readonly string[]
 }
 
-export type HiddenFieldOptions = BaseFieldOptions
+export interface HiddenFieldOptions extends BaseFieldOptions {
+  readonly siteEffect?: string
+}
 export type SlugFieldOptions = Pick<BaseFieldOptions, "label" | "hint" | "width">
 
 export function defineField<T extends z.ZodType>(schema: T, meta: FieldMeta): T {
@@ -262,7 +264,11 @@ export function relation(options: RelationFieldOptions): z.ZodType<string | stri
 export function hidden(options: HiddenFieldOptions): z.ZodType<unknown> {
   return finalize(
     z.unknown(),
-    { ...baseMeta("hidden", options, false), type: "hidden" },
+    {
+      ...baseMeta("hidden", options, false),
+      type: "hidden",
+      siteEffect: options.siteEffect,
+    },
     options.required ?? false,
   )
 }

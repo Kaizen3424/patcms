@@ -205,4 +205,64 @@ describe("mergeUntouched (explicit JSON-Pointer composition, no merges)", () => 
     expect(Object.hasOwn(merged, "fn")).toBe(true)
     expect(merged.fn).toBeUndefined()
   })
+
+  it("backfills missing hidden defaults on save (repair-on-save ADR-0003 P3 addendum)", async () => {
+    const fields: FieldDescriptor[] = [
+      { name: "title", type: "string", label: "Title", required: true },
+      {
+        name: "materialFilter",
+        type: "hidden",
+        label: "Material filter",
+        required: false,
+        defaultValue: "Ceramics",
+      },
+      {
+        name: "images",
+        type: "list",
+        label: "Images",
+        required: false,
+        itemMode: "object",
+        fields: [
+          { name: "image", type: "string", label: "Image", required: true },
+          {
+            name: "objectPosition",
+            type: "hidden",
+            label: "Crop focus",
+            required: false,
+            defaultValue: "center",
+          },
+        ],
+      },
+    ]
+
+    const raw = {
+      title: "Iris No. 7",
+      images: [{ image: "/images/products/iris-1.jpg" }],
+    }
+
+    const result = await validateEntryForSave(options(fields, raw))
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected validation ok")
+
+    expect(result.value.materialFilter).toBe("Ceramics")
+    const images = result.value.images as Array<Record<string, unknown>>
+    expect(images[0]?.objectPosition).toBe("center")
+  })
+
+  it("does not overwrite existing hidden values during repair-on-save", async () => {
+    const fields: FieldDescriptor[] = [
+      {
+        name: "materialFilter",
+        type: "hidden",
+        label: "Material filter",
+        required: false,
+        defaultValue: "Ceramics",
+      },
+    ]
+
+    const result = await validateEntryForSave(options(fields, { materialFilter: "Custom Glass" }))
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected validation ok")
+    expect(result.value.materialFilter).toBe("Custom Glass")
+  })
 })
