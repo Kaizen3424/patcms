@@ -28,3 +28,16 @@ Exemplar acceptance criteria are P3 (widget) and P1 (backend) gate items — not
   are the only consumers that need cross-entry reads. The full contract above remains the target and the
   reference-swatch exemplar (P3.6) still owns its acceptance.
 - Registry snapshot test stays a P3.6 exemplar acceptance item, as scheduled.
+
+### P3 addendum (2026-10-30) — custom widget exemplar, registry context, and widget services
+
+1. **Custom Widget Registration Seam**:
+   - `WidgetBinding.fieldTypeName` is widened to `WidgetTypeName = FieldDescriptor["type"] | (string & {})`, allowing third parties and custom exemplars (e.g. `swatch`) to register custom widget components while preserving closed core field types.
+   - `WidgetRegistryContext` and `useWidgetRegistry()` provide dynamic widget resolution across recursive containers (`ObjectWidget`, `ListWidget`), ensuring custom widgets are accessible at any depth.
+2. **Widget Services**:
+   - `WidgetServices` is attached to `WidgetProps`: `{ getEntries, getEntryBySlug, searchEntries }`, powered by admin's `EntryIndex`.
+   - The standing veto stands: no `backend`, no credentials, no raw GitHub transport inside `WidgetProps`.
+3. **Reference Swatch Exemplar Acceptance**:
+   - `packages/admin/src/widgets/reference-swatch/` proves the custom widget authoring pathway: color dots for enum values (`accent`, `muted`, `secondary`), docblock detailing the contract (config → validate → serialize → render).
+   - Enforced by: widget registry snapshot test, extended `INV-T01` golden XSS test, and live playground fixture rendering.
+

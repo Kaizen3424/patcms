@@ -47,3 +47,19 @@ configs parse unchanged, so this is additive within `CONFIG_SCHEMA_VERSION = 1`
   host. It is not a credential or a per-session preference.
 - An empty `contexts` array is equivalent to absent (fallback disabled); it is
   accepted so generated configs do not need to special-case emptiness.
+
+### P3 addendum (2026-10-30) — leaf-first default fold, template model, hidden repair-on-save
+
+1. **Leaf-first default fold**:
+   - `parseEntry` remains default-immune (`INV-D01`): opening an existing entry never injects missing keys into memory, ensuring untouched files never serialize noisy phantom diffs.
+   - For new entries and templates, defaults materialize via a leaf-first fold traversing schema fields from deepest child nodes up to root. Configured `defaultValue`s (e.g. `materialFilter: "Ceramics"`, `objectPosition: "center"`) populate initial form state.
+   - Lists requiring items (`min >= 1`) are initialized with exactly one sensible default row to prevent immediate blocking errors on creation.
+2. **Template "Start from" data model**:
+   - Deep-cloning an existing entry strips unique identity: `title` is cleared (or prefixed with `"Copy of "`) and virtual `slug` is reset.
+   - Complex nested configurations (e.g. `options` choice-tabs, `specs`, `accordions`) are preserved verbatim.
+   - Media references are shared by reference (image path strings preserved); no media assets are duplicated or re-uploaded.
+   - Creation dispatches transactional `changes: { adds: [{ path, bytes }] }` rather than `updates` because the file is absent from the remote tree.
+3. **Hidden repair-on-save backfill**:
+   - Missing hidden fields that declare a `defaultValue` are backfilled into the persisted value during `validateEntryForSave`. Drifted entries are thus repaired when edited and saved, preserving read-path default-immunity while guaranteeing repository normalization.
+   - `HiddenFieldDescriptor` carries optional `siteEffect?: string` documenting the field's purpose in human prose for the "Behind the scenes" drawer (defaulting to `"Not shown on your site right now"`).
+
