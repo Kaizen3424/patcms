@@ -53,6 +53,9 @@ import { normalizeImage } from "../workers/raster-client"
 import { AdvisoryChips } from "./advisory-chip"
 import { BehindTheScenesDrawer } from "./behind-the-scenes"
 import { personalize, RECOVERY_COPY, SAVE_BAR_COPY, TEMPLATE_COPY } from "./copy"
+import { DriftBanner } from "./drift-banner"
+import { DriftDrawer } from "./drift-drawer"
+import { useDriftMonitor } from "./drift-monitor"
 import { FailureCard } from "./failure-card"
 import { composeFailureReport, copyToClipboard } from "./failure-report"
 import type { EntryFormState } from "./form-value"
@@ -129,7 +132,8 @@ export function EntryEditor({
   isNew = false,
   onCreated,
 }: EntryEditorProps) {
-  const { backend, config, repository, drafts, coordinator, lease, support, signOut } = useRuntime()
+  const { backend, config, repository, drafts, coordinator, lease, support, probe, signOut } =
+    useRuntime()
   const publishEntry = usePublishEntry()
   const snapshot = useSnapshot()
   const [currentSlug, setCurrentSlug] = useState(entry.slug)
@@ -247,6 +251,15 @@ export function EntryEditor({
   const [sweep, setSweep] = useState<SweepVerdict | undefined>(undefined)
   const [reauthOpen, setReauthOpen] = useState(false)
   const [reportCopied, setReportCopied] = useState(false)
+  const [driftDrawerOpen, setDriftDrawerOpen] = useState(false)
+  const { drift, clearDrift } = useDriftMonitor({
+    branch: repository.branch,
+    baseHeadSha: form?.baseSha,
+    entryPath,
+    backend,
+    rateLimitRemaining: probe?.rateLimit?.remaining,
+    enabled: !isNew && Boolean(backend),
+  })
   const mounted = useRef(true)
   const saving = useRef(false)
   const initialized = useRef(false)
@@ -793,6 +806,24 @@ export function EntryEditor({
             {TEMPLATE_COPY.nothingPublished}
           </div>
         ) : null}
+
+        <DriftDrawer
+          open={driftDrawerOpen}
+          onOpenChange={setDriftDrawerOpen}
+          drift={drift}
+          supportName={support.name}
+          isDirty={form !== null && isFormDirty(form)}
+          onReload={() => {
+            void startOver()
+            clearDrift()
+          }}
+        />
+
+        <DriftBanner
+          drift={drift}
+          supportName={support.name}
+          onOpenDrawer={() => setDriftDrawerOpen(true)}
+        />
 
         <SlugChip
           isNew={isNew}

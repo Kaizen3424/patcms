@@ -381,6 +381,20 @@ export const ONBOARDING_COPY = {
   step4Body: "A heartbeat indicator lets you know your public site is up to date.",
 } as const
 
+/** Background drift monitor copy (P5.4). */
+export const DRIFT_COPY = {
+  bannerTitle: "This page's files changed ({name}, {time})",
+  whatChanged: "What changed?",
+  drawerTitle: "Updates detected on the site",
+  drawerSubtitle: "Saved by {name} · {time}",
+  keepEditingTitle: "Keep editing",
+  keepEditingBody:
+    "Your changes remain safe on this device. When you save, any differences will be presented clearly before saving.",
+  reloadLatest: "Reload latest version",
+  reloadWarning: "Reloading will replace what is on this screen.",
+  close: "Close updates panel",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -442,5 +456,6 @@ export function allCopyStrings(): readonly string[] {
   walk(JOURNAL_COPY)
   walk(HEARTBEAT_COPY)
   walk(ONBOARDING_COPY)
+  walk(DRIFT_COPY)
   return strings
 }
