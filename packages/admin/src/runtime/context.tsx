@@ -36,6 +36,7 @@ import type { StatusProviderDeps } from "../status/provider"
 import { StatusProvider } from "../status/provider"
 import type { PublishStore } from "../status/publish-store"
 import { createPublishStore } from "../status/publish-store"
+import { BlobCacheProvider } from "./blob-cache"
 import type { EntryIndex } from "./entry-index"
 import { loadEntryIndex } from "./entry-index"
 import { createMemoryDraftStore } from "./memory-draft-store"
@@ -272,7 +273,9 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
 
   return (
     <RuntimeContext.Provider value={value}>
-      <StatusProvider deps={statusDeps}>{children}</StatusProvider>
+      <StatusProvider deps={statusDeps}>
+        <BlobCacheProvider backend={backend}>{children}</BlobCacheProvider>
+      </StatusProvider>
     </RuntimeContext.Provider>
   )
 }
@@ -318,14 +321,20 @@ function defaultCarrier(): LeaseCarrier | undefined {
 }
 
 export function useSnapshot() {
-  const { backend, repository, snapshots, epoch } = useRuntime()
+  const runtime = useRuntimeSafe()
+  const backend = runtime?.backend
+  const repository = runtime?.repository
+  const snapshots = runtime?.snapshots
+  const epoch = runtime?.epoch
   return useQuery({
-    queryKey: ["snapshot", epoch, repository.owner, repository.repo, repository.branch],
-    enabled: backend !== undefined,
+    queryKey: ["snapshot", epoch, repository?.owner, repository?.repo, repository?.branch],
+    enabled: backend !== undefined && repository !== undefined && snapshots !== undefined,
     staleTime: 30_000,
     retry: false,
     queryFn: async () => {
-      if (backend === undefined) throw new Error("not signed in")
+      if (backend === undefined || repository === undefined || snapshots === undefined) {
+        throw new Error("not signed in")
+      }
       const ref = await backend.getRef(repository.branch)
       const head = ref.object.sha
       const cached = snapshots.getTree(head)

@@ -274,6 +274,51 @@ export const BEHIND_THE_SCENES_COPY = {
   notShown: "Not shown on your site right now",
 } as const
 
+/** Media library and image handling copy (P4.6). */
+export const MEDIA_COPY = {
+  title: "Media Library",
+  searchPlaceholder: "Search images by name or path...",
+  filterAll: "All",
+  emptyState: "No images found.",
+  emptySearch: "No images match your search.",
+  uploadButton: "Upload image",
+  uploadPrompt: "Drag & drop an image or browse",
+  uploading: "Optimizing image...",
+  retryUpload: "Retry upload",
+  chooseFromLibrary: "Choose from library",
+  detailsTitle: "Image Details",
+  publicPath: "Public path",
+  copyPath: "Copy path",
+  copied: "Copied!",
+  dimensions: "Dimensions",
+  fileSize: "File size",
+  usedIn: "Used in",
+  noReferences: "Not used in any entries yet.",
+  altPrefillPrefix: "Last used as:",
+  replaceTitle: "Replace image file",
+  replaceWarning:
+    "Replacing an existing file keeps the same web address. Because public sites cache images, visitors may see the old image for up to 1 hour.",
+  deleteButton: "Delete image",
+  deleteWarning:
+    "This will remove the image from the site. If it is used in any entries, it cannot be deleted until those references are removed.",
+  budgetWarning:
+    "Your media storage is reaching recommended limits. Ask {name} to archive older images to keep everything fast.",
+} as const
+
+/** Recently deleted / tombstone copy (P4.7). */
+export const TRASH_COPY = {
+  title: "Recently Deleted",
+  subtitle:
+    "Restoring moves the image back to its original location. Entries that previously used it will need to be re-saved if their fields were cleared.",
+  emptyState: "No recently deleted images.",
+  restoreButton: "Restore",
+  restoring: "Restoring...",
+  restored: "Restored!",
+  collisionError: "Cannot restore: an image already exists at the original location.",
+  deleteBlocked: "Cannot delete: this image is used in entries.",
+  confirmDelete: "Move this image to Recently Deleted?",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -329,5 +374,7 @@ export function allCopyStrings(): readonly string[] {
   walk(SLUG_COPY)
   walk(TEMPLATE_COPY)
   walk(BEHIND_THE_SCENES_COPY)
+  walk(MEDIA_COPY)
+  walk(TRASH_COPY)
   return strings
 }

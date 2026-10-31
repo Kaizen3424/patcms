@@ -32,3 +32,10 @@ export function mountAdmin(el: HTMLElement, options: AdminMountOptions): void {
     </StrictMode>,
   )
 }
+
+export {
+  BlobCacheManager,
+  BlobCacheProvider,
+  useBlobCache,
+  useBlobPreview,
+} from "../runtime/blob-cache"

@@ -5,7 +5,9 @@ import { AppShell } from "../screens/app-shell"
 import { EntryScreen } from "../screens/entry-screen"
 import { LibraryScreen } from "../screens/library-screen"
 import { LoginScreen } from "../screens/login-screen"
+import { MediaLibraryScreen } from "../screens/media-library-screen"
 import { NewEntryScreen } from "../screens/new-entry-screen"
+import { RecentlyDeletedScreen } from "../screens/recently-deleted-screen"
 
 function RootLayout() {
   const { status } = useRuntime()
@@ -79,9 +81,23 @@ const entryRoute = createRoute({
   component: EntryScreen,
 })
 
+const mediaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/media",
+  component: MediaLibraryScreen,
+})
+
+const trashRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/trash",
+  component: RecentlyDeletedScreen,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   collectionRoute,
   newEntryRoute,
   entryRoute,
+  mediaRoute,
+  trashRoute,
 ])

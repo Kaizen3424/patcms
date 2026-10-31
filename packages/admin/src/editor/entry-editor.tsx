@@ -15,10 +15,12 @@ import type {
   ConflictMergePreview,
   FieldDescriptor,
   FieldPath,
+  FileWrite,
   FolderCollectionDescriptor,
   ParseIssue,
   SaveDraftPayload,
   SaveMachineState,
+  StagedMediaTileRecord,
 } from "@mycms/core"
 import {
   adjudicateDraft,
@@ -28,12 +30,15 @@ import {
   encodeUtf8,
   fieldPathKey,
   parseJsonDocument,
+  publicPathToRepoPath,
+  repoPathToPublicPath,
+  resolveMediaFolders,
   SaveInFlightError,
   validateEntryForSave,
 } from "@mycms/core"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { usePublishEntry, useRuntime } from "../runtime/context"
+import { usePublishEntry, useRuntime, useSnapshot } from "../runtime/context"
 import type { EntryIndex, IndexedEntry } from "../runtime/entry-index"
 import { StatusChip } from "../status/chip"
 import { usePublishedSha } from "../status/provider"
@@ -44,6 +49,7 @@ import {
   WidgetRegistryProvider,
   type WidgetServices,
 } from "../widgets"
+import { normalizeImage } from "../workers/raster-client"
 import { AdvisoryChips } from "./advisory-chip"
 import { BehindTheScenesDrawer } from "./behind-the-scenes"
 import { personalize, RECOVERY_COPY, SAVE_BAR_COPY, TEMPLATE_COPY } from "./copy"
@@ -125,6 +131,7 @@ export function EntryEditor({
 }: EntryEditorProps) {
   const { backend, config, repository, drafts, coordinator, lease, support, signOut } = useRuntime()
   const publishEntry = usePublishEntry()
+  const snapshot = useSnapshot()
   const [currentSlug, setCurrentSlug] = useState(entry.slug)
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
 
@@ -165,8 +172,64 @@ export function EntryEditor({
           }),
         )
       },
+      stageMedia: async (file, options) => {
+        const coll = options?.collection ?? entry.collectionName
+        const mediaFolders = resolveMediaFolders(config, coll)
+
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        const normalized = await normalizeImage({
+          bytes,
+          filename: options?.targetFilename ?? file.name,
+          mimeType: file.type,
+        })
+
+        const publicPathResult = repoPathToPublicPath(
+          `${mediaFolders.folder.replace(/^\/+/, "")}/${normalized.sanitizedFilename}`,
+          mediaFolders,
+        )
+        const publicPath = publicPathResult.ok
+          ? publicPathResult.value
+          : `/${mediaFolders.publicFolder.replace(/^\/+/, "")}/${normalized.sanitizedFilename}`
+
+        const repoPath = `${mediaFolders.folder.replace(/^\/+/, "")}/${normalized.sanitizedFilename}`
+        const tileId = `tile-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+
+        const tile: StagedMediaTileRecord = {
+          tileId,
+          repoPath,
+          publicPath,
+          originalFilename: file.name,
+          sanitizedFilename: normalized.sanitizedFilename,
+          bytes: normalized.bytes,
+          mimeType: normalized.mimeType,
+          size: normalized.bytes.byteLength,
+          sha: `staged-${tileId}`,
+          status: "ready",
+        }
+
+        await drafts.put({
+          key: `${draftKey}/media/${tileId}`,
+          savedAt: new Date().toISOString(),
+          value: tile,
+        })
+
+        return { publicPath, tile }
+      },
+      listStagedMedia: async () => {
+        const records = await drafts.list(`${draftKey}/media/`)
+        return records
+          .map((r) => r.value as StagedMediaTileRecord)
+          .filter((t) => Boolean(t?.repoPath))
+      },
+      resolveMediaSha: (path: string) => {
+        if (!snapshot.data?.tree?.entries) return undefined
+        const mediaFolders = resolveMediaFolders(config, entry.collectionName)
+        const repoPathResult = publicPathToRepoPath(path, mediaFolders)
+        const targetRepoPath = repoPathResult.ok ? repoPathResult.value : path.replace(/^\/+/, "")
+        return snapshot.data.tree.entries.find((e) => e.path === targetRepoPath)?.sha
+      },
     }
-  }, [index])
+  }, [index, config, drafts, draftKey, entry.collectionName, snapshot.data?.tree?.entries])
 
   const [form, setForm] = useState<EntryFormState | null>(() => {
     const created = createEntryForm(entry, headSha)
@@ -270,6 +333,7 @@ export function EntryEditor({
       if (!active) return
       if (adjudication.kind === "discard") {
         await drafts.delete(draftKey)
+        await drafts.deletePrefix(`${draftKey}/media/`)
         return
       }
       if (adjudication.kind === "conflict") {
@@ -402,9 +466,22 @@ export function EntryEditor({
       }
       setValidationIssues([])
 
+      const stagedRecords = await drafts.list(`${draftKey}/media/`)
+      const stagedAdds: FileWrite[] = []
+      for (const rec of stagedRecords) {
+        const tile = rec.value as StagedMediaTileRecord
+        if (tile?.repoPath && tile.bytes) {
+          stagedAdds.push({ path: tile.repoPath, bytes: tile.bytes })
+        }
+      }
+
+      const contentWrite: FileWrite = { path: entryPath, bytes: encodeUtf8(bytes) }
       const changes = isNew
-        ? { adds: [{ path: entryPath, bytes: encodeUtf8(bytes) }] }
-        : { updates: [{ path: entryPath, bytes: encodeUtf8(bytes) }] }
+        ? { adds: [contentWrite, ...stagedAdds] }
+        : {
+            updates: [contentWrite],
+            ...(stagedAdds.length > 0 ? { adds: stagedAdds } : {}),
+          }
 
       const verdict = await coordinator.save({
         draftKey,

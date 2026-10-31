@@ -8,7 +8,7 @@
  * Standing veto: no `backend`, no credential, no transport in `WidgetProps`.
  * A widget is a pure function of its value + descriptor.
  */
-import type { FieldDescriptor, ParseIssue } from "@mycms/core"
+import type { FieldDescriptor, ParseIssue, StagedMediaTileRecord } from "@mycms/core"
 import type { ComponentType } from "react"
 import type { IndexedEntry } from "../runtime/entry-index"
 
@@ -20,6 +20,12 @@ export interface WidgetServices {
     query: string,
     fields: readonly string[],
   ) => readonly IndexedEntry[]
+  readonly stageMedia?: (
+    file: File,
+    options?: { collection?: string; targetFilename?: string },
+  ) => Promise<{ publicPath: string; tile: StagedMediaTileRecord }>
+  readonly listStagedMedia?: () => Promise<readonly StagedMediaTileRecord[]>
+  readonly resolveMediaSha?: (path: string) => string | undefined
 }
 
 export interface WidgetProps<F extends FieldDescriptor = FieldDescriptor> {

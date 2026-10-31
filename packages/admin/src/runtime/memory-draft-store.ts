@@ -17,6 +17,13 @@ export function createMemoryDraftStore(): DraftStore {
     async delete(key: DraftKey): Promise<void> {
       records.delete(key)
     },
+    async deletePrefix(prefix: string): Promise<void> {
+      for (const key of records.keys()) {
+        if (key.startsWith(prefix)) {
+          records.delete(key)
+        }
+      }
+    },
     async list(prefix?: DraftKey): Promise<readonly DraftRecord[]> {
       const all = [...records.values()]
       if (prefix === undefined) return all

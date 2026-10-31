@@ -59,6 +59,41 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
               </Link>
             )
           })}
+
+          <div className="my-2 border-t border-border-soft pt-2">
+            <Link
+              to="/media"
+              className={`flex shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                pathname === "/media"
+                  ? "bg-surface-raised text-text-primary"
+                  : "text-text-muted hover:bg-surface-raised/60 hover:text-text-primary"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className={`size-1.5 rounded-full ${pathname === "/media" ? "bg-accent" : "bg-border-strong"}`}
+                />
+                <span>Media</span>
+              </span>
+            </Link>
+            <Link
+              to="/trash"
+              className={`flex shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                pathname === "/trash"
+                  ? "bg-surface-raised text-text-primary"
+                  : "text-text-muted hover:bg-surface-raised/60 hover:text-text-primary"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className={`size-1.5 rounded-full ${pathname === "/trash" ? "bg-accent" : "bg-border-strong"}`}
+                />
+                <span>Recently deleted</span>
+              </span>
+            </Link>
+          </div>
         </nav>
 
         <div className="mt-auto hidden border-t border-border-soft px-5 py-4 md:block">
