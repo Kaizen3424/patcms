@@ -55,7 +55,7 @@ export function ListWidget({
     if (moved === undefined) return
     next.splice(toIndex, 0, moved)
     onChange(next)
-    setAnnouncement(`Moved item to position ${toIndex + 1} of ${items.length}`)
+    setAnnouncement(`Item ${fromIndex + 1} of ${items.length} moved to position ${toIndex + 1}`)
   }
 
   const handleRemove = (index: number) => {

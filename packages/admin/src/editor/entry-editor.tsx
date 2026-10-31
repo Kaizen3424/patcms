@@ -809,7 +809,7 @@ export function EntryEditor({
 
   return (
     <WidgetRegistryProvider registry={defaultWidgetRegistry}>
-      <div>
+      <div className="scroll-pb-20" style={{ scrollPaddingBottom: "5rem" }}>
         {isNew ? (
           <div
             className="mb-4 rounded-card border border-accent/30 bg-accent/10 px-4 py-2.5 text-xs text-text-secondary"
