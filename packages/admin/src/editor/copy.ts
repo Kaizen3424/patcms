@@ -319,6 +319,19 @@ export const TRASH_COPY = {
   confirmDelete: "Move this image to Recently Deleted?",
 } as const
 
+/** Global search copy (P5.1). */
+export const SEARCH_COPY = {
+  placeholder: "Search titles, numbers, materials, or photo descriptions...",
+  promptTitle: "Find anything on your site",
+  promptDetail:
+    "Search products, collections, and pages by title, price, material, or photo description...",
+  emptyTitle: "No matches found",
+  emptyDetail:
+    'No entries match "{query}". Try searching whole-euro prices (e.g. 1450), materials, or title words.',
+  offlineBadge: "Showing last-seen copy",
+  shortcuts: "↑↓ to navigate · ↵ to open · esc to close",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -376,5 +389,6 @@ export function allCopyStrings(): readonly string[] {
   walk(BEHIND_THE_SCENES_COPY)
   walk(MEDIA_COPY)
   walk(TRASH_COPY)
+  walk(SEARCH_COPY)
   return strings
 }

@@ -73,8 +73,8 @@
 - [x] P4.9 slow-wifi 9-photo e2e journey (INV-M02 fault-injection, single-tile retry, atomic single-tree commit) — e2e/specs/slow-wifi.spec.ts passing (1/1); tests playground chaos mode with failBlobUploadIndex=7; tile retry verified in ImageWidget; save-controller recovers and dispatches exactly ONE commit and ONE ref patch containing entry JSON + 9 photos; post-publish IDB cleanup verified; replace image dialog displays 1-hour CDN honesty warning; full suite 22/22 tests passing
 - [x] ⛔ GATE P4: INV-M01/02/03 + T04/T05 + N03 green; 9-photo demo — OWNER CONFIRMED in chat 2026-10-31; evidence green (all P4.1–P4.9 tasks verified; 595/595 unit tests passed; 22/22 e2e tests passed; supply chain scans clean)
 
-## P5 — Founder polish & IA (status: ⬜)
-- [ ] P5.1 global search + zero-state teaching (⌘K over EntryIndex, zero dangerouslySetInnerHTML)
+## P5 — Founder polish & IA (status: 🟨 in progress)
+- [x] P5.1 global search + zero-state teaching (⌘K over EntryIndex, zero dangerouslySetInnerHTML) — searchIndex pure token matcher over title/price/materials/alt/descriptions, GlobalSearchModal with Radix Dialog focus trap & keyboard navigation, SEARCH_COPY deck, 15/15 tests green
 - [ ] P5.2 publish journal v1 + login heartbeat + top-bar heartbeat (IDB journal, relative time helper, StatusWatcher integration)
 - [ ] P5.3 consent pact + tour flow (gallery typography, self-contained tour Dialog, dismissible-until-first-publish)
 - [ ] P5.4 drift monitor + slide-over (getRef poll with idle backoff, path-level listChangedFiles filtering, reserved 24px line)

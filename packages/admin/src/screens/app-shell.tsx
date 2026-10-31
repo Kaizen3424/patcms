@@ -1,6 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router"
 import type { ReactNode } from "react"
+import { useEffect, useState } from "react"
 import { useEntryIndex, useRuntime } from "../runtime/context"
+import { GlobalSearchModal } from "../search/global-search-modal"
 import { StatusBanner } from "../status/chip"
 
 export function AppShell({ children }: { readonly children?: ReactNode }) {
@@ -8,9 +10,22 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
   const index = useEntryIndex()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const collections = config.collections.filter((collection) => collection.kind !== "divider")
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault()
+        setSearchOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-text-primary md:flex-row">
+      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <aside className="flex shrink-0 flex-col border-b border-border-soft bg-surface/80 md:min-h-dvh md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <span
@@ -25,6 +40,24 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
             </p>
             <p className="text-xs text-text-muted">Content studio</p>
           </div>
+        </div>
+
+        <div className="px-3 pb-3">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            data-testid="global-search-trigger"
+            aria-label="Search content (⌘K)"
+            className="flex w-full items-center justify-between rounded-lg border border-border-soft bg-surface-raised/40 px-3 py-2 text-xs text-text-muted transition-colors hover:border-border-strong hover:text-text-primary focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <span className="flex items-center gap-2">
+              <span aria-hidden="true">🔍</span>
+              <span>Search content...</span>
+            </span>
+            <kbd className="rounded border border-border-soft bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+              ⌘K
+            </kbd>
+          </button>
         </div>
 
         <nav
