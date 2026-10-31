@@ -17,3 +17,19 @@ Genesis identified canvas manipulation thread-cost and the private-repo preview 
 Draft restore banner must state "recovered before your last save" so a reopened product doesn't read as if queued photos went live. No LFS in v1 (documented; repo budget guard is the compensation).
 ### P0 verification (2026-10-27)
 - Backend seam already shaped for the media law: `FileWrite { path, bytes }` (bytes-only; the serializer owns encoding) + fixture media dirs (playground/fixtures/repo/public/images). Worker raster pipeline lands P4. No deviation.
+
+### Phase 4 addendum — Media service, bijection, budget, and preview reads (2026-10-31)
+1. **Path mapping bijection (INV-M01)**:
+   - Root media config: `media: { folder: string, publicFolder: string }` (e.g. `public/images` ⇄ `/images`).
+   - Collection overrides: `collection.media?: MediaFolders` (e.g. `public/images/products` ⇄ `/images/products`).
+   - Resolution employs longest-prefix matching.
+   - All mapping functions (`publicPathToRepoPath`, `repoPathToPublicPath`) enforce `safePath()`: public paths must be absolute (`/`), repo paths must be relative (no leading `/`), traversals (`..`), encoded separators (`%2f`, `%5c`), and backslashes are strictly rejected.
+   - Bijection identity holds: `repoPathToPublicPath(publicPathToRepoPath(p)) === p`.
+2. **Snapshot tree media budget math**:
+   - `calculateMediaBudget(treeEntries, media)` walks recursive tree entries in $O(N)$ with zero network requests using `TreeEntryTuple.size`.
+   - Thresholds: Warning surfaced when repository media total $\ge 800\text{MB}$ (`838,860,800` bytes) or total media count $\ge 2,500$ files.
+   - Client upload block enforced on any single file $>90\text{MiB}$ (`94,371,840` bytes).
+3. **Content-addressed preview reads (INV-N03)**:
+   - Previews read through `GitBackend.readBlob(sha: string): Promise<Uint8Array>`.
+   - Content-addressed by SHA-1 hash; zero dependence on branch names, paths, or `raw.githubusercontent.com`.
+   - Previews use `URL.createObjectURL` with a ref-counted lifecycle calling `URL.revokeObjectURL` on zero subscribers or component unmount.

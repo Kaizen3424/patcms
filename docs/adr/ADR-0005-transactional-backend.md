@@ -121,3 +121,17 @@ Completed and verified by the P2.12 end-to-end journey test suite:
 - Atomic Git data transactions, fast-forward CAS commits, and classified write error recovery verified end-to-end in the playground environment with MSW and Playwright across `e2e/specs/kill-tab.spec.ts`, `e2e/specs/parked-tx.spec.ts`, and `e2e/specs/publish-loop.spec.ts`.
 - All Phase 2 invariants (`INV-P01` through `INV-P17`) are fully implemented and verified with green test suites.
 
+### Phase 4 addendum — Tree entry size and content-addressed blob reading (2026-10-31)
+
+1. **Tree entry size widening**:
+   - `TreeEntryTuple` gains optional `readonly size?: number`.
+   - `GithubBackend.readTree` parses `size` from blob items returned by GitHub's recursive `git/trees` endpoint and subtree walks.
+   - `FakeGithubServer` and `ReferenceFixtureBackend` populate `size` for blob entries from stored/fixture bytes.
+   - Preserves O(N) budget calculation across the repository without issuing N+1 network requests.
+2. **Content-addressed blob reading**:
+   - `GitBackend` adds `readBlob(sha: string): Promise<Uint8Array>`.
+   - Directly calls `GET /git/blobs/:sha` with authenticated headers; returns decoded binary bytes.
+   - Content-addressed: does not take a branch or path parameter because Git blob SHAs are immutable.
+   - Verified across all backends via `CORE_CONTRACT_SUITE` (`BLOB_READ_CHECK`).
+
+
