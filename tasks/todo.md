@@ -75,7 +75,7 @@
 
 ## P5 — Founder polish & IA (status: 🟨 in progress)
 - [x] P5.1 global search + zero-state teaching (⌘K over EntryIndex, zero dangerouslySetInnerHTML) — searchIndex pure token matcher over title/price/materials/alt/descriptions, GlobalSearchModal with Radix Dialog focus trap & keyboard navigation, SEARCH_COPY deck, 15/15 tests green
-- [ ] P5.2 publish journal v1 + login heartbeat + top-bar heartbeat (IDB journal, relative time helper, StatusWatcher integration)
+- [x] P5.2 publish journal v1 + login heartbeat + top-bar heartbeat (IDB journal, relative time helper, StatusWatcher integration) — formatRelativeTime & friendly dates; IDB and in-memory JournalStore; JournalDrawer slide-out with dual-actor separation; TopBarHeartbeat with ambient live/updating/last-edit; LoginHeartbeat; 12/12 core tests + 26/26 admin tests green; typecheck & Biome clean
 - [ ] P5.3 consent pact + tour flow (gallery typography, self-contained tour Dialog, dismissible-until-first-publish)
 - [ ] P5.4 drift monitor + slide-over (getRef poll with idle backoff, path-level listChangedFiles filtering, reserved 24px line)
 - [ ] P5.5 conflict freeze completion + 30-day discard archive (auto-merge chips, dual-actor attribution, IDB discard store w/ eviction)

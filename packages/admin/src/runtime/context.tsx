@@ -9,11 +9,13 @@ import type {
   DraftStore,
   FetchLike,
   LeaseCarrier,
+  Logger,
   SaveCoordinator,
   SaveLease,
   TokenStore,
 } from "@mycms/core"
 import {
+  createLogger,
   createSaveCoordinator,
   createSaveLease,
   GithubBackend,
@@ -22,11 +24,14 @@ import {
   probeGithubCapabilities,
   SnapshotStore,
 } from "@mycms/core"
+import type { JournalStore } from "@mycms/core/web"
 import {
   createAutoCarrier,
   createBroadcastCarrier,
   createIdbDraftStore,
+  createIdbJournalStore,
   createIdbTokenStore,
+  createMemoryJournalStore,
 } from "@mycms/core/web"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
@@ -58,6 +63,10 @@ interface RuntimeValue {
   readonly drafts: DraftStore
   /** Session-only publish journal: entryId → latestCommitSha (P2.8). */
   readonly publishStore: PublishStore
+  /** Persistent publish journal store (P5.2). */
+  readonly journalStore: JournalStore
+  /** Memory-only diagnostics logger (P5.10). */
+  readonly logger: Logger
   /** Save orchestration for this backend generation (P2.6 editor). */
   readonly coordinator: SaveCoordinator | undefined
   /** Cross-tab UX serialization; undefined when no carrier is available. */
@@ -144,6 +153,15 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
   // Publish journal (P2.8): session-only map, cleared on sign-out. The entry
   // editor populates it from the `published` verdict; status chips key reads off it.
   const publishStore = useMemo(() => createPublishStore(), [])
+
+  // Persistent publish journal store (P5.2) and masked logger (P5.10)
+  const journalStore = useMemo(
+    () =>
+      options.journalStore ??
+      (typeof indexedDB !== "undefined" ? createIdbJournalStore() : createMemoryJournalStore()),
+    [options.journalStore],
+  )
+  const logger = useMemo(() => options.logger ?? createLogger(), [options.logger])
 
   const signIn = async (token: string, remember: boolean): Promise<CapabilityProbeResult> => {
     const result = await auth.signIn(token, { remember })
@@ -264,6 +282,8 @@ export function AdminRuntimeProvider({ options, children }: AdminRuntimeProvider
     epoch,
     drafts,
     publishStore,
+    journalStore,
+    logger,
     coordinator,
     lease,
     signIn,
@@ -290,18 +310,46 @@ export function useRuntimeSafe(): RuntimeValue | undefined {
   return useContext(RuntimeContext)
 }
 
+export function useJournalStore(): JournalStore {
+  return useRuntime().journalStore
+}
+
+export function useLogger(): Logger {
+  return useRuntime().logger
+}
+
+export interface PublishEntryMeta {
+  readonly title?: string
+  readonly collectionName?: string
+  readonly author?: string
+  readonly publicUrl?: string
+}
+
 /**
- * Captures the `published` verdict's `commitSha` into the session-only publish
- * journal (P2.8). The entry editor calls this from the `published` branch;
- * `noop` and failures never republish. Absent a sha, there is no chip to read.
+ * Captures the `published` verdict's `commitSha` into both the session publish
+ * store (for live chips) and the persistent IDB journal (P5.2).
  */
-export function usePublishEntry(): (entryId: string, commitSha: string) => void {
-  const { publishStore } = useRuntime()
+export function usePublishEntry(): (
+  entryId: string,
+  commitSha: string,
+  meta?: PublishEntryMeta,
+) => void {
+  const { publishStore, journalStore, support } = useRuntime()
   return useCallback(
-    (entryId: string, commitSha: string) => {
+    (entryId: string, commitSha: string, meta?: PublishEntryMeta) => {
       publishStore.publish(entryId, commitSha)
+      void journalStore.append({
+        commitSha,
+        entryId,
+        collectionName: meta?.collectionName ?? "content",
+        entryTitle: meta?.title ?? entryId,
+        path: entryId,
+        publishedAt: new Date().toISOString(),
+        author: meta?.author ?? "You",
+        ...(meta?.publicUrl ? { publicUrl: meta.publicUrl } : {}),
+      })
     },
-    [publishStore],
+    [publishStore, journalStore, support.name],
   )
 }
 

@@ -17,7 +17,7 @@ import type { UseStore } from "idb-keyval"
  * The object stores the default `mycms` database owns. A new store is added
  * HERE in the same change that starts using it (ADR-0004 note).
  */
-export const MYCMS_IDB_STORES = ["auth", "drafts"] as const
+export const MYCMS_IDB_STORES = ["auth", "drafts", "journal", "onboarding", "discards"] as const
 
 interface DbState {
   /** Every store an adapter has asked this database to carry so far. */

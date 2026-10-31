@@ -9,6 +9,7 @@ export {
   DEFAULT_LOCALE,
   sortBy,
 } from "./collator"
+export { formatFriendlyDate, formatRelativeTime, parseDate } from "./dates"
 export { decodeBase64, decodeUtf8, encodeBase64, encodeUtf8 } from "./encoding"
 export type { Logger, LogLevel, LogRecord } from "./logger"
 export { createLogger, isSensitiveKey, maskData, maskString } from "./logger"

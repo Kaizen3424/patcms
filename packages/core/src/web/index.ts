@@ -18,6 +18,15 @@ export type {
 } from "../pipeline/save-lease"
 export type { IdbDraftStoreOptions } from "./idb-draft-store"
 export { clearIdbDraftStore, createIdbDraftStore } from "./idb-draft-store"
+export type {
+  IdbJournalStoreOptions,
+  JournalRecord,
+  JournalStore,
+} from "./idb-journal-store"
+export {
+  createIdbJournalStore,
+  createMemoryJournalStore,
+} from "./idb-journal-store"
 export {
   closeMycmsDatabases,
   createSharedStore,

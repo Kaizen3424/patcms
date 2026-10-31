@@ -2,6 +2,7 @@ import { CapabilityProbeError } from "@mycms/core"
 import type { FormEvent } from "react"
 import { useState } from "react"
 import { useRuntime } from "../runtime/context"
+import { LoginHeartbeat } from "../status/heartbeat"
 
 /**
  * P1 login card — access key -> capability probe -> signed-in shell.
@@ -127,6 +128,7 @@ export function LoginScreen() {
         <p className="mt-5 text-center text-xs text-text-muted">
           Nothing is sent anywhere except GitHub. No tracking, no analytics.
         </p>
+        <LoginHeartbeat />
       </section>
     </main>
   )

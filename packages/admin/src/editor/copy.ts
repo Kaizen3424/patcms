@@ -332,6 +332,29 @@ export const SEARCH_COPY = {
   shortcuts: "↑↓ to navigate · ↵ to open · esc to close",
 } as const
 
+/** Activity journal copy (P5.2). */
+export const JOURNAL_COPY = {
+  title: "Activity journal",
+  subtitle: "Recent changes saved to this site.",
+  myChanges: "My changes",
+  partnerChanges: "Site updates by {name}",
+  emptyMyChanges: "You have not saved any changes yet on this device.",
+  emptyPartnerChanges: "No recent updates from {name}.",
+  seeOnSite: "See on site",
+  savedAt: "Saved {time}",
+  close: "Close journal",
+} as const
+
+/** Ambient heartbeat copy (P5.2). */
+export const HEARTBEAT_COPY = {
+  liveTitle: "Site live",
+  lastEditYours: "Site live · Last edit yours, {time}",
+  lastEditPartner: "Site live · Last edit {name}, {time}",
+  updating: "Site updating...",
+  loginConnected: "Connected to site content",
+  loginLastSeen: "Last connected {time}",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -390,5 +413,7 @@ export function allCopyStrings(): readonly string[] {
   walk(MEDIA_COPY)
   walk(TRASH_COPY)
   walk(SEARCH_COPY)
+  walk(JOURNAL_COPY)
+  walk(HEARTBEAT_COPY)
   return strings
 }

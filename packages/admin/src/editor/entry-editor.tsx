@@ -513,7 +513,14 @@ export function EntryEditor({
         setJustSaved(true)
         setJustNoop(false)
         setConflict(undefined)
-        publishEntry(entryPath, verdict.commitSha)
+        const currentTitle =
+          formRef.current?.formValue && typeof formRef.current.formValue === "object"
+            ? (formRef.current.formValue as Record<string, unknown>).title
+            : undefined
+        publishEntry(entryPath, verdict.commitSha, {
+          title: currentTitle ? String(currentTitle) : entry.title,
+          collectionName: entry.collectionName,
+        })
         // P2.7: sweep what the site does with the OBSERVED commit (her path
         // excluded). Never on noop; never in the save path's way — the sweep
         // reads standalone and its verdict can never gate a save.

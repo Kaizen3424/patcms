@@ -1,9 +1,11 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
+import { JournalDrawer } from "../journal/journal-drawer"
 import { useEntryIndex, useRuntime } from "../runtime/context"
 import { GlobalSearchModal } from "../search/global-search-modal"
 import { StatusBanner } from "../status/chip"
+import { TopBarHeartbeat } from "../status/heartbeat"
 
 export function AppShell({ children }: { readonly children?: ReactNode }) {
   const { config, support, probe, signOut } = useRuntime()
@@ -11,6 +13,7 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const collections = config.collections.filter((collection) => collection.kind !== "divider")
   const [searchOpen, setSearchOpen] = useState(false)
+  const [journalOpen, setJournalOpen] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -26,6 +29,7 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-text-primary md:flex-row">
       <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+      <JournalDrawer open={journalOpen} onOpenChange={setJournalOpen} />
       <aside className="flex shrink-0 flex-col border-b border-border-soft bg-surface/80 md:min-h-dvh md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <span
@@ -126,6 +130,17 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
                 <span>Recently deleted</span>
               </span>
             </Link>
+            <button
+              type="button"
+              onClick={() => setJournalOpen(true)}
+              data-testid="journal-trigger"
+              className="flex w-full shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-surface-raised/60 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <span className="flex items-center gap-2.5">
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-border-strong" />
+                <span>My changes</span>
+              </span>
+            </button>
           </div>
         </nav>
 
@@ -149,6 +164,7 @@ export function AppShell({ children }: { readonly children?: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-soft px-5 py-3 md:px-8">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <TopBarHeartbeat onOpenJournal={() => setJournalOpen(true)} />
             <p className="text-xs text-text-muted">
               Read-only preview <span className="px-1.5 text-border-strong">/</span>{" "}
               {probe?.rateLimit === null || probe?.rateLimit === undefined
