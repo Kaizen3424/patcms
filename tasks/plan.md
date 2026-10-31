@@ -193,6 +193,61 @@ Tasks P3.1–P3.9 in the phase file; sizes S/M; parity golden (INV-C01 initial) 
 **Checkpoint: P3** — "yve exact config editable, zero code change" demonstrated.
 
 ## Phase 4 — Media (see `P4-media.md`) — Tasks P4.1–P4.9; INV-M/T04/T05/N03.
+
+### P4.1 — Media service: path bijection, collection overrides, and budget math (M)
+- Acceptance: ADR-0007 / ADR-0005 P4 addenda FIRST; `TreeEntryTuple` widened with optional `size?: number`; `GitBackend` widened with required `readBlob(sha: string): Promise<Uint8Array>`; `GithubBackend`, `FakeGithubServer`, and `ReferenceFixtureBackend` updated with contract suite `BLOB_READ_CHECK`; `resolveMediaFolders(config, collectionName?)` resolves collection-level override or root `config.media`; `publicPathToRepoPath(publicPath, media)` and `repoPathToPublicPath(repoPath, media)` validate paths via `safePath()` (no traversal, no backslashes, absolute public paths, relative repo paths) using longest-prefix matching; bijection identity holds: `repoPathToPublicPath(publicPathToRepoPath(p)) === p` (INV-M01); `calculateMediaBudget(treeEntries, media)` computes total media bytes and file count from tree entries in $O(N)$ with zero network calls, warning at $\ge 800\text{MB}$ or $\ge 2,500$ files, and identifying single-file client blocks at $>90\text{MiB}$.
+- Verify: `pnpm --filter @mycms/core test -- src/media/__tests__/inv-media-bijection.test.ts src/backend/__tests__/contract-suite.test.ts --coverage.enabled=false`.
+- Files: `docs/adr/ADR-0007-media-pipeline.md`, `docs/adr/ADR-0005-transactional-backend.md`, `packages/core/src/backend/types.ts`, `packages/core/src/backends/github/index.ts`, `packages/core/src/backend/fake-github-server.ts`, `packages/core/src/backends/reference-fixture-backend/index.ts`, `packages/core/src/backend/contract-suite/index.ts`, `packages/core/src/media/{types,bijection,budget}.ts`, `packages/core/src/media/__tests__/inv-media-bijection.test.ts`, `packages/core/src/index.ts`.
+- Size: M.
+
+### P4.2 — findReferences engine: cross-collection and single-file referential integrity (M)
+- Acceptance: Pure function `findReferences(query, entries, config)` in `@mycms/core` with zero DOM dependencies; recursively walks all JSON data structures (objects, arrays, strings) across all loaded folder collections and single-file documents; matches image public paths and relation target slugs; extracts companion `altText` where sibling properties exist in object items (e.g. `{ image, alt }`); returns structured `readonly ReferenceLocation[]` with exact fieldPath breadcrumbs (e.g. `images.0.image`, `featuredProducts.1`, `studyProduct`).
+- Verify: `pnpm --filter @mycms/core test -- src/media/__tests__/find-references.test.ts --coverage.enabled=false` verifying exact fixture matches on `home.studyProduct`, `featuredProducts`, and shared image paths (`craft.json` and `bespoke.json`).
+- Files: `packages/core/src/media/references.ts`, `packages/core/src/media/__tests__/find-references.test.ts`, `packages/core/src/index.ts`.
+- Size: M.
+
+### P4.3 — Web Worker raster pipeline: binary header bomb guard, caps, and EXIF strip (M)
+- Acceptance: Node-safe `header-sniffer.ts` parses binary headers (PNG IHDR at offset 16, JPEG SOF0/SOF2 markers, WebP VP8 chunks) to extract natural dimensions before any bitmap allocation; rejects decompression bombs where `width * height > 24,000,000` or max dimension $>8,192\text{px}$; rejects `.svg` uploads and disguised SVGs via magic byte sniffing (`<svg`, `<?xml`) (INV-T04); auto-sanitizes filenames visibly ("écu bad.jpg" $\rightarrow$ "ecu-bad.webp"); Web Worker (`raster.worker.ts`) decodes via `createImageBitmap(blob, { imageOrientation: 'from-image' })`, clamps bounds, draws to `OffscreenCanvas`, and re-encodes to `image/webp` (or `image/jpeg`) targeting $\sim 400\text{KB}$, stripping EXIF by construction while preserving orientation (INV-T05).
+- Verify: `pnpm --filter @mycms/admin test -- src/workers/__tests__/raster-pipeline.test.ts`.
+- Files: `packages/admin/src/workers/{header-sniffer,raster-types,raster.worker}.ts`, `packages/admin/src/workers/__tests__/raster-pipeline.test.ts`.
+- Size: M.
+
+### P4.4 — Staged tile records & atomic commit-with-entry integration (M)
+- Acceptance: `DraftStore` interface widened with `deletePrefix(prefix: string): Promise<void>` implemented in `IdbDraftStore` and `MemoryDraftStore`; staged tiles stored under `${repo}/${collection}/${slug}/media/${tileId}`; WebCrypto precomputed `gitBlobSha(bytes)` deduplication; `entry-editor.tsx` discovers staged tiles via `drafts.list("${draftKey}/media/")` and bundles them as `FileWrite { path, bytes }` into `request.changes.adds`; `SaveCoordinator` commits all media blobs + entry JSON in **ONE Git commit, ONE ref PATCH** (INV-M02 batch integrity); post-ref-verify cleanup invokes `await options.drafts.delete(job.key)` AND `await options.drafts.deletePrefix(`${job.key}/media/`)`; boot replay preserves staged tiles on `offer` ("recovered before your last save") and cleans them on `discard`.
+- Verify: `pnpm --filter @mycms/core test -- src/pipeline/__tests__/inv-batch-integrity.test.ts --coverage.enabled=false`.
+- Files: `packages/core/src/drafts/index.ts`, `packages/core/src/web/idb-draft-store.ts`, `packages/core/src/pipeline/save-controller.ts`, `packages/core/src/pipeline/boot-replay.ts`, `packages/admin/src/editor/memory-draft-store.ts`, `packages/admin/src/editor/entry-editor.tsx`, `packages/core/src/pipeline/__tests__/inv-batch-integrity.test.ts`.
+- Size: M.
+
+### P4.5 — Blob API preview cache: ref-counted lifecycle & zero raw URLs (M)
+- Acceptance: Central ref-counted `BlobCache` in `packages/admin/src/runtime/blob-cache.tsx`; queries authed `backend.readBlob(sha)` (Git Data API, visibility-agnostic); strictly zero network traffic to `raw.githubusercontent.com` (INV-N03); magic-byte MIME sniffing for Blob instantiation; `URL.createObjectURL(blob)` shared across subscribers with in-flight request deduplication; ref-counted tracking calls `URL.revokeObjectURL(url)` on zero subscribers or component unmount to eliminate memory leaks.
+- Verify: `pnpm --filter @mycms/admin test -- src/runtime/__tests__/blob-cache.test.ts`.
+- Files: `packages/admin/src/runtime/blob-cache.tsx`, `packages/admin/src/runtime/__tests__/blob-cache.test.ts`.
+- Size: M.
+
+### P4.6 — Media library screen & editor integration (M)
+- Acceptance: `/media` route added to admin router and sidebar navigation; responsive thumbnail grid powered by `BlobCache`; collection folder filter buttons ("All", "Products", "Collections", "Site"); filename search; details slide-over with thumbnail, copy public path button, file size/dimensions, alt text prefill ("Last used as: ...") powered by `findReferences`; replace-in-place honest CDN cache warning ("Replacing an existing file keeps the same web address. Because public sites cache images, visitors may see the old image for up to 1 hour."); `ImageWidget` connects to staged tiles, shows progress ring, auto-sanitized filename, per-tile retry button, and "Choose from library" modal dialog.
+- Verify: `pnpm --filter @mycms/admin test -- src/screens/__tests__/media-library.test.tsx src/editor/__tests__/copy.test.ts`.
+- Files: `packages/admin/src/screens/media-library-screen.tsx`, `packages/admin/src/widgets/image-widget.tsx`, `packages/admin/src/admin/routes.tsx`, `packages/admin/src/screens/app-shell.tsx`, `packages/admin/src/editor/copy.ts`.
+- Size: M.
+
+### P4.7 — Delete rungs & tombstone storage (M)
+- Acceptance: Three delete rungs implemented: 1) Entry Remove (clears field value, leaves media intact in library); 2) Media Library Remove (checks `findReferences(targetPath)` — blocked if referenced with deep links to referencing entries); 3) Tombstone Move (moves unreferenced file to root `_trash/media/{collection}/{filename}` in a single Git commit); tombstone root `_trash/` is strictly outside `public/` and outside all collection folders, ensuring build-invisibility; collision check before restore; `/trash` route (Recently Deleted) lists tombstoned files with restore button and honest subtitle note before the button ("Restoring puts this photo back in your library. If an entry previously used it, you will need to re-select it in that entry.").
+- Verify: `pnpm --filter @mycms/core test -- src/media/__tests__/inv-referential-delete.test.ts --coverage.enabled=false`.
+- Files: `packages/core/src/media/delete-ladder.ts`, `packages/admin/src/screens/recently-deleted-screen.tsx`, `packages/admin/src/admin/routes.tsx`, `packages/core/src/media/__tests__/inv-referential-delete.test.ts`.
+- Size: M.
+
+### P4.8 — Content trust & SVG safety e2e (S)
+- Acceptance: Playwright E2E spec in `e2e/specs/svg-trust.spec.ts`; asserts SVG uploads are rejected in UI with explanatory copy; asserts disguised SVGs (.svg renamed to .png) are rejected by header sniffer; asserts existing repository SVGs render strictly via `<img src="blob:...">` (INV-T04; zero inline `<svg>`, `<object>`, or `<iframe>`); asserts zero network requests to `raw.githubusercontent.com` (INV-N03).
+- Verify: `pnpm e2e -- e2e/specs/svg-trust.spec.ts`.
+- Files: `e2e/specs/svg-trust.spec.ts`.
+- Size: S.
+
+### P4.9 — Slow-wifi 9-photo e2e journey & replace-in-place copy verify (M)
+- Acceptance: Playwright E2E spec in `e2e/specs/slow-wifi.spec.ts` with `test.slow()` (90s headroom); tests playground chaos mode with simulated packet drop on tile #7; 8 photos stage cleanly, photo #7 shows retry button; clicking Retry re-sends ONLY the failed file (asserts server log has exactly 1 additional blob POST); clicking Save dispatches exactly **ONE commit, ONE ref PATCH** bundling all 9 photos and the entry JSON (INV-M02); asserts replace-in-place CDN honesty copy in the media library.
+- Verify: `pnpm e2e -- e2e/specs/slow-wifi.spec.ts` + full gate check `pnpm e2e`.
+- Files: `playground/src/fake-github/handlers.ts`, `e2e/specs/slow-wifi.spec.ts`.
+- Size: M.
+
 **Checkpoint: P4** — 9-photo slow-wifi journey green; tombstone restore green.
 
 ## Phase 5 — Polish + IA (see `P5-polish-ia.md`) — Tasks P5.1–P5.10; founder-cry triad scripts; copy scanner; a11y suites.

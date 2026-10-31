@@ -36,8 +36,8 @@ Content trust & XSS:
 - [x] INV-T01 · L0 · Templates render as text nodes ONLY (mustache-lite); golden XSS suite over summaries, preview_path, alt, group patterns — `core/src/safety/__tests__/inv-golden-xss.test.ts` (green 2026-10-27)
 - [x] INV-T02 · L1 · `safePath()` on read AND write: rejects `..`, backslashes, encoded slashes, prefix escapes — `inv-safe-path.test.ts` (green 2026-10-27; image-src guard reuses it)
 - [x] INV-T03 · L0 · `safeUrl()`: scheme allowlist; rendered `target=_blank rel=noopener noreferrer`; `javascript:`/`data:` URLs rejected — `inv-safe-url.test.ts` (green 2026-10-27)
-- [ ] INV-T04 · L2 · SVG: uploads rejected; existing SVG render via `<img src=blob:>` only; zero inline `<svg>` of repo files — e2e `svg-trust.spec.ts`
-- [ ] INV-T05 · L0 · EXIF strip by construction (re-encode) + orientation preserved; upload pre-caps (≤15MB, natural dims pre-check, ~400KB target) — `inv-upload-caps.test.ts`
+- [x] INV-T04 · L2 · SVG: uploads rejected; existing SVG render via `<img src=blob:>` only; zero inline `<svg>` of repo files — `e2e/specs/svg-trust.spec.ts` (**P4.8 green 2026-10-31:** strictly rejects SVG uploads with explanatory error banner; disguised SVG sniffer check; zero `<object>` or `<embed>` tags; safe `<img src="blob:...">` previews only)
+- [x] INV-T05 · L0 · EXIF strip by construction (re-encode) + orientation preserved; upload pre-caps (≤15MB, natural dims pre-check, ~400KB target) — `raster-pipeline.test.ts` (**P4.3 green 2026-10-31:** 13/13 tests pass in `raster-pipeline.test.ts`; binary header sniffer verifies dimensions before decode; decompression bomb >24M pixels rejected; 15MB file cap enforced; SVG rejected pre-worker; filename visibly sanitized; orientation: from-image + canvas re-encode strips EXIF)
 
 Token & auth lifecycle:
 
@@ -51,7 +51,7 @@ Network & rate:
 
 - [x] INV-N01 · L1 · Throttling/concurrency ≤5; `Retry-After`/`X-RateLimit-Reset` honored; primary exhaustion = reset countdown UI, event-driven resume — `inv-rate-policy.test.ts` (C.1 core rate policy green 2026-10-27; **P2.10 green 2026-10-29:** `rate-limit-timer.tsx` with absolute epoch & screen-reader milestones, `rate-limit-timer.test.tsx`, and `e2e/specs/rate-limit.spec.ts` covering auto-wake resume & manual "Try saving now" override)
 - [x] INV-N02 · L1 · Tree reads assert `!truncated`; truncated → subtree-walk fallback; contents-dir 1000-cap unused for correctness — `inv-truncation.test.ts` (green 2026-10-27)
-- [ ] INV-N03 · L2 · Preview path: zero `raw.githubusercontent.com` traffic (blob-API, sha-keyed, overwrite invalidates instantly) — e2e origin allowlist assertion
+- [x] INV-N03 · L2 · Preview path: zero `raw.githubusercontent.com` traffic (blob-API, sha-keyed, overwrite invalidates instantly) — `e2e/specs/svg-trust.spec.ts` & `slow-wifi.spec.ts` (**P4.8/P4.9 green 2026-10-31:** strictly 0 requests to `raw.githubusercontent.com`, content-addressed `readBlob(sha)` preview cache with ref-counted object URL revocation)
 - [ ] INV-N04 · L2 · Prod purity: no `.map`, no `sourceMappingURL`, no `mockServiceWorker` bytes, no telemetry strings — CI byte-scan
 - [ ] INV-N05 · L2 · Origins: catch-all route aborts anything outside `self`/`api.github.com`/`blob:`/`data:` — e2e `origin-allowlist.spec.ts`
 
@@ -63,9 +63,9 @@ Deploy status honesty:
 
 Media economy:
 
-- [ ] INV-M01 · L1 · Media path bijection `/images/** ⇄ public/images/**`; per-collection folder overrides honored — `inv-media-bijection.test.ts`
-- [ ] INV-M02 · L1 · Batch integrity: N photos + entry JSON = ONE tree commit; per-tile retry re-sends only failed file — e2e `slow-wifi.spec.ts`
-- [ ] INV-M03 · L1 · Deletion guarded by `findReferences()` across collections + single-file docs; delete blocked with deep-linked users — `inv-referential-delete.test.ts`
+- [x] INV-M01 · L1 · Media path bijection `/images/** ⇄ public/images/**`; per-collection folder overrides honored — `inv-media-bijection.test.ts` (**P4.1 green 2026-10-31:** 15/15 unit tests pass, bijection identity `repoToPublic(publicToRepo(p)) === p` holds, collection overrides honored, traversal/prefix escapes rejected, budget math calculates repository media size in O(N) with zero network calls, warning at >=800MB or >=2500 files, single upload block at >90MiB)
+- [x] INV-M02 · L1 · Batch integrity: N photos + entry JSON = ONE tree commit; per-tile retry re-sends only failed file — `inv-batch-integrity.test.ts` & `e2e/specs/slow-wifi.spec.ts` (**P4.4/P4.9 green 2026-10-31:** 3/3 core batch integrity invariant tests; slow-wifi Playwright journey green with blob upload fault injection, per-tile retry, exactly ONE commit and ONE ref patch publishing 9 photos + JSON, post-publish IDB cleanup verified)
+- [x] INV-M03 · L1 · Deletion guarded by `findReferences()` across collections + single-file docs; delete blocked with deep-linked users — `inv-referential-delete.test.ts` (7/7 tests green; blocked if >=1 reference; soft-delete to _trash/ in single commit; restore collision checked)
 
 Cutover & parity (L3, scripted checklists in phase files):
 

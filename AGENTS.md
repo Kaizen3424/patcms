@@ -2,7 +2,7 @@
 
 > **Every agent session starts here.** Read this file fully, then follow §4 Session Protocol. This file never duplicates details it can point to; it is the single tracker for project state. Agents MUST maintain §3 and the task checklists — stale docs are treated as build failures.
 
-Maintained by: agent sessions · Last updated: 2026-10-31 (Phase 3 Gate passed — owner-confirmed in chat; next: Phase 4 in a NEW chat)
+Maintained by: agent sessions · Last updated: 2026-10-31 (Phase 4 complete, owner-confirmed)
 
 ---
 
@@ -22,12 +22,12 @@ Maintained by: agent sessions · Last updated: 2026-10-31 (Phase 3 Gate passed �
 | P1 | Config schema + read path | ✅ Gate passed 2026-10-27 (owner-confirmed) | yve fixture library browses offline; lenient parse contract green |
 | P2 | Save pipeline + editor v0 | ✅ Gate passed 2026-10-30 (owner-confirmed) | e2e publish loop green incl. conflict + failure paths |
 | P3 | Widget system complete | ✅ Gate passed 2026-10-31 (owner-confirmed) | yve exact config editable on fixtures, zero code change |
-| P4 | Media system | ⬜ Not started | 9-photo slow-wifi e2e green; no-raw-URL invariant proven |
+| P4 | Media system | ✅ Gate passed 2026-10-31 (owner-confirmed) | 9-photo slow-wifi e2e green; no-raw-URL invariant proven |
 | P5 | Founder polish & IA | ⬜ Not started | founder-cry triad simulations green; a11y checklist green |
 | P6 | yve integration cutover | ⬜ Blocked until P5 | success criteria on the real site; rollback path proven |
 | P7 | OSS publication | ⬜ Blocked until P6 | stranger completes widget exemplar unaided; release dry-run |
 
-**Current focus:** **Phase 4 — Media system (P4.1–P4.9).** Phase 3 Exit Gate passed and confirmed by owner on 2026-10-31. Ready to begin Phase 4 in a **NEW chat** per session protocol (AGENTS.md §3). Tasks cover media service bijection/budget, worker raster pipeline, staged-tile commit-with-entry, blob preview cache, media library screens, delete rungs, and slow-wifi e2e.
+**Current focus:** **Phase 4 complete (gate passed 2026-10-31, owner-confirmed); Phase 5 ready to initiate upon owner approval.**
 
 *Legend: ⬜ not started · 🟨 in progress · ✅ gate passed (date) · ⛔ blocked*
 
