@@ -1,8 +1,14 @@
 import type { CollectionDescriptor, FolderCollectionDescriptor } from "@mycms/core"
-import { compareValues, mustacheLite, readPath } from "@mycms/core"
+import { compareValues, formatFriendlyDate, mustacheLite, readPath } from "@mycms/core"
 import type { OnboardingState } from "@mycms/core/web"
 import { Link, useParams } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
+import {
+  describeTokenExpiry,
+  getTokenExpiryConfig,
+  type TokenExpiryState,
+} from "../auth/token-expiry"
+import { EXPIRY_COPY, fillName } from "../editor/copy"
 import { ConsentPactCard } from "../onboarding/consent-pact"
 import { ProductTourDialog } from "../onboarding/product-tour"
 import { useEntryIndex, useOnboardingStore, useRuntime } from "../runtime/context"
@@ -16,7 +22,7 @@ interface Group {
 }
 
 export function LibraryScreen() {
-  const { config } = useRuntime()
+  const { config, support } = useRuntime()
   const params = useParams({ strict: false }) as { readonly collection?: string }
   const collection = config.collections.find(
     (candidate) => candidate.kind !== "divider" && candidate.name === params.collection,
@@ -25,6 +31,7 @@ export function LibraryScreen() {
   const onboardingStore = useOnboardingStore()
   const [onboarding, setOnboarding] = useState<OnboardingState | undefined>(undefined)
   const [tourOpen, setTourOpen] = useState(false)
+  const [expiryState, setExpiryState] = useState<TokenExpiryState | undefined>(undefined)
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState("title")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -45,6 +52,14 @@ export function LibraryScreen() {
       unsubscribe()
     }
   }, [onboardingStore])
+
+  useEffect(() => {
+    void getTokenExpiryConfig().then((cfg) => {
+      if (cfg) {
+        setExpiryState(describeTokenExpiry(cfg))
+      }
+    })
+  }, [])
 
   if (collection === undefined || collection.kind === "divider") {
     return <EmptyState title="Folder not found" body="That folder is not part of this studio." />
@@ -76,6 +91,22 @@ export function LibraryScreen() {
           onTakeTour={() => setTourOpen(true)}
           onDismiss={() => void onboardingStore.update({ pactDismissed: true })}
         />
+      ) : null}
+      {expiryState?.isExpiringSoon ? (
+        <div
+          data-testid="token-expiry-notice"
+          className="mb-4 flex items-center justify-between rounded-lg border border-accent/40 bg-accent-soft/40 px-4 py-2.5 text-xs text-text-primary"
+        >
+          <span>
+            {fillName(EXPIRY_COPY.renewNotice, support.name).replace(
+              "{date}",
+              formatFriendlyDate(expiryState.expiresAt),
+            )}
+          </span>
+          <span className="font-semibold text-accent">
+            {EXPIRY_COPY.renewChip.replace("{date}", formatFriendlyDate(expiryState.expiresAt))}
+          </span>
+        </div>
       ) : null}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>

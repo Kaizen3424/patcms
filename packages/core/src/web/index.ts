@@ -56,5 +56,11 @@ export {
   createBroadcastCarrier,
   createStorageCarrier,
 } from "./lease-carriers"
+export type { TokenExpiryConfig } from "./token-expiry-store"
+export {
+  clearTokenExpiryConfig,
+  getTokenExpiryConfig,
+  setTokenExpiryConfig,
+} from "./token-expiry-store"
 export type { IdbTokenStoreOptions } from "./token-stores"
 export { createIdbTokenStore, createSessionTokenStore } from "./token-stores"

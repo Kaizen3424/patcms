@@ -1,6 +1,8 @@
 import { CapabilityProbeError } from "@mycms/core"
 import type { FormEvent } from "react"
 import { useState } from "react"
+import { EXPIRY_COPY, fillName } from "../editor/copy"
+import { copyToClipboard } from "../editor/failure-report"
 import { useRuntime } from "../runtime/context"
 import { LoginHeartbeat } from "../status/heartbeat"
 
@@ -10,11 +12,13 @@ import { LoginHeartbeat } from "../status/heartbeat"
  * path; the remember copy is the exact ADR-0002 consent language.
  */
 export function LoginScreen() {
-  const { signIn, bootNotice, config } = useRuntime()
+  const { signIn, bootNotice, config, support } = useRuntime()
   const [accessKey, setAccessKey] = useState("")
   const [remember, setRemember] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
+  const [isExpiredAuth, setIsExpiredAuth] = useState(false)
+  const [copiedNote, setCopiedNote] = useState(false)
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -24,6 +28,11 @@ export function LoginScreen() {
     try {
       await signIn(accessKey, remember)
     } catch (caught) {
+      if (caught instanceof CapabilityProbeError && caught.code === "AUTH_EXPIRED") {
+        setIsExpiredAuth(true)
+      } else {
+        setIsExpiredAuth(false)
+      }
       setError(loginErrorMessage(caught))
     } finally {
       setBusy(false)
@@ -108,12 +117,35 @@ export function LoginScreen() {
           </label>
 
           {error === undefined ? null : (
-            <p
-              role="alert"
-              className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm leading-5 text-text-primary"
-            >
-              {error}
-            </p>
+            <div>
+              <p
+                role="alert"
+                className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm leading-5 text-text-primary"
+              >
+                {error}
+              </p>
+              {isExpiredAuth ? (
+                <div className="mt-3 rounded-lg border border-border-soft bg-surface-raised p-3">
+                  <p className="text-xs text-text-muted">
+                    {fillName(EXPIRY_COPY.partnerNoteText, support.name)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await copyToClipboard(fillName(EXPIRY_COPY.partnerNoteText, support.name))
+                      setCopiedNote(true)
+                      setTimeout(() => setCopiedNote(false), 2000)
+                    }}
+                    data-testid="copy-partner-note-button"
+                    className="mt-2 text-xs font-medium text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent cursor-pointer"
+                  >
+                    {copiedNote
+                      ? `✓ ${EXPIRY_COPY.copiedNote}`
+                      : fillName(EXPIRY_COPY.partnerNoteButton, support.name)}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           )}
 
           <button

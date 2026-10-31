@@ -401,6 +401,24 @@ export const DRIFT_COPY = {
   close: "Close updates panel",
 } as const
 
+/** Token expiry proactive and recovery copy (P5.7). */
+export const EXPIRY_COPY = {
+  renewChip: "Renew after {date}",
+  renewNotice: "Access key renewal coming up after {date} — ask {name} for a fresh code",
+  reauthPreserved:
+    "Your access key needs checking. Your changes are kept safe on this device — enter a fresh access key to resume without losing anything.",
+  partnerNoteButton: "Copy note for {name}",
+  partnerNoteText:
+    "Hi {name}, my studio access key for the website has expired. Could you generate a fresh access key for me?",
+  copiedNote: "Note copied to clipboard",
+  handoverTitle: "Access key renewal",
+  handoverSubtitle: "Set when your access key was created and how long it lasts.",
+  createdLabel: "Key created date",
+  durationLabel: "Duration",
+  saveSettings: "Save settings",
+  settingsSaved: "Saved",
+} as const
+
 /** Substitutes `{name}` with the named human from `support.name`. */
 export function fillName(template: string, name: string): string {
   return template.replaceAll("{name}", name)
@@ -463,5 +481,6 @@ export function allCopyStrings(): readonly string[] {
   walk(HEARTBEAT_COPY)
   walk(ONBOARDING_COPY)
   walk(DRIFT_COPY)
+  walk(EXPIRY_COPY)
   return strings
 }
