@@ -67,11 +67,30 @@ Build `examples/panel` (or `playground` repurposed — decide when starting): a 
 uses only `patcms` (+ `patcms/web` for IDB drafts) to list entries, edit and save one, handle the
 conflict value, upload and reference media, and sign in with a PAT. No `patcms/advanced` imports.
 
-- Gate: the example runs against the playground's fake GitHub and against a real repo.
+- Gate: the example runs against the playground's fake GitHub and against a real repo. **Passed
+  2026-11-01** — fake: full smoke (sign-in, library, all 12 field types, save, conflict demo,
+  drafts, media ladder, console clean); real: loop commits `8edce67`/`737c612`/`b4958ee`/`df21f8e`
+  + cleanup, end tree pristine.
 - Gate: feature parity review against `packages/admin` for the *kept* features only; everything on
-  the removed list stays removed.
+  the removed list stays removed. **Passed 2026-11-01**:
+
+  | Kept feature | Admin (reference) | Panel | Evidence |
+  |---|---|---|---|
+  | Sign-in / token lifecycle | login screen, re-auth sheet | LoginScreen (remember, restore, sign-out) | live, fake + real |
+  | Library: summaries, sort, search, badges | library screen | LibraryScreen | live, fake + real |
+  | Editor, all 12 field types | 12 widget files | widgets/ (ScalarInput covers scalars) | live, fake + real |
+  | Save + untouched preservation | save flow | EntryScreen save → commit banner | real diff: only `excerpt` changed |
+  | Conflict value render + per-field pick | conflict-freeze UI (removed) | lib/conflict.ts per-field table | real `737c612`→`b4958ee` |
+  | Media list/upload/delete/restore | media-library + recently-deleted | MediaScreen with Trash tab | real `df21f8e` + ladder |
+  | Media reference guard | admin | referenced-by banner with fieldPath | live, fake + real |
+  | Drafts (IDB, `patcms/web`) | drafts + journal (journal removed) | lib/draft.ts + IDB stores | draft banner live |
+  | Validation issues rendered | admin | `entries.validate` → issues in EntryScreen | fake run |
+  | Deploy status (check-runs) | status/ | out of scope for the panel; SDK keeps `readCheckRuns` | plan decision |
+  | Onboarding, journal, diagnostics, leases, boot adjudication, save coordinator, admin-only IDB stores, i18n | present | **stays removed** — not panel features | plan Decisions |
+
 - Then delete `packages/admin`, its tests, and the playground's dependency on it. The playground
-  either becomes the example or is deleted with it — one artifact, not two.
+  either becomes the example or is deleted with it — one artifact, not two. **Pending owner
+  confirmation.**
 
 ### P3 — Publish machinery
 
@@ -99,7 +118,8 @@ conflict value, upload and reference media, and sign in with a PAT. No `patcms/a
 
 Tick an item only with command output or a named manual check.
 
-- [ ] `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm run check`, `pnpm -r test` green
+- [x] `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm run check`, `pnpm -r test` green
+  (2026-11-01: core 539 / admin 238 / playground 38, all green after INV-N03)
 - [x] `pnpm -r build` and `pnpm run scan:prod-purity` green
 - [x] `pnpm run pack:check` green
 - [ ] `pnpm changeset status` lists exactly 0.1.0
@@ -109,8 +129,11 @@ Tick an item only with command output or a named manual check.
       shrunk `patcms/web` described, e2e gone, fakes documented as test-only
 - [x] `packages/core/README.md` exists; its snippets use the real factory signatures (snippet
       typecheck against the tarball still open)
-- [ ] Example panel runs the full loop (sign in → list → edit → save → conflict → media) with zero
-      `patcms/advanced` imports
+- [x] Example panel runs the full loop (sign in → list → edit → save → conflict → media) with zero
+      `patcms/advanced` imports — validated against the fake (playground) AND the real repo
+      `Kaizen3424/cms_test@main` (2026-11-01): save `8edce67` with untouched keys byte-identical,
+      conflict `737c612`→`b4958ee` resolved per field, media upload `df21f8e` + full
+      delete→trash→restore ladder, tree restored to pristine (original blob shas verified)
 - [ ] `packages/admin` deleted; nothing in the repo imports it
 - [ ] Release workflow publishes through OIDC; no `NPM_TOKEN` secret exists anywhere
 - [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes
@@ -186,3 +209,18 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   Gates: `check`, `-r test` (core 537 / admin 238 / playground 14), `-r build`, `scan:prod-purity`,
   `scan:workflows`, `pack:check` — all green. Next: P2 example panel, then admin deletion, then P3
   publish machinery.
+- **2026-11-01 (3)** — P2 example panel built in `playground/src/panel` and validated against the
+  fake, then against the real repo `Kaizen3424/cms_test@main` (owner-approved). Bugs found and
+  fixed: unbound default `fetch` crashed browser hosts ("Illegal invocation", `resolveFetch`
+  binds); detached `cache.dispose` cleanup crashed React on tab switch; duplicate nested-field ids
+  broke label association; sign-in forgot `remember: true`; the harness now refuses GitHub
+  requests when the MSW worker is not controlling the page (one request leaked to the real API
+  during an HMR race). Real-repo finding: GitHub answers `GET /git/ref/heads/main` with
+  `max-age=60`, so the browser HTTP cache served a stale head after writes and the media list
+  missed a fresh upload for up to a minute — fixed as INV-N03 (`cache: "no-store"` on
+  branch-addressed GETs and the probe; SHA-addressed reads stay cacheable), enforced in
+  `github-backend.test.ts` + `inv-probe.test.ts`. Gates green (core 539 / admin 238 / playground
+  38, `--frozen-lockfile` included). Commits: My_CMS `7199eae`, `c87feac`; cms_test `31df45c`,
+  `b474349`. Repo loop left `Kaizen3424/cms_test` pristine (blob shas verified). Parity review
+  passed — table in the P2 section. Next: owner confirmation, then delete `packages/admin` and the
+  old cms_test deps, prune the catalog, retire `scan:prod-purity`, update specs.
