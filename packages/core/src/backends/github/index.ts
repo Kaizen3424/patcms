@@ -90,7 +90,9 @@ export class GithubBackend implements GitBackend {
 
   async getRef(branch: string): Promise<Ref> {
     const url = `${this.#repoUrl()}/git/ref/heads/${encodeBranch(branch)}`
-    const response = await this.#request(url)
+    // Branch-addressed and mutable: bypass the browser HTTP cache (GitHub sends
+    // max-age=60 here, which would serve a stale head after a foreign commit).
+    const response = await this.#request(url, undefined, undefined, undefined, "no-store")
     if (response.kind === "not-modified") {
       throw new BackendReadError(
         "UNKNOWN",
@@ -156,7 +158,15 @@ export class GithubBackend implements GitBackend {
     options: ReadFileOptions = {},
   ): Promise<ReadFileResult> {
     const contentsUrl = `${this.#repoUrl()}/contents/${encodePath(path)}?ref=${encodeURIComponent(requireBranch(branch))}`
-    const response = await this.#request(contentsUrl, options.etag)
+    // Branch-addressed like the ref read: a cached contents response could
+    // disagree with a freshly read tree for up to 60s. Blobs stay cacheable.
+    const response = await this.#request(
+      contentsUrl,
+      options.etag,
+      undefined,
+      undefined,
+      "no-store",
+    )
     if (response.kind === "not-modified") {
       return {
         kind: "not-modified",
@@ -485,6 +495,7 @@ export class GithubBackend implements GitBackend {
     etag?: string,
     maxBytes = 2 * 1024 * 1024,
     maxListItems = 5_000,
+    cache?: "no-store",
   ): Promise<RequestResult> {
     const headers: Record<string, string> = {
       Accept: "application/vnd.github+json",
@@ -495,7 +506,11 @@ export class GithubBackend implements GitBackend {
 
     let response: FetchResponseLike
     try {
-      response = await this.#fetch(url, { method: "GET", headers })
+      response = await this.#fetch(url, {
+        method: "GET",
+        headers,
+        ...(cache === undefined ? {} : { cache }),
+      })
     } catch (error) {
       throw new BackendReadError(
         "NETWORK",

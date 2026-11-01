@@ -71,6 +71,8 @@ describe("probeGithubCapabilities (INV-A03 partial)", () => {
     for (const call of calls) {
       expect(call.url).not.toContain(TOKEN)
       expect(call.init?.headers?.Authorization).toBe(`Bearer ${TOKEN}`)
+      // INV-N03: a cached 200 must never answer a reprobe for a revoked token.
+      expect(call.init?.cache).toBe("no-store")
     }
     expect(calls.some((call) => call.url.includes("feature/a%2Bb"))).toBe(true)
     // 404 for check-runs is advisory (missing), never a login blocker.

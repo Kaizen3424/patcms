@@ -96,7 +96,10 @@ async function request(
 ): Promise<ProbeResponse> {
   let response: FetchResponseLike
   try {
-    response = await fetchLike(url, { method: "GET", headers })
+    // Branch/repo-addressed and mutable (rate quota, repo visibility,
+    // protection): bypass the browser HTTP cache so a reprobe cannot be
+    // answered by a cached 200 for a since-revoked token.
+    response = await fetchLike(url, { method: "GET", headers, cache: "no-store" })
   } catch (error) {
     throw new CapabilityProbeError(
       "NETWORK",

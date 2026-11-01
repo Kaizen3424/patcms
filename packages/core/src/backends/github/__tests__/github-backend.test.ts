@@ -73,6 +73,43 @@ describe("GithubBackend read transport (ADR-0005 P1 addendum)", () => {
     expect(encodeBranch("release/2026+")).toBe("release/2026%2B")
   })
 
+  it("bypasses the HTTP cache on branch-addressed reads only (stale-head guard)", async () => {
+    const { fetch, calls } = recordsFetch((url) => {
+      if (url.includes("/git/ref/heads/")) {
+        return response({ ref: "refs/heads/main", object: { sha: HEAD, type: "commit" } })
+      }
+      if (url.includes("/git/commits/")) return response({ sha: HEAD, tree: { sha: TREE } })
+      if (url.includes("/git/trees/")) {
+        return response({
+          sha: TREE,
+          truncated: false,
+          tree: [{ path: "src/content/site.json", mode: "100644", type: "blob", sha: FILE }],
+        })
+      }
+      if (url.includes("/contents/")) {
+        return response({ type: "file", sha: FILE, size: 1, encoding: "base64", content: "eA==" })
+      }
+      if (url.includes("/git/blobs/")) {
+        return response({ sha: FILE, content: "eA==", encoding: "base64" })
+      }
+      throw new Error(`unexpected ${url}`)
+    })
+    const api = backend(fetch)
+    await api.getRef("main")
+    await api.readFile("main", "src/content/site.json", FILE)
+    await api.readTree("main", HEAD)
+    await api.readBlob(FILE)
+    const cacheMode = (fragment: string) =>
+      calls.find((call) => call.url.includes(fragment))?.init?.cache
+    // Mutable, branch-named routes must never be answered by a browser cache
+    // that GitHub fills with max-age=60; SHA-addressed reads stay cacheable.
+    expect(cacheMode("/git/ref/heads/")).toBe("no-store")
+    expect(cacheMode("/contents/")).toBe("no-store")
+    expect(cacheMode("/git/commits/")).toBeUndefined()
+    expect(cacheMode("/git/trees/")).toBeUndefined()
+    expect(cacheMode("/git/blobs/")).toBeUndefined()
+  })
+
   it("reads a recursive tree, returns its ETag, and honors 304", async () => {
     const { fetch } = recordsFetch((url, init) => {
       if (url.includes("/git/commits/")) {
