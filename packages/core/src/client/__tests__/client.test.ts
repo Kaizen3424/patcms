@@ -214,6 +214,28 @@ describe("createCMS — media and drafts", () => {
     ).rejects.toMatchObject({ code: "VALIDATION" })
   })
 
+  it("lists trash tombstones separately and restores them", async () => {
+    const { cms } = await setup()
+    await cms.media.upload({ name: "temp.png", bytes: new Uint8Array([7, 7]) })
+    const removed = await cms.media.delete("/images/temp.png")
+    expect(removed.status).toBe("deleted")
+
+    const live = await cms.media.list()
+    expect(live.map((file) => file.publicPath)).not.toContain("/images/temp.png")
+
+    const trash = await cms.media.list({ includeTrash: true })
+    expect(trash).toHaveLength(1)
+    const tombstone = trash[0]
+    expect(tombstone?.path).toBe("_trash/public/images/temp.png")
+    expect(tombstone?.publicPath).toBe("/images/temp.png")
+    expect(tombstone?.name).toBe("temp.png")
+
+    const restored = await cms.media.restore(tombstone?.path ?? "")
+    expect(restored.publicPath).toBe("/images/temp.png")
+    expect(await cms.media.list({ includeTrash: true })).toHaveLength(0)
+    expect((await cms.media.list()).map((file) => file.publicPath)).toContain("/images/temp.png")
+  })
+
   it("round-trips drafts in the memory store", async () => {
     const { cms } = await setup()
     const entry = await cms.entries.get("products", "iris")

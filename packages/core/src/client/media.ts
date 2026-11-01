@@ -12,7 +12,12 @@ import type { BackendWriteError } from "../backend/write-errors"
 import type { AdminConfig, MediaFolders } from "../config/types"
 import { publicPathToRepoPath, repoPathToPublicPath, resolveMediaFolders } from "../media/bijection"
 import { isUploadSizeBlocked } from "../media/budget"
-import { createRestoreChanges, createTrashChanges, TRASH_PREFIX } from "../media/delete-ladder"
+import {
+  createRestoreChanges,
+  createTrashChanges,
+  restoreMediaPath,
+  TRASH_PREFIX,
+} from "../media/delete-ladder"
 import type { SearchableEntry } from "../media/references"
 import { findReferences } from "../media/references"
 import type { ReferenceLocation } from "../media/types"
@@ -59,11 +64,28 @@ export class MediaClient implements MediaAPI {
     const tree = await this.#repo.tree()
     const files: MediaFile[] = []
     const seen = new Set<string>()
+    const trash = options.includeTrash === true
 
     for (const media of this.#folders(options.collection)) {
       const prefix = `${media.folder.replace(/\/+$/, "")}/`
       for (const entry of tree.entries) {
         if (entry.type !== "blob") continue
+        if (trash) {
+          // Tombstones only, and only those that restore into this folder.
+          if (!entry.path.startsWith(TRASH_PREFIX)) continue
+          const restored = restoreMediaPath(entry.path)
+          if (!restored.startsWith(prefix)) continue
+          if (seen.has(entry.path)) continue
+          seen.add(entry.path)
+          files.push({
+            path: entry.path,
+            publicPath: this.#publicPathAny(restored),
+            name: restored.slice(prefix.length),
+            sha: entry.sha,
+            size: entry.size ?? 0,
+          })
+          continue
+        }
         if (!entry.path.startsWith(prefix) || entry.path.startsWith(TRASH_PREFIX)) continue
         if (seen.has(entry.path)) continue
         seen.add(entry.path)

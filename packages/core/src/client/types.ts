@@ -141,6 +141,12 @@ export interface MediaUploadInput {
 
 export interface MediaListOptions {
   readonly collection?: string
+  /**
+   * List `_trash/` tombstones instead of live files. Defaults to false.
+   * `path` is the tombstone repo path (pass it to `media.restore()`);
+   * `publicPath` is where the file restores to.
+   */
+  readonly includeTrash?: boolean
 }
 
 export interface UploadOptions {
