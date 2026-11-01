@@ -1,6 +1,6 @@
 # Publish and recovery
 
-> Parent: [`specs/MyCMS.md`](../MyCMS.md)
+> Parent: [`specs/CMS.md`](../CMS.md)
 
 The save path is the part of this repo you cannot infer from a quick read. It is deliberately
 over-built because its failure modes — lost work, double commits, silent overwrites — are the
@@ -115,3 +115,32 @@ Two sources, strict precedence:
 | Different conflict granularity | `rebase.ts`, `field-paths.ts`, `freeze-model.ts` — they must agree |
 | Different status timing | `DEFAULT_STATUS_TIMING`; hosts override via `AdminMountOptions.statusTiming` |
 | Different recovery prompts | `boot-replay.ts` verdicts plus `packages/admin/src/editor/copy.ts` |
+
+## Decisions and claims
+
+### Decisions
+
+| ID | The rule that still binds |
+|---|---|
+| ADR-0004 | Dirty is decided in the value domain with codepoint-exact `fieldEquals` (list order significant); the merge is performed in the raw domain, so untouched bytes are copied verbatim. Unknown keys come only from the new raw — old unknowns never resurrect — and a no-op is byte equality, never a re-serialisation. One state machine, one transition table, eight phases. A fresh `getRef` runs before every commit. Published is confirmed by content, not by a response code. Boot replay goes through the same invariant engine, and progression is callback-driven. The cross-tab lease is token + heartbeat + TTL + silent steal + full rebaseline; it is UX serialisation only, and the CAS remains the sole correctness mechanism. |
+| ADR-0008 | Check-runs are primary on our exact sha; commit statuses are consulted only for the exact contexts in `deploy.contexts`, and only when the check-run set has no decisive result. Any failure conclusion is `failed` and outranks a still-running sibling; any non-completed run is `building`; all-success is `live`; `neutral` and `skipped` never mask a success. No decisive result inside the grace window is `unavailable`, never `failed`, and any read error is `unavailable` and stops the watcher. Reads use `per_page=100` and surface `total_count`; an incomplete page is unavailable. Generated and editable commit messages reject every skip token. Chips key to the entry's `latestCommitSha`, and head advancement supersedes the old watcher. |
+
+### Claims
+
+| ID | Claim | Enforcing test |
+|---|---|---|
+| INV-P04 | Overlapping saves serialise to exactly one ref update per save, and the second save rebases on the first's commit | `packages/core/src/pipeline/__tests__/inv-one-flight.test.ts` |
+| INV-P05 | The same-file predicate applies only when every changed path is clean-reapply, adopt-remote, or mode-restore; drifted same-file blocks at field granularity, drifted other files auto-reapply | `packages/core/src/pipeline/__tests__/inv-conflict-predicate.test.ts` |
+| INV-P07 | Formatting-only foreign commits auto-rebase silently; semantic drift is never false-passed | `packages/core/src/pipeline/__tests__/inv-canon-relax.test.ts` |
+| INV-P08 | Challenge reads never come from an ETag or sha cache; a poisoned stale cache still blocks on real drift | `packages/core/src/pipeline/__tests__/inv-fresh-binding.test.ts` |
+| INV-P09 | An unknown-outcome retry re-reads the ref first and classifies done / rebuild / conflict — never a blind replay | `packages/core/src/pipeline/__tests__/inv-verify-rebuild.test.ts` |
+| INV-P10 | Published means the ref is observed to carry our content; orphan blobs are never "cleaned up" | `packages/core/src/pipeline/__tests__/inv-published-truth.test.ts` |
+| INV-P11 | A rate-limited save parks with drafts already in IndexedDB, then resumes with no loss and no duplicate commit | `packages/core/src/pipeline/__tests__/inv-parked-tx.test.ts` |
+| INV-P12 | Killing the tab mid-commit leaves a draft that boot replays as discard, offer, or conflict; the draft is deleted only after ref verification | `e2e/specs/kill-tab.spec.ts`, `packages/core/src/pipeline/__tests__/boot-replay.test.ts` |
+| INV-P13 | The cross-tab lease is TTL plus heartbeat with a storage-event fallback, and its payload never carries content or credentials | `packages/core/src/pipeline/__tests__/inv-save-lease.test.ts` |
+| INV-P15 | An unrelated file's validation failure never gates this save; coverage is reported as up-to-date, advisory, or unknown, never a false all-clear | `packages/admin/src/editor/__tests__/save-sweep.test.ts`, `e2e/specs/advisory-chip.spec.ts` |
+| INV-P16 | Conflicts freeze per field at minimal common nodes, save stays blocked until every row is decided, and the resolved save publishes exactly the chosen bytes | `packages/admin/src/editor/__tests__/freeze-model.test.ts`, `packages/admin/src/editor/__tests__/freeze-panel.test.tsx`, `e2e/specs/conflict.spec.ts` |
+| INV-P17 | After an auto-merge the next save diffs against the reconciled tree, so it cannot revert a partner's disjoint edits | `packages/core/src/pipeline/__tests__/save-controller.test.ts`, `packages/admin/src/editor/__tests__/form-value.test.ts` |
+| INV-D01 | Check-runs are primary, statuses only through `contexts[]`, and only an all-success sha is Live; an absent result inside the 120 s grace is unavailable, never failed | `packages/core/src/status/__tests__/inv-status-truth.test.ts`, `e2e/specs/deploy-status.spec.ts` |
+| INV-D02 | Generated and editable commit messages reject the four skip tokens before any network call | `packages/core/src/pipeline/__tests__/inv-skip-token.test.ts` |
+| INV-D03 | Head advancement annotates "superseded by {sha}" and stops the watcher; a late run never repaints newer state | `packages/core/src/status/__tests__/inv-supersede.test.ts` |

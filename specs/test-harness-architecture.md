@@ -1,6 +1,6 @@
 # Test harness
 
-> Parent: [`specs/MyCMS.md`](MyCMS.md)
+> Parent: [`specs/CMS.md`](CMS.md)
 
 The harness is not a mock layer bolted on for tests — it is the reference implementation of the
 backend contract. That inverts the usual rule: when a test and the fake disagree, the fake is usually
@@ -109,3 +109,14 @@ has not been tested the way Playwright sees it.
 
 The origin allowlist is the executable form of "zero third-party runtime scripts". Adding an external
 service means changing that allowlist deliberately — which is the point.
+
+## Decisions and claims
+
+The harness owns two claims about the *shipped artifact* rather than about a subsystem. The contract
+suite that makes `FakeGithubServer` the reference model is ADR-0001, defined in
+`backend-and-auth-architecture.md`; this file only explains how it is driven.
+
+| ID | Claim | Enforcing test |
+|---|---|---|
+| INV-N04 | The shipped admin bundle contains no sourcemaps, no `sourceMappingURL`, no `mockServiceWorker` bytes, and no telemetry strings | `scripts/prod-purity-scan.mjs` (CI: `pnpm run scan:prod-purity`) |
+| INV-N05 | Runtime requests stay inside `self`, `api.github.com`, `blob:`, and `data:`; a catch-all route aborts anything else | `e2e/support/origin-allowlist.ts`, installed by every journey in `e2e/specs` |

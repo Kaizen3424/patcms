@@ -1,6 +1,6 @@
 # Backend and auth
 
-> Parent: [`specs/MyCMS.md`](MyCMS.md)
+> Parent: [`specs/CMS.md`](CMS.md)
 
 Everything the app knows about the outside world goes through one interface. Adding a backend means
 implementing that interface and passing the contract suite — not editing the pipeline.
@@ -111,3 +111,30 @@ stops being a gate and becomes decoration.
 branch-protection admin, and check-runs. Checks-read may be `missing` or `forbidden` without blocking
 login: private repos often cannot read check-runs with a fine-grained PAT, so the UI shows status as
 unavailable rather than an error.
+
+## Decisions and claims
+
+### Decisions
+
+| ID | The rule that still binds |
+|---|---|
+| ADR-0001 | Everything is injected at one composition root, `createMyCMS({backend, storage, logger, clock, fetch})`, and the admin mounts through `mountAdmin`. Core imports no concrete IDB, session, or network implementation — those live behind interfaces in `core/web`, which keeps the main entry Node-safe. Every backend must pass the shipped contract suite, so a fake cannot silently drift from the real transport. |
+| ADR-0002 | The token is persisted only behind an explicit "Remember on this device" opt-in, with `sessionStorage` as the per-device fallback. Hard conditions: wipe on sign-out, wipe on a 401 after a failed re-probe, bootstrap is restore → re-probe → wipe-on-failure, and a token never appears in a URL or query string. Draft lifecycle is orthogonal — a 401 wipe never touches drafts. No fabricated expiry UI: GitHub cannot introspect PAT expiry. |
+| ADR-0005 | The write primitive is blobs (≤ 5 concurrent) → tree with `base_tree` → commit naming the verified head as parent → fast-forward-only `updateRef`. Verify-then-rebuild lives in the pipeline driver, not the transport, which stays a thin CAS primitive. Reads are one recursive tree cached by commit sha plus ETag, with `truncated` handled by a subtree walk. The conflict predicate is tuple-or-canon equality over fresh challenge reads. `branch` is a parameter on every method and `capabilities` is an exhaustive literal object. Status reads are required methods gated only by `capabilities.commitStatus`. |
+
+### Claims
+
+| ID | Claim | Enforcing test |
+|---|---|---|
+| INV-A01 | A 401 mid-batch pauses the coordinator, keeps drafts in IndexedDB, shows inline re-auth, and re-probes before resuming in place | `e2e/specs/token-death.spec.ts`, `packages/admin/src/editor/__tests__/reauth-sheet.test.tsx` |
+| INV-A02 | The error classifier maps 404/403/401/422 to named guided screens, and no founder surface ever shows GitHub prose | `packages/core/src/pipeline/__tests__/inv-error-taxonomy.test.ts`, `packages/admin/src/editor/__tests__/copy.test.ts` |
+| INV-A03 | The capability probe runs at login, is never persisted, and re-runs on 401/403/422-after-write; quota-blocked windows are never entered | `packages/core/src/backend/github/__tests__/inv-probe.test.ts` |
+| INV-A04 | A token never appears in a URL or query string, is reachable only through the auth provider, and is wiped on sign-out, failed bootstrap, or 401 | `packages/core/src/auth/__tests__/inv-token-hygiene.test.ts` |
+| INV-A05 | Log masking covers `authorization`, `token`, `secret`, and `x-github-*` keys plus `github_pat_…`, `ghp_…`, and email values; the ring buffer is memory-only | `packages/core/src/safety/__tests__/inv-log-masking.test.ts`, `packages/core/src/safety/__tests__/logger-masking.test.ts` |
+| INV-N01 | Concurrency stays ≤ 5, `Retry-After` and `X-RateLimit-Reset` are honoured, and primary exhaustion parks with a countdown that wakes event-driven | `packages/core/src/pipeline/__tests__/inv-rate-policy.test.ts`, `e2e/specs/rate-limit.spec.ts` |
+| INV-N02 | Recursive tree reads assert `!truncated` and fall back to a subtree walk instead of treating truncation as mass deletion | `packages/core/src/backend/__tests__/inv-truncation.test.ts` |
+| INV-P01 | Ref updates are fast-forward only: a concurrent push yields a typed conflict, HEAD is unchanged, and the request log holds zero `force:true` PATCHes | `packages/core/src/pipeline/__tests__/inv-ff-only.test.ts` |
+| INV-P02 | A fault between blob, tree, commit, and ref leaves HEAD unchanged, and a retry reconciles to exactly one commit | `packages/core/src/pipeline/__tests__/inv-atomicity.test.ts` |
+| INV-P03 | Retried blob and tree calls converge on equal SHAs, and the ref is updated exactly once | `packages/core/src/pipeline/__tests__/inv-idempotent-retry.test.ts` |
+| INV-P06 | Path identity is the tuple `{sha, mode, type}`: a mode-only drift auto-restores with a commit-body note, and a type change blocks | `packages/core/src/pipeline/__tests__/inv-tuple-predicate.test.ts` |
+| INV-P14 | `branch` is a parameter on every backend and pipeline call — zero `main` literals — and branch names are URL-encoded including `+` | `packages/core/src/backend/__tests__/inv-branch-param.test.ts` |

@@ -16,10 +16,10 @@
 ## Hygiene
 
 - Run the focused tests before committing (`pnpm --filter <pkg> test -- <file>`).
-- Specs and ADRs move BEFORE mechanisms land (see `AGENTS.md` §4/§6).
+- Specs move BEFORE mechanisms land (see `AGENTS.md` → "Update the specs").
 - Tokens and sandbox-repo credentials never enter the repo.
 
 ## Toolchain
 
-- Node 22 pinned for CI/tooling (`.nvmrc` = `22`); local runtimes may use any Node satisfying `engines` (≥22.12) — owner decision 2026-10-27 (ADR-0010 §5 note).
+- Node 22 pinned for CI/tooling (`.nvmrc` = `22`); local runtimes may use any Node satisfying `engines` (≥22.12) — owner decision recorded in [ADR-0010](plans/phase-7-publish.md).
 - pnpm pinned via the root `packageManager` field (corepack).

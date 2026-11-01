@@ -1,6 +1,6 @@
 # Content model
 
-> Parent: [`specs/MyCMS.md`](MyCMS.md)
+> Parent: [`specs/CMS.md`](CMS.md)
 
 Config is TypeScript plus zod on the host, content is JSON in the repo, and the admin only ever sees
 JSON-safe descriptors. Three different shapes, one direction of travel.
@@ -109,3 +109,27 @@ place an override is applied. Do not re-implement the fallback.
 **Config drift rule:** config changes are additive and lenient on read. Removing a field does not
 delete its data; it becomes unmodeled and joins `untouched`. Renaming a field without a migration is a
 data-visible change — call it out in the change.
+
+## Decisions and claims
+
+### Decisions
+
+| ID | The rule that still binds |
+|---|---|
+| ADR-0003 | Config is zod schema factories carrying CMS metadata: one validation engine, compile-time for the host and runtime for the admin. `AdminConfig` is data, never code — a `strictObject` plus a discriminated union of the exact field types, so an unknown key or type is a named error, never a silent pass. Parse is default-immune; defaults materialise only in the new-entry fold. |
+| ADR-0006 | Repository content is untrusted. Templates render as text nodes (`{{key}}` → `String(value)`), never through an HTML sink. `safePath()` guards every media path on read and write, `safeUrl()` allowlists schemes, SVG uploads are rejected, and existing SVGs render only via `<img src=blob:>`. `parseUntrustedJson()` is the only entry/config parser; `Object.assign` and deep merges on parsed JSON are banned repo-wide. Caps: entry ≤ 2 MB, depth ≤ 64, list ≤ 5 000. |
+| ADR-0009 | Two registries joined by name: core `defineFieldType` (pure — no React, no IO) and admin `defineWidget(fieldTypeName, Component)`. `WidgetProps` carries `value`, `onChange`, `error`, `fieldConfig`, `useField()` and `services` — never a backend or a token. Relation display and search resolve through the admin entry index; core models relation as pure data. A registry snapshot test makes contract drift fail loudly. |
+
+### Claims
+
+| ID | Claim | Enforcing test |
+|---|---|---|
+| INV-S01 | Untouched files round-trip byte-identically: `serialize(parse(raw)) === raw` across the yve corpus | `packages/core/src/cache/__tests__/golden-byte-identity.test.ts` |
+| INV-S02 | A no-op save produces a zero-diff commit (equal tree sha); CRLF and ETag variants never fake a change | `packages/core/src/cache/__tests__/inv-noop-diff.test.ts` |
+| INV-S03 | Reads are lenient and saves strict: all six drift fixtures render with a banner, save refuses an unclean entry, and untouched unmodeled keys survive verbatim | `packages/core/src/fields/__tests__/inv-lenient-strict.test.ts` |
+| INV-S04 | Parsing never injects a default; defaults arrive only through the new-entry/template fold | `packages/core/src/fields/__tests__/inv-default-immune.test.ts` |
+| INV-S05 | Prototype pollution is impossible: `__proto__` and nested `constructor.prototype` parse harmlessly, and a grep gate keeps unsafe merges out | `packages/core/src/safety/__tests__/inv-prototype-pollution.test.ts`, `packages/core/src/safety/__tests__/repo-bans.test.ts` |
+| INV-S06 | Size and depth caps hold: entry ≤ 2 MB, depth ≤ 64, list ≤ 5 000 items, with a render recursion guard | `packages/core/src/safety/__tests__/inv-parse-caps.test.ts` |
+| INV-T01 | Templates render as text nodes only; the golden XSS suite covers summaries, `preview_path`, alt text, and view-group patterns | `packages/core/src/safety/__tests__/inv-golden-xss.test.ts` |
+| INV-T02 | `safePath()` runs on read and write and rejects `..`, backslashes, encoded separators, and prefix escapes | `packages/core/src/safety/__tests__/inv-safe-path.test.ts` |
+| INV-T03 | `safeUrl()` allowlists schemes; `javascript:` and `data:` are rejected; external links carry `rel="noopener noreferrer"` | `packages/core/src/safety/__tests__/inv-safe-url.test.ts` |

@@ -4,11 +4,11 @@
 deep-dive for the area you are touching (§11). If something needs more than a screen to explain, it
 belongs in a deep-dive, not here.
 
-> **Two spec layers — do not confuse them.** This `specs/` tree is the *orientation* layer: how the
-> shipped code behaves today. `docs/specs/` is the *project* layer: `00-master-plan.md` (archived
-> canon), `01-spec.md` (six-area agreement), `invariants.md` (numbered testable claims), and the
-> `phases/` briefs (gate checklists). Decisions live in `docs/adr/` as ADR-0001 through ADR-0010. Code
-> beats every document; when they disagree, fix the document in the same change (see `AGENTS.md`).
+> **One spec layer, one plan.** This `specs/` tree is the durable description of how the shipped code
+> behaves. Each deep-dive ends with the decisions and testable claims for its own subsystem, so the
+> `ADR-xxxx` and `INV-xxxx` identifiers cited throughout the source resolve here (§8). Work that is
+> still in flight lives in `plans/`; there is exactly one active plan at a time. Code beats every
+> document; when they disagree, fix the document in the same change (see `AGENTS.md`).
 
 ---
 
@@ -64,8 +64,8 @@ Consequences worth internalising:
 
 `pnpm changeset status` is the non-interactive sanity check for release notes.
 
-> Commands are duplicated in `AGENTS.md`, `docs/specs/01-spec.md §3`, root `package.json`, and here.
-> **Change all four together.**
+> Commands are duplicated in `AGENTS.md`, `README.md`, root `package.json`, and here. **Change all
+> four together.**
 
 ## 3. Folder map
 
@@ -93,8 +93,8 @@ Consequences worth internalising:
 | `playground` | MSW FakeGithub, fixture repo, e2e seams |
 | `e2e` | Playwright journeys and support helpers |
 | `scripts` | CI guard, prod-purity scan, audit filter, fixture sync/capture |
-| `docs` | Canon specs, ADRs, yve inventory |
-| `specs` | This orientation layer |
+| `specs` | This orientation layer: the anchor plus five subsystem deep-dives |
+| `plans` | The single active delivery plan (`phase-7-publish.md`) and its release policy |
 
 **Node-safety rule:** `@mycms/core` must not touch `window`, `document`, `Worker`, or IndexedDB.
 Browser code lives in `web/` and is imported only by hosts.
@@ -195,28 +195,37 @@ statuses, rate limit, and repo/branch-protection reads.
 6. **Publish → deploy status.** Watch the commit: check-runs primary, statuses only via configured
    contexts, `unavailable` rather than `failed` when data is missing.
 
-## 8. Invariants that will bite
+## 8. Standing vetoes and the identifier index
 
-The full numbered list is `docs/specs/invariants.md`. These are the ones a change most often breaks:
+**Vetoes.** These hold everywhere. A change that breaks one is rejected regardless of test results:
 
-- `branch` is a parameter on **every** backend and pipeline call. `main` is never hardcoded.
-- Ref updates are **fast-forward only**. `force: true` does not exist in this codebase.
-- Never read `raw.githubusercontent.com`; previews come from the git blob API.
-- Never put a token in a URL.
-- One save in flight per entry; one commit per save; zero writes for a zero-diff change.
-- A commit counts as published only when the ref is observed to carry it (verify-then-rebuild).
-- Drafts are written **before** the first network call and deleted **only** after ref verification.
-- Boot never auto-writes to the remote.
-- Conflicts freeze at the minimal common node; save stays blocked until every row is decided.
-- An unrelated file's validation failure must never block this entry's save (advisory-chip rule).
-- `serialize(parse(raw)) === raw`; defaults stay metadata; the virtual `slug` is never persisted;
-  unmodeled keys survive.
-- Deploy status: `neutral` and `skipped` are never success; an absent result inside the grace window
-  is `unavailable`, never `failed`.
-- No remote telemetry of any kind.
-- No `dangerouslySetInnerHTML`, `eval`, or `innerHTML=`; repo content renders as text nodes.
-- All repo content is untrusted: parse via `parseUntrustedJson()`, never `Object.assign` or deeply
-  merge it.
+- `force: true`, or a force-push performed by any script or workflow.
+- Reading `raw.githubusercontent.com`; previews and files come from the git blob API.
+- A token in a URL, query string, redirect, or log line.
+- `dangerouslySetInnerHTML`, `eval`, `new Function`, or `innerHTML=` anywhere in the admin.
+- Remote telemetry, analytics, or third-party runtime scripts of any kind.
+- `Object.assign` or a deep merge applied to parsed repository JSON.
+- A second serializer that bypasses the save path.
+- `backend`, credentials, or raw transport access inside `WidgetProps`.
+- Whole-entry conflict choices; freezing is field-granular at the minimal common node.
+- Blocking one entry's save because an unrelated file fails validation (advisory-chip rule).
+- Editing `/admin-legacy`; it is the rollback path.
+- Deleting or skipping a test to turn CI green.
+
+**Identifiers.** Source comments cite `ADR-xxxx` and `INV-xxxx` by bare id, so each one is defined
+exactly once, in the deep-dive that owns that subsystem:
+
+| IDs | Defined in |
+|---|---|
+| ADR-0003 · ADR-0006 · ADR-0009 · INV-S01–S06 · INV-T01–T03 | `content-model-architecture.md` |
+| ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-P01–P03 · INV-P06 · INV-P14 | `backend-and-auth-architecture.md` |
+| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P15–P17 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
+| ADR-0007 · INV-M01–M03 · INV-N03 · INV-T04–T05 | `media-architecture.md` |
+| INV-N04–N05 | `test-harness-architecture.md` |
+| ADR-0010 · INV-C01–C04 | `plans/phase-7-publish.md` |
+
+An id missing from this table means the spec is wrong: add the definition to the owning deep-dive and
+index it here in the same change.
 
 ## 9. Environment variables
 
@@ -262,3 +271,6 @@ Never commit a token. `.gitignore` keeps `.env*` out.
 | `content-model-architecture.md` | config, fields, parsing, serialisation, editor widgets |
 | `media-architecture.md` | uploads, previews, references, trash/restore, budgets |
 | `test-harness-architecture.md` | playground, fixtures, e2e, CI guard scripts |
+
+The current delivery plan is `plans/phase-7-publish.md`. It owns release policy (ADR-0010) and the
+yve cutover checklist (INV-C01–C04), which are not claims about code inside `packages/`.

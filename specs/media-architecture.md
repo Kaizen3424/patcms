@@ -1,6 +1,6 @@
 # Media
 
-> Parent: [`specs/MyCMS.md`](MyCMS.md)
+> Parent: [`specs/CMS.md`](CMS.md)
 
 Media is the only binary content in the repo, and the only place where a wrong path silently breaks
 the live site. Two rules carry most of the design: the public⇄repo mapping is bijective and validated,
@@ -98,3 +98,22 @@ Warnings are advisory and never block a save.
 | Restore refuses | Target path is occupied — by design |
 | Old image persists after replace | CDN cache, not a save failure |
 | Upload rejected instantly | Sniffer guard (size, pixels, SVG) before any network call |
+
+## Decisions and claims
+
+### Decisions
+
+| ID | The rule that still binds |
+|---|---|
+| ADR-0007 | Uploads are staged as draft tiles; nothing touches GitHub until the entry saves, and N photos plus the entry JSON land as ONE tree commit. Standalone library uploads use the same transactional primitive. The raster pipeline runs in a worker, re-encodes to roughly 400 KB WebP with a JPEG fallback, and strips EXIF by construction while preserving orientation. Previews read `/git/blobs/{sha}` and are cached by blob sha; `raw.githubusercontent.com` is never used. Writes go only through `safePath()`-validated repo paths mapped by config; delete and rename need `findReferences()` clearance; replace-in-place warns about CDN staleness. Budget: warn at ~800 MB or 2 500 files, block any single upload above 90 MiB. No LFS in v1. |
+
+### Claims
+
+| ID | Claim | Enforcing test |
+|---|---|---|
+| INV-M01 | The public⇄repo bijection is identity-preserving, honours per-collection overrides, and rejects traversal and prefix escapes | `packages/core/src/media/__tests__/inv-media-bijection.test.ts` |
+| INV-M02 | N photos plus the entry JSON are one tree commit; a per-tile retry resends only the failed file | `packages/core/src/pipeline/__tests__/inv-batch-integrity.test.ts`, `e2e/specs/slow-wifi.spec.ts` |
+| INV-M03 | Delete is blocked while `findReferences()` finds any usage; a confirmed delete moves to `_trash/` in one commit and restore is collision-guarded | `packages/core/src/media/__tests__/inv-referential-delete.test.ts` |
+| INV-T04 | SVG uploads are rejected; existing SVGs render only via `<img src=blob:>`; zero inline repo `<svg>`, `<object>`, or `<embed>` | `e2e/specs/svg-trust.spec.ts` |
+| INV-T05 | EXIF is stripped by re-encoding with orientation preserved; the 15 MB, 24 MP, and 8 192 px caps are enforced before decode | `packages/admin/src/workers/__tests__/raster-pipeline.test.ts` |
+| INV-N03 | Previews cause zero `raw.githubusercontent.com` traffic — content-addressed blob reads with ref-counted object URLs | `e2e/specs/svg-trust.spec.ts`, `e2e/specs/slow-wifi.spec.ts` |

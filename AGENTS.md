@@ -3,16 +3,17 @@
 **What this repo is.** A git-backed, zero-database CMS. `packages/core` is a framework-agnostic
 TypeScript SDK; `packages/admin` is a React SPA a host mounts with
 `mountAdmin(el, {config, support, repository})`; the browser talks directly to `api.github.com` with a
-fine-grained PAT. There is no server, database, user account, role, or job. Project canon lives in
-`docs/specs/` (master plan, six-area spec, invariant list, phase gates) and `docs/adr/`; this file does
-not replace it.
+fine-grained PAT. There is no server, database, user account, role, or job. The durable description of
+the code lives in `specs/`; `plans/` holds the one active delivery plan. This file is the working
+manual, not a replacement for either.
 
 ## Read order
 
-1. `specs/MyCMS.md` — the anchor. One read covers stack, commands, folders, routes, data model, auth,
-   flows, invariants, env vars.
-2. The one deep-dive for the area you are touching (inventory below).
-3. Then the code. For project-management work (phase gates, invariant IDs, ADRs), go to `docs/specs/`.
+1. `specs/CMS.md` — the anchor. One read covers stack, commands, folders, routes, data model, auth,
+   flows, vetoes, and the identifier index.
+2. The one deep-dive for the area you are touching (inventory below). Its closing "Decisions and
+   claims" section holds the binding rules and the tests that enforce them.
+3. Then the code. For release or cutover work, read `plans/phase-7-publish.md`.
 
 Do not read all six specs for a one-file change.
 
@@ -34,6 +35,7 @@ confirming which behaviour is intended.
 | Commands, CI jobs, build outputs, deploy config | anchor §2/§10 and this file |
 | A save, conflict, draft, or recovery rule | `workflows/publish-and-recovery.md` |
 | Media paths, guards, references, trash, budgets | `media-architecture.md` |
+| A decision (`ADR-xxxx`) or testable claim (`INV-xxxx`) | The owning deep-dive's "Decisions and claims" table, then the index in anchor §8 |
 | A new gotcha — anything that cost real time | The relevant spec, as a one-line rule |
 
 A gotcha discovered and not written down is a gotcha the next agent pays for again.
@@ -62,34 +64,37 @@ is a bug. If it cannot earn 100 lines, it belongs as a section in an existing fi
 - Every spec reachable from the anchor.
 - If a claim is duplicated elsewhere, say **"change all N together"** and name the places.
 - If a fact will be stale in a month, leave it out.
-- Budget: anchor 200–350 lines, deep-dives 100–250, whole tree under about 2% of hand-written source.
+- Budget: anchor 200–350 lines, deep-dives 100–250, whole tree under about 2.5% of hand-written source.
   Over budget means you are copying code.
 
 ## Inventory
 
 ```
 specs/
-  MyCMS.md                             anchor: the whole repo in one read
+  CMS.md                               anchor: the whole repo in one read
   workflows/publish-and-recovery.md    save machine, drafts, conflicts, boot, deploy status
   backend-and-auth-architecture.md     GitBackend, transaction, CAS, PAT, rate, contract suite
   content-model-architecture.md        config DSL, 12 field types, parse/save, untouched, widgets
   media-architecture.md                bijection, upload guards, references, trash, budget
   test-harness-architecture.md         FakeGithub, fixtures, e2e seams, CI guards
+plans/
+  phase-7-publish.md                   release policy, publish blockers, yve cutover
 ```
 
 ## Project process
 
-Phase work follows `docs/specs/phases/`: read the phase's pre-flight, work its checklist top-down, and
-tick an item only with command output or a named manual check. A phase gates on its exit checklist
-**plus owner confirmation in chat** — agents never self-approve a gate. At session end, append a dated
-bullet to that phase's session log and keep the phase status current. If reality contradicts the spec
-or an ADR, update the spec/ADR first with a dated note, then the code.
+Work follows the active plan in `plans/`: read it top-down and tick an item only with command output or
+a named manual check. A phase gates on its exit checklist **plus owner confirmation in chat** — agents
+never self-approve a gate. At session end, append a dated bullet to the plan's session log and keep its
+status current. When a phase closes, replace the plan rather than accumulating them; git has the
+history. If reality contradicts a spec or a decision row, update the spec first, then the code.
 
-## Canon lives elsewhere
+## Where the rest lives
 
-`docs/specs/01-spec.md` · `docs/specs/invariants.md` · `docs/specs/phases/` (P0 through P7) ·
-`docs/adr/` (ADR-0001 through ADR-0010). Those belong to the project process; this layer only
-describes how the code behaves. Never restate an invariant ID here — link to it.
+Decision rationale and testable claims are not a separate register: each deep-dive ends with a
+"Decisions and claims" section, and `specs/CMS.md §8` indexes which file owns which id. Release policy
+(ADR-0010) and the yve cutover checklist (INV-C01–C04) live in the active plan. Never restate an id's
+rule in two places — link to the owning section.
 
 ## Golden rule
 

@@ -3,14 +3,14 @@
 ## Scope (v1, browser-only model)
 
 - All GitHub access is **browser → `api.github.com`** using a **fine-grained personal access token** scoped to one repository: `Contents: read+write` (required), `Checks: read` (required for build-status display), `Administration: read` (owner-only, optional — enables branch-protection preflight).
-- The token lives in a browser storage behind an opt-in "Remember on this device" choice (default **on** when provisioned by the owner; see ADR-0002). It is wiped on sign-out and on failed re-probe after any auth error. It is **never** sent to any server, never placed in URLs, never logged (log masking is automated + test-enforced).
+- The token lives in a browser storage behind an opt-in "Remember on this device" choice (default **on** when provisioned by the owner; see [ADR-0002](specs/backend-and-auth-architecture.md)). It is wiped on sign-out and on failed re-probe after any auth error. It is **never** sent to any server, never placed in URLs, never logged (log masking is automated + test-enforced).
 - The admin page loads **zero third-party runtime scripts** and ships a pinned CSP (`connect-src 'self' https://api.github.com`); supply chain is controlled via pnpm `onlyBuiltDependencies` allowlist + frozen lockfile + CI audit gates.
 
 ## Explicitly NOT supported (out of threat-model scope, v1)
 
 - Server-side deployments or any backend component.
-- OAuth flows (Stage B), third-party packaged widget code, GitLab/other backends, PR-branch editorial modes.
-- Confidentiality of the token against arbitrary code executing on the admin origin (documented honestly: storage choice is a convenience trade-off, not a boundary — see ADR-0002).
+- OAuth flows, third-party packaged widget code, GitLab/other backends, PR-branch editorial modes — none of these exist in 0.x.
+- Confidentiality of the token against arbitrary code executing on the admin origin (documented honestly: storage choice is a convenience trade-off, not a boundary — see [ADR-0002](specs/backend-and-auth-architecture.md)).
 
 ## Reporting a vulnerability
 
