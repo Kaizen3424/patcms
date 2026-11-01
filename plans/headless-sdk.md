@@ -46,7 +46,7 @@ panel proves `createCMS()` is sufficient to build a working admin, and `packages
 | Tests | core 68 files / 537 tests, admin 37 / 238, playground 4 / 14 — all green. |
 | Specs | Updated this session for `patcms`, `patcms/advanced`, the shrunk `patcms/web`, `src/__tests__/support` fakes, the deleted e2e suite, moved admin stores, and the `createCMS()` client. |
 | README | Root README rewritten for the headless story; `packages/core/README.md` written (ships in the tarball). Snippets match the real factory signatures but are not yet typechecked against the tarball. |
-| Example panel | Not started. This is the proof that `createCMS()` is enough, and the gate for deleting `packages/admin`. |
+| Example panel | Complete (`playground/src/panel`): full loop validated against the fake and the real repo `Kaizen3424/cms_test`; parity review passed; `packages/admin` deleted at cutover. |
 
 ## Phases
 
@@ -112,14 +112,14 @@ conflict value, upload and reference media, and sign in with a PAT. No `patcms/a
 | 7 | Release workflow | Open. |
 | 8 | Tarball hygiene | Resolved: `scripts/check-tarball.mjs`, wired into CI. |
 | 9 | README on the package page | Open (P1). |
-| 10 | Example panel proves the SDK | Open (P2); deleting `packages/admin` is part of this blocker. |
+| 10 | Example panel proves the SDK | Resolved (P2, 2026-11-01): the panel runs the full loop against the fake and a real repo; `packages/admin` is deleted. |
 
 ## Acceptance checklist
 
 Tick an item only with command output or a named manual check.
 
 - [x] `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm run check`, `pnpm -r test` green
-  (2026-11-01: core 539 / admin 238 / playground 38, all green after INV-N03)
+  (2026-11-01: core 539 / admin 238 / playground 38, all green after INV-N06)
 - [x] `pnpm -r build` and `pnpm run scan:prod-purity` green
 - [x] `pnpm run pack:check` green
 - [ ] `pnpm changeset status` lists exactly 0.1.0
@@ -134,7 +134,9 @@ Tick an item only with command output or a named manual check.
       `Kaizen3424/cms_test@main` (2026-11-01): save `8edce67` with untouched keys byte-identical,
       conflict `737c612`→`b4958ee` resolved per field, media upload `df21f8e` + full
       delete→trash→restore ladder, tree restored to pristine (original blob shas verified)
-- [ ] `packages/admin` deleted; nothing in the repo imports it
+- [x] `packages/admin` deleted; nothing in the repo imports it (2026-11-01: typecheck, check, tests
+      core 538 / playground 38, build, `pack:check` all green after deletion; catalog pruned of the
+      18 admin-only pins; `scan:prod-purity` and its script retired with it)
 - [ ] Release workflow publishes through OIDC; no `NPM_TOKEN` secret exists anywhere
 - [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes
 
@@ -150,7 +152,7 @@ Tick an item only with command output or a named manual check.
 | `save` composes untouched from the entry, not the validation result | `validation.untouched` only reflects the incoming modeled value; using it drops preserved unknown fields. |
 | Admin store moves changed the IDB schema owner | `MYCMS_IDB_STORES` is `["auth", "drafts"]`; the admin's journal/onboarding/discard stores open their own databases via `patcms/web`'s `createSharedStore`. Bump the version there, not in core's list. |
 | Renaming stays cheap only if you keep it that way | The name lives in manifests and docs headers. Importing it into runtime code turns a rename into archaeology. |
-| A green CI run is not a green artifact | `scan:prod-purity` scans the admin `dist`; the core tarball has its own check. Neither covers the example panel — it is not published. |
+| A green CI run is not a green artifact | The core tarball has its own check (`pack:check`). The example panel is not published and has none — a green CI run says nothing about the panel's bundle. |
 
 ## Release policy (carried from ADR-0010, amended)
 
@@ -217,10 +219,26 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   requests when the MSW worker is not controlling the page (one request leaked to the real API
   during an HMR race). Real-repo finding: GitHub answers `GET /git/ref/heads/main` with
   `max-age=60`, so the browser HTTP cache served a stale head after writes and the media list
-  missed a fresh upload for up to a minute — fixed as INV-N03 (`cache: "no-store"` on
+  missed a fresh upload for up to a minute — fixed as INV-N06 (`cache: "no-store"` on
   branch-addressed GETs and the probe; SHA-addressed reads stay cacheable), enforced in
   `github-backend.test.ts` + `inv-probe.test.ts`. Gates green (core 539 / admin 238 / playground
   38, `--frozen-lockfile` included). Commits: My_CMS `7199eae`, `c87feac`; cms_test `31df45c`,
   `b474349`. Repo loop left `Kaizen3424/cms_test` pristine (blob shas verified). Parity review
   passed — table in the P2 section. Next: owner confirmation, then delete `packages/admin` and the
   old cms_test deps, prune the catalog, retire `scan:prod-purity`, update specs.
+- **2026-11-01 (4)** — P2 closed with the admin cutover (owner-approved). `packages/admin` and
+  `scripts/prod-purity-scan.mjs` deleted; the `scan:prod-purity` script and its CI step retired; the
+  catalog pruned of 18 admin-only pins (Radix ×9, TanStack ×2, react-hook-form, Tailwind ×2,
+  testing-library ×3, jsdom, playwright) and the Tailwind postinstall allowlist entries; tsconfig
+  reference and repo-bans scan root dropped; the two changesets rewritten for `patcms` only.
+  Claims retired with the deleted code: INV-P15/P16 (save sweep, freeze model — admin UX),
+  INV-T05 (worker EXIF/raster pipeline), INV-N04 (admin-bundle byte-scan); each deep-dive carries a
+  retirement note and the anchor index is renumbered (the no-store transport claim is INV-N06 —
+  media-architecture already owned INV-N03). cms_test dropped `@mycms/admin`/`@mycms/core` and their
+  vendor tarballs (install, typecheck, build green). Specs updated in the same change: CMS.md
+  (panel is the reference consumer, screens table, upload pipeline, copy/veto/env wording),
+  publish-and-recovery (conflict rendering by the host, watcher wording, P17 enforcer),
+  test-harness (CI guards, N05 only), media (SDK upload path, panel preview cache), content-model
+  (panel editor wiring), backend (A01/A02 enforcers). Gates green: core 538 / playground 38,
+  `--frozen-lockfile`, build, `pack:check`. Remaining: P3 publish machinery (changesets, release
+  workflow, tag).

@@ -22,7 +22,7 @@ const BANNED: readonly { readonly name: string; readonly pattern: RegExp }[] = [
   { name: "token in URL", pattern: /[?&]token=/i },
 ]
 
-const SCAN_ROOTS = ["packages/core/src", "packages/admin/src", "playground/src"] as const
+const SCAN_ROOTS = ["packages/core/src", "playground/src"] as const
 
 describe("INV-S05 repo-wide unsafe-pattern ban", () => {
   for (const root of SCAN_ROOTS) {

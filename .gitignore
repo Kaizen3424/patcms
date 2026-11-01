@@ -38,3 +38,5 @@ Thumbs.db
 
 # agent scratch (never committed)
 ABANDONED_FILES/
+
+opencode.json

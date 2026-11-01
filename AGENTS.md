@@ -3,10 +3,10 @@
 **What this repo is.** A git-backed, zero-database, headless CMS SDK. `packages/core` is published as
 `patcms`: a framework-agnostic TypeScript client whose high-level `createCMS()` is the product. The
 browser talks directly to `api.github.com` with a fine-grained PAT. There is no server, database,
-user account, role, or job. `packages/admin` (`@patcms/admin`, private) is the frozen reference admin
-— kept only until the example panel reaches parity, then deleted. The durable description of the code
-lives in `specs/`; `plans/` holds the one active delivery plan. This file is the working manual, not a
-replacement for either.
+user account, role, or job. `playground/src/panel` is the example admin proving `createCMS()` is
+sufficient — it is the reference consumer, not a published artifact. The durable description of the
+code lives in `specs/`; `plans/` holds the one active delivery plan. This file is the working manual,
+not a replacement for either.
 
 ## Read order
 

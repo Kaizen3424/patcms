@@ -171,7 +171,6 @@ pnpm -r test                     # vitest across workspaces
 pnpm -r build                    # tsup (core) and vite (admin, playground)
 pnpm run pack:check              # tarball hygiene + entry resolution for the published package
 pnpm fixtures:check              # verify byte-pinned fixtures
-pnpm run scan:prod-purity        # no sourcemaps, MSW, or telemetry in the admin build
 ```
 
 The playground under `playground/` runs a fake GitHub in the browser, so the full editing loop works

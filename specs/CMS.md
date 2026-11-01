@@ -27,9 +27,10 @@ client.
 | One fine-grained PAT | User accounts, roles, teams, OAuth |
 | A dev harness that speaks the real API shape | Mocked business logic |
 
-`@patcms/admin` (private) is the **frozen reference admin**: a React SPA kept only until the example
-panel reaches feature parity, then deleted. It is a consumer of the SDK, not part of it — nothing in
-`packages/core` may import from it.
+The example panel (`playground/src/panel`) is the **reference consumer**: a small React app proving
+`createCMS()` is sufficient to build a working admin. It is a dev-harness artifact, not part of the
+package — nothing in `packages/core` may import from it. The former `packages/admin` reference SPA
+was deleted at P2 parity (git history keeps it).
 
 Consequences worth internalising:
 
@@ -46,9 +47,9 @@ Consequences worth internalising:
 | Concern | Choice |
 |---|---|
 | Workspace | pnpm 10.34.9 (corepack), Node ≥ 22.12, ESM only, TS project references |
-| Reference admin | React 19, Vite, TanStack Router + Query, Tailwind 4, Radix primitives (frozen) |
+| Panel + harness | React 19, Vite, plain CSS (the example panel and its MSW fake live in `playground`) |
 | Core deps | `zod`, `idb-keyval` — nothing DOM-shaped in the main entry |
-| Build | `tsup` (core), `vite` (admin, playground) |
+| Build | `tsup` (core), `vite` (playground) |
 | Tests | Vitest, plus `fast-check` property tests in core |
 | Lint / format | Biome with `--error-on-warnings` |
 | Release | changesets |
@@ -64,7 +65,7 @@ Consequences worth internalising:
 | Build all | `pnpm -r build` |
 | Tarball hygiene | `pnpm run pack:check` |
 | Fixture integrity | `pnpm fixtures:check` |
-| Guard rails | `pnpm run scan:workflows` · `scan:prod-purity` · `audit:waivers` |
+| Guard rails | `pnpm run scan:workflows` · `audit:waivers` |
 
 `pnpm changeset status` is the non-interactive sanity check for release notes.
 
@@ -97,29 +98,27 @@ The published package has three entries, split by runtime safety:
 | `packages/core/src/safety` | Untrusted JSON, path safety, slug derive/slugify, masked logger, encoding |
 | `packages/core/src/web` | `patcms/web` — IDB draft store, shared IDB opener, token stores |
 | `packages/core/src/__tests__/support` | Test-only doubles: `FakeGithubServer`, fetch harness, fixture backend, contract suite, lease carriers |
-| `packages/admin/src` | Frozen reference admin (screens, editor, widgets, workers, admin-only IDB stores) |
-| `playground` | MSW FakeGithub harness, fixture repo, yve config |
-| `scripts` | CI guard, prod-purity scan, tarball check, audit filter, fixture sync |
+| `playground` | MSW FakeGithub harness, fixture repo, yve config, and `src/panel` — the example panel |
+| `scripts` | CI guard, tarball check, audit filter, fixture sync |
 | `specs` | This orientation layer: the anchor plus five subsystem deep-dives |
 | `plans` | The single active delivery plan (`headless-sdk.md`) |
 
 **Node-safety rule:** `patcms` and `patcms/advanced` must not touch `window`, `document`, `Worker`,
 or IndexedDB. Browser code lives in `patcms/web` and is imported only by hosts.
 
-## 4. Screens of the reference admin
+## 4. Screens of the example panel
 
-The reference admin is frozen; this table survives so its screens can be compared against the example
-panel. Every route sits behind the same gate in `packages/admin/src/admin/routes.tsx` (`RootLayout`):
-`loading` renders the boot screen, anything other than `signedIn` renders `LoginScreen`.
+The example panel (`playground/src/panel`) is the reference for what a host must build. It has no
+router: navigation is a discriminated union (`PanelView` in `playground/src/panel/types.ts`), and
+`App.tsx` renders the signed-out login until `auth` reports `signedIn`.
 
-| Route | Screen | Notes |
+| View (`PanelView` kind) | Screen file | Notes |
 |---|---|---|
-| `/` | `IndexRedirect` | Redirects to the first non-divider collection; empty state if none |
-| `/c/$collection` | `LibraryScreen` | Entry list, search, groups, advisory issue counts |
-| `/c/$collection/new` | `NewEntryScreen` | `?from=<slug>` clones an existing entry as a template |
-| `/c/$collection/e/$entry` | `EntryScreen` | `$entry` is the entry **slug** |
-| `/media` | `MediaLibraryScreen` | Browse, replace, delete |
-| `/trash` | `RecentlyDeletedScreen` | Restore soft-deleted media |
+| — | `screens/LoginScreen.tsx` | PAT sign-in, "remember" opt-in, session restore |
+| `library` | `screens/LibraryScreen.tsx` | Entry list, search, sort, issue/draft badges |
+| `new` | `screens/NewEntryScreen.tsx` | Blank or cloned start value |
+| `entry` | `screens/EntryScreen.tsx` | `$slug` editing; validate → save → conflict/media banners |
+| `media` | `screens/MediaScreen.tsx` | Browse/upload/delete plus a Trash tab for restore |
 
 This repo serves **no endpoints**. The network surface is the subset of the GitHub REST API used by
 `GithubBackend`: refs, recursive trees, blobs/contents, tree diffs, commits, check-runs, commit
@@ -201,9 +200,9 @@ statuses, rate limit, and repo/branch-protection reads.
    merging. Never a silent winner, never `force`.
 4. **Recovery.** A host that persists drafts can adjudicate a surviving draft against fresh head with
    `adjudicateDraft` (`patcms/advanced`): `discard`, `offer`, or `conflict`. Boot never writes.
-5. **Media.** `media.upload` → header sniff plus re-encode (reference admin worker) → commit →
-   preview via the blob API. `media.delete` → reference check → `_trash/` tombstone →
-   `media.restore` with a collision guard.
+5. **Media.** `media.upload` → name/empty/size/SVG guards → blob → commit → preview via the blob
+   API. `media.delete` → reference check → `_trash/` tombstone → `media.restore` with a collision
+   guard. (Header sniff and EXIF re-encode were reference-admin workers; they are not SDK features.)
 6. **Publish → deploy status.** Watch the commit: check-runs primary, statuses only via configured
    contexts, `unavailable` rather than `failed` when data is missing.
 
@@ -214,7 +213,8 @@ statuses, rate limit, and repo/branch-protection reads.
 - `force: true`, or a force-push performed by any script or workflow.
 - Reading `raw.githubusercontent.com`; previews and files come from the git blob API.
 - A token in a URL, query string, redirect, or log line.
-- `dangerouslySetInnerHTML`, `eval`, `new Function`, or `innerHTML=` anywhere in the admin.
+- `dangerouslySetInnerHTML`, `eval`, `new Function`, or `innerHTML=` anywhere in the repo (core and
+  the panel).
 - Remote telemetry, analytics, or third-party runtime scripts of any kind.
 - `Object.assign` or a deep merge applied to parsed repository JSON.
 - A second serializer that bypasses the save path.
@@ -228,10 +228,10 @@ exactly once, in the deep-dive that owns that subsystem:
 | IDs | Defined in |
 |---|---|
 | ADR-0003 · ADR-0006 · ADR-0009 · INV-S01–S06 · INV-T01–T03 | `content-model-architecture.md` |
-| ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-P01–P03 · INV-P06 · INV-P14 | `backend-and-auth-architecture.md` |
-| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P15–P17 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
-| ADR-0007 · INV-M01–M03 · INV-N03 · INV-T04–T05 | `media-architecture.md` |
-| INV-N04–N05 | `test-harness-architecture.md` |
+| ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-N06 · INV-P01–P03 · INV-P06 · INV-P14 | `backend-and-auth-architecture.md` |
+| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
+| ADR-0007 · INV-M01–M03 · INV-T04 | `media-architecture.md` |
+| INV-N05 | `test-harness-architecture.md` |
 | ADR-0010 · INV-C01–C04 | `plans/headless-sdk.md` |
 
 An id missing from this table means the spec is wrong: add the definition to the owning deep-dive and
@@ -240,7 +240,7 @@ index it here in the same change.
 ## 9. Environment variables
 
 There is no committed env file, no `.env.example`, and no build-time env contract. Runtime
-configuration is passed to `createCMS()` / `mountAdmin`.
+configuration is passed to `createCMS()` / `mountPanel` (`playground/src/panel`).
 
 | Name | Used by | Meaning |
 |---|---|---|
@@ -259,16 +259,17 @@ Never commit a token. `.gitignore` keeps `.env*` out.
 - **No human-time estimates** anywhere in docs, issues, or commit messages.
 - **Immutability at the seams:** config descriptors, parsed entries, and snapshots are readonly; the
   client cache is internal to `createCMS()`.
-- **Copy is data:** founder-facing strings live in a copy deck
-  (`packages/admin/src/editor/copy.ts`), never inline, and avoid token jargon in the primary path.
+- **Copy is host code:** founder-facing strings live in the host's UI (the panel keeps them in its
+  screens), never as GitHub prose in the primary path — SDK errors surface as typed codes.
 - **Supply chain:** frozen lockfile, `onlyBuiltDependencies` allowlist, waiver-filtered audit,
   SHA-pinned actions — all enforced in CI.
 - **New runtime dependency:** its own reviewable change, with an allowlist entry and a stated reason
   if it has install scripts.
 
-> Media limits are duplicated in `packages/core/src/media/budget.ts` (volume) and
-> `packages/admin/src/workers/header-sniffer.ts` (per file). **Change all three places together** with
-> this document.
+> Media limits live in `packages/core/src/media/budget.ts` (volume) and the client guards in
+> `packages/core/src/client/media.ts` (empty file, size cap, SVG refusal). **Change all together**
+> with this document. The reference admin's per-file header sniff and EXIF re-encode pipeline died
+> with `packages/admin`; an SDK-only host does not get them.
 
 ## 11. Deep dives
 

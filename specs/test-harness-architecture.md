@@ -86,7 +86,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 
 | You want | Command |
 |---|---|
-| Explore the admin against the fake repo | `pnpm -C playground dev` |
+| Explore the panel against the fake repo | `pnpm -C playground dev` |
 | Run one unit file | `pnpm --filter patcms test -- <file>` |
 | Verify fixture bytes | `pnpm fixtures:check` |
 | Verify the published tarball | `pnpm run pack:check` |
@@ -107,7 +107,6 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 | Script | Enforces |
 |---|---|
 | `scripts/ci-workflow-guard.mjs` | SHA-pinned actions, job-level `contents: read`, no `pull_request_target` |
-| `scripts/prod-purity-scan.mjs` | No sourcemaps or third-party runtime scripts in the built artifact |
 | `scripts/check-tarball.mjs` | No `src/`, tests, fixtures, maps, or msw bytes in the `patcms` tarball; all three entries resolve |
 | `scripts/audit-waiver-filter.mjs` | Audits pass except explicitly waived advisories |
 
@@ -119,5 +118,9 @@ suite that makes `FakeGithubServer` the reference model is ADR-0001, defined in
 
 | ID | Claim | Enforcing test |
 |---|---|---|
-| INV-N04 | The shipped admin bundle contains no sourcemaps, no `sourceMappingURL`, no `mockServiceWorker` bytes, and no telemetry strings | `scripts/prod-purity-scan.mjs` (CI: `pnpm run scan:prod-purity`) |
 | INV-N05 | The published `patcms` tarball contains no `src/`, no test doubles, no fixtures, no sourcemaps, and no msw bytes, and all three entries resolve through the publishConfig wiring | `scripts/check-tarball.mjs` (CI: `pnpm run pack:check`) |
+
+> INV-N04 (admin-bundle prod-purity byte-scan) was retired with `packages/admin` (P2 parity,
+> 2026-11-01) along with `scripts/prod-purity-scan.mjs` and the `scan:prod-purity` script. The
+> example panel is a dev-harness artifact and is not published; the tarball check (INV-N05) remains
+> the shipped-artifact guard.

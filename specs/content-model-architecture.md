@@ -95,20 +95,20 @@ Only one serialiser exists. A second one bypassing the editor save path is a sta
 `resolveMediaFolders(config, collectionName?)` (`packages/core/src/media/bijection.ts`) is the only
 place an override is applied. Do not re-implement the fallback.
 
-## Editor wiring (reference admin)
+## Editor wiring (example panel)
 
-The frozen admin's editor shows how a host wires the pieces; the primitives it uses all come from
-`patcms/advanced`:
+The example panel shows how a host wires the pieces; the primitives it uses all come from `patcms`:
+the client holds form state per field, and the screen composes save, validate, conflict, and media
+banners (`playground/src/panel/screens/EntryScreen.tsx`):
 
-- `EntryEditor` (`packages/admin/src/editor/entry-editor.tsx`) holds the form value,
-  `untouched`, `dirtyPaths`, and `baseSha`.
-- Dirtiness is computed in the **value domain** (`computeDirtyPaths`, `fieldEquals`), never by
+- The screen holds the form value, `untouched`, and dirty state; dirtiness is computed in the
+  **value domain** (`compareValues` from `patcms`, `playground/src/panel/lib/library.ts`), never by
   comparing serialised strings.
-- The save bar is a pure model (`save-bar-model.ts`) rendered by `save-bar.tsx`. It owns no save logic
-  and never talks to the transport.
-- Widgets bind by field type through `createWidgetRegistry` (`packages/admin/src/widgets/contract.ts`);
-  the default set is `WIDGETS` in `packages/admin/src/widgets/index.ts`. Adding a widget type means
-  registering it there and adding the descriptor variant — no screen changes.
+- Widgets bind by field type through the panel's registry
+  (`playground/src/panel/widgets/contract.ts`, `widgets/` — one component per descriptor kind).
+  Adding a widget type means registering it there and adding the descriptor variant — no screen
+  changes. Field-granular advanced primitives (lease carriers, coordinator) live in `patcms/advanced`
+  for hosts that want them.
 
 **Config drift rule:** config changes are additive and lenient on read. Removing a field does not
 delete its data; it becomes unmodeled and joins `untouched`. Renaming a field without a migration is a
