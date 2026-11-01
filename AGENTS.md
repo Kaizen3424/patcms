@@ -1,11 +1,12 @@
-# AGENTS.md — MyCMS
+# AGENTS.md — patcms
 
-**What this repo is.** A git-backed, zero-database CMS. `packages/core` is a framework-agnostic
-TypeScript SDK; `packages/admin` is a React SPA a host mounts with
-`mountAdmin(el, {config, support, repository})`; the browser talks directly to `api.github.com` with a
-fine-grained PAT. There is no server, database, user account, role, or job. The durable description of
-the code lives in `specs/`; `plans/` holds the one active delivery plan. This file is the working
-manual, not a replacement for either.
+**What this repo is.** A git-backed, zero-database, headless CMS SDK. `packages/core` is published as
+`patcms`: a framework-agnostic TypeScript client whose high-level `createCMS()` is the product. The
+browser talks directly to `api.github.com` with a fine-grained PAT. There is no server, database,
+user account, role, or job. `packages/admin` (`@patcms/admin`, private) is the frozen reference admin
+— kept only until the example panel reaches parity, then deleted. The durable description of the code
+lives in `specs/`; `plans/` holds the one active delivery plan. This file is the working manual, not a
+replacement for either.
 
 ## Read order
 
@@ -13,7 +14,7 @@ manual, not a replacement for either.
    flows, vetoes, and the identifier index.
 2. The one deep-dive for the area you are touching (inventory below). Its closing "Decisions and
    claims" section holds the binding rules and the tests that enforce them.
-3. Then the code. For release or cutover work, read `plans/phase-7-publish.md`.
+3. Then the code. For release or cutover work, read `plans/headless-sdk.md`.
 
 Do not read all six specs for a one-file change.
 
@@ -76,9 +77,9 @@ specs/
   backend-and-auth-architecture.md     GitBackend, transaction, CAS, PAT, rate, contract suite
   content-model-architecture.md        config DSL, 12 field types, parse/save, untouched, widgets
   media-architecture.md                bijection, upload guards, references, trash, budget
-  test-harness-architecture.md         FakeGithub, fixtures, e2e seams, CI guards
+  test-harness-architecture.md         FakeGithub, fixtures, test doubles, CI guards
 plans/
-  phase-7-publish.md                   release policy, publish blockers, yve cutover
+  headless-sdk.md                      patcms surface, publish blockers, admin cutover
 ```
 
 ## Project process

@@ -26,20 +26,23 @@ fallback elsewhere will drift.
 
 ## Upload pipeline
 
-1. **Header sniff before decode** (`packages/admin/src/workers/header-sniffer.ts`): reads JPEG, PNG,
-   and WebP dimensions from bytes.
+1. **Header sniff before decode** (`packages/admin/src/workers/header-sniffer.ts`, reference admin):
+   reads JPEG, PNG, and WebP dimensions from bytes. The client (`media.upload` in
+   `packages/core/src/client/media.ts`) enforces its own guards regardless: the 90 MiB client cap and
+   SVG refusal (`allowSvg` to override) run before any network call.
 
 | Guard | Value | Why |
 |---|---|---|
 | Max file size | 15 MB | transport and repo comfort |
 | Max pixels | 24 MP | decompression-bomb guard |
 | Max edge | 8192 px | decode safety |
-| Single upload hard block | 90 MiB | client-side refusal before network |
+| Single upload hard block | 90 MiB | client-side refusal before network (client + worker) |
 | SVG | rejected | script-bearing XML, not a raster |
 
-2. **Worker re-encode** (`packages/admin/src/workers/raster.worker.ts`): decode with EXIF orientation,
-   clamp to a 2400 px max edge, re-encode to roughly 400 KB WebP with a JPEG fallback. Re-encoding
-   strips EXIF **by construction** — there is no metadata-scrubbing step to forget.
+2. **Worker re-encode** (`packages/admin/src/workers/raster.worker.ts`, reference admin): decode with
+   EXIF orientation, clamp to a 2400 px max edge, re-encode to roughly 400 KB WebP with a JPEG
+   fallback. Re-encoding strips EXIF **by construction** — there is no metadata-scrubbing step to
+   forget.
 3. **Filename sanitisation** happens in the worker path, so the name that reaches the repo is already
    safe.
 4. Bytes are committed through the normal save transaction. Staged tiles live in drafts under
@@ -112,8 +115,8 @@ Warnings are advisory and never block a save.
 | ID | Claim | Enforcing test |
 |---|---|---|
 | INV-M01 | The public⇄repo bijection is identity-preserving, honours per-collection overrides, and rejects traversal and prefix escapes | `packages/core/src/media/__tests__/inv-media-bijection.test.ts` |
-| INV-M02 | N photos plus the entry JSON are one tree commit; a per-tile retry resends only the failed file | `packages/core/src/pipeline/__tests__/inv-batch-integrity.test.ts`, `e2e/specs/slow-wifi.spec.ts` |
+| INV-M02 | N photos plus the entry JSON are one tree commit; a per-tile retry resends only the failed file | `packages/core/src/pipeline/__tests__/inv-batch-integrity.test.ts` |
 | INV-M03 | Delete is blocked while `findReferences()` finds any usage; a confirmed delete moves to `_trash/` in one commit and restore is collision-guarded | `packages/core/src/media/__tests__/inv-referential-delete.test.ts` |
-| INV-T04 | SVG uploads are rejected; existing SVGs render only via `<img src=blob:>`; zero inline repo `<svg>`, `<object>`, or `<embed>` | `e2e/specs/svg-trust.spec.ts` |
+| INV-T04 | SVG uploads are rejected; existing SVGs render only via `<img src=blob:>`; zero inline repo `<svg>`, `<object>`, or `<embed>` | `packages/core/src/client/__tests__/client.test.ts`, `packages/core/src/safety/__tests__/inv-golden-xss.test.ts` |
 | INV-T05 | EXIF is stripped by re-encoding with orientation preserved; the 15 MB, 24 MP, and 8 192 px caps are enforced before decode | `packages/admin/src/workers/__tests__/raster-pipeline.test.ts` |
-| INV-N03 | Previews cause zero `raw.githubusercontent.com` traffic — content-addressed blob reads with ref-counted object URLs | `e2e/specs/svg-trust.spec.ts`, `e2e/specs/slow-wifi.spec.ts` |
+| INV-N03 | Previews never read `raw.githubusercontent.com` — the domain is banned repo-wide and previews go through content-addressed blob reads | `packages/core/src/safety/__tests__/repo-bans.test.ts` |

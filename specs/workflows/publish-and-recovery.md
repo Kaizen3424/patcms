@@ -6,17 +6,23 @@ The save path is the part of this repo you cannot infer from a quick read. It is
 over-built because its failure modes — lost work, double commits, silent overwrites — are the
 product's whole value proposition.
 
+Two consumers drive this machinery. `createCMS()` is the default path: `entries.save` runs the driver
+directly and returns conflicts as a value (`{ status: "conflict", current, local }`). The frozen
+reference admin wraps the same driver in the coordinator (queue, parking, leases, freeze UI) — that
+layer is admin-owned and dies with `packages/admin`; a host that wants it assembles it from
+`patcms/advanced`.
+
 ## Cast
 
 | Piece | File and symbol | Job |
 |---|---|---|
 | State machine | `packages/core/src/pipeline/save-machine.ts` (`SAVE_PHASE_ORDER`) | One transition table; illegal pairs are no-ops, never throws |
-| Driver | `packages/core/src/pipeline/save-driver.ts` (`runSave`) | One attempt: reads, commit, classify, verify |
-| Coordinator | `packages/core/src/pipeline/save-controller.ts` (`createSaveCoordinator`) | Queue, drafts, parking, retries, subscriptions |
+| Driver | `packages/core/src/pipeline/save-driver.ts` (`runSave`) | One attempt: reads, commit, classify, verify — the only piece `createCMS()` needs |
+| Coordinator | `packages/core/src/pipeline/save-controller.ts` (`createSaveCoordinator`) | Queue, drafts, parking, retries, subscriptions (admin/advanced surface) |
 | Rebase | `packages/core/src/pipeline/rebase.ts` (`rebase`) | Field-granular three-way merge, Result-shaped, never throws |
 | Invariant engine | `packages/core/src/pipeline/invariant-engine.ts` | Classifies a draft against head: clean-reapply, adopt-remote, field-merge, blocked |
-| Boot adjudication | `packages/core/src/pipeline/boot-replay.ts` (`adjudicateDraft`) | Boot and lease-steal decision: discard, offer, conflict |
-| Freeze model | `packages/admin/src/editor/freeze-model.ts` | Minimal contested nodes and row decisions |
+| Boot adjudication | `packages/core/src/pipeline/boot-replay.ts` (`adjudicateDraft`) | Boot and lease-steal decision: discard, offer, conflict (admin/advanced surface) |
+| Freeze model | `packages/admin/src/editor/freeze-model.ts` | Minimal contested nodes and row decisions (reference admin only) |
 | Deploy status | `packages/core/src/status/classify.ts`, `watcher.ts` | Truth matrix and polling |
 
 ## Phases
@@ -75,7 +81,10 @@ product's whole value proposition.
 - The cross-tab lease is UX serialisation only; the CAS is the sole correctness mechanism. Stealing a
   lease triggers the same full adjudication, not a fast path.
 
-## Conflict freeze
+## Conflict freeze (reference admin)
+
+The default client has no freeze UI: a conflict is a returned value and the host decides. The frozen
+reference admin implements this policy on top of the value:
 
 - Frozen paths are **minimal common nodes** — a whole list or parent object, never a leaf when a
   parent is contested.
@@ -113,7 +122,7 @@ Two sources, strict precedence:
 | A new failure class | `packages/core/src/backend/write-errors.ts`, the coordinator's verdict map, and the copy deck |
 | Different retry or parking policy | `save-controller.ts` and `rate-policy.ts`; keep resume event-driven |
 | Different conflict granularity | `rebase.ts`, `field-paths.ts`, `freeze-model.ts` — they must agree |
-| Different status timing | `DEFAULT_STATUS_TIMING`; hosts override via `AdminMountOptions.statusTiming` |
+| Different status timing | `DEFAULT_STATUS_TIMING`; the reference admin overrides via `AdminMountOptions.statusTiming` |
 | Different recovery prompts | `boot-replay.ts` verdicts plus `packages/admin/src/editor/copy.ts` |
 
 ## Decisions and claims
@@ -136,11 +145,11 @@ Two sources, strict precedence:
 | INV-P09 | An unknown-outcome retry re-reads the ref first and classifies done / rebuild / conflict — never a blind replay | `packages/core/src/pipeline/__tests__/inv-verify-rebuild.test.ts` |
 | INV-P10 | Published means the ref is observed to carry our content; orphan blobs are never "cleaned up" | `packages/core/src/pipeline/__tests__/inv-published-truth.test.ts` |
 | INV-P11 | A rate-limited save parks with drafts already in IndexedDB, then resumes with no loss and no duplicate commit | `packages/core/src/pipeline/__tests__/inv-parked-tx.test.ts` |
-| INV-P12 | Killing the tab mid-commit leaves a draft that boot replays as discard, offer, or conflict; the draft is deleted only after ref verification | `e2e/specs/kill-tab.spec.ts`, `packages/core/src/pipeline/__tests__/boot-replay.test.ts` |
+| INV-P12 | Killing the tab mid-commit leaves a draft that boot replays as discard, offer, or conflict; the draft is deleted only after ref verification | `packages/core/src/pipeline/__tests__/boot-replay.test.ts` |
 | INV-P13 | The cross-tab lease is TTL plus heartbeat with a storage-event fallback, and its payload never carries content or credentials | `packages/core/src/pipeline/__tests__/inv-save-lease.test.ts` |
-| INV-P15 | An unrelated file's validation failure never gates this save; coverage is reported as up-to-date, advisory, or unknown, never a false all-clear | `packages/admin/src/editor/__tests__/save-sweep.test.ts`, `e2e/specs/advisory-chip.spec.ts` |
-| INV-P16 | Conflicts freeze per field at minimal common nodes, save stays blocked until every row is decided, and the resolved save publishes exactly the chosen bytes | `packages/admin/src/editor/__tests__/freeze-model.test.ts`, `packages/admin/src/editor/__tests__/freeze-panel.test.tsx`, `e2e/specs/conflict.spec.ts` |
+| INV-P15 | An unrelated file's validation failure never gates this save; coverage is reported as up-to-date, advisory, or unknown, never a false all-clear | `packages/admin/src/editor/__tests__/save-sweep.test.ts` |
+| INV-P16 | Conflicts freeze per field at minimal common nodes, save stays blocked until every row is decided, and the resolved save publishes exactly the chosen bytes | `packages/admin/src/editor/__tests__/freeze-model.test.ts`, `packages/admin/src/editor/__tests__/freeze-panel.test.tsx` |
 | INV-P17 | After an auto-merge the next save diffs against the reconciled tree, so it cannot revert a partner's disjoint edits | `packages/core/src/pipeline/__tests__/save-controller.test.ts`, `packages/admin/src/editor/__tests__/form-value.test.ts` |
-| INV-D01 | Check-runs are primary, statuses only through `contexts[]`, and only an all-success sha is Live; an absent result inside the 120 s grace is unavailable, never failed | `packages/core/src/status/__tests__/inv-status-truth.test.ts`, `e2e/specs/deploy-status.spec.ts` |
+| INV-D01 | Check-runs are primary, statuses only through `contexts[]`, and only an all-success sha is Live; an absent result inside the 120 s grace is unavailable, never failed | `packages/core/src/status/__tests__/inv-status-truth.test.ts` |
 | INV-D02 | Generated and editable commit messages reject the four skip tokens before any network call | `packages/core/src/pipeline/__tests__/inv-skip-token.test.ts` |
 | INV-D03 | Head advancement annotates "superseded by {sha}" and stops the watcher; a late run never repaints newer state | `packages/core/src/status/__tests__/inv-supersede.test.ts` |

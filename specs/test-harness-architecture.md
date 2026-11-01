@@ -8,14 +8,22 @@ right.
 
 ## FakeGithub is the reference model
 
-`FakeGithubServer` (`packages/core/src/backend/fake-github-server.ts`) implements the same `GitBackend`
-semantics as the real transport: refs, trees, blobs, commits, FF-only CAS, request log. It passes
-`CORE_CONTRACT_SUITE`, exactly like `GithubBackend`.
+`FakeGithubServer` (`packages/core/src/__tests__/support/fake-github-server.ts`) implements the same
+`GitBackend` semantics as the real transport: refs, trees, blobs, commits, FF-only CAS, request log.
+It passes `CORE_CONTRACT_SUITE`, exactly like `GithubBackend`.
+
+The whole cluster is **test-only**: it lives under `src/__tests__/support/`, and no public entry
+(`patcms`, `patcms/advanced`, `patcms/web`) may re-export it. `scripts/check-tarball.mjs` and the
+repo-bans scan both guard this.
 
 | Layer | File | Responsibility |
 |---|---|---|
-| Reference model | `packages/core/src/backend/fake-github-server.ts` | Git semantics, CAS, commit counting, request log |
+| Reference model | `packages/core/src/__tests__/support/fake-github-server.ts` | Git semantics, CAS, commit counting, request log |
+| Fetch harness | `packages/core/src/__tests__/support/fake-github-fetch.ts` | Wires the fake through `GithubBackend`'s real fetch path for INV tests |
+| Fixture backend | `packages/core/src/__tests__/support/reference-fixture-backend.ts` | Zero-network `GitBackend` over fixture trees (contract-suite exemplar) |
+| Contract suite | `packages/core/src/__tests__/support/contract-suite.ts` | The admission gate every backend must pass |
 | HTTP transport | `playground/src/fake-github/handlers.ts` | MSW routes, ETag/304, auth and rate guards |
+| Playground fake | `playground/src/fake-github/server.ts` | Dev-only copy of the reference model (the published package ships no fake) |
 | Fixture store | `playground/src/fake-github/fixture-repo.ts` | In-memory repo built from the fixture mirror |
 | Chaos seams | `playground/src/fake-github/handlers.ts` | Truncated trees, token expiry, blob failure, rate limits |
 
@@ -30,18 +38,21 @@ and never hand-retyped. `manifest.json` pins the git blob SHA-1, SHA-256, and by
 - `pnpm fixtures:check` verifies committed bytes without needing the source checkout (CI-safe).
 - Regeneration needs the sibling checkout; `YVE_REPO` overrides its path.
 - Six drift fixtures sit on top of the real corpus to exercise lenient parse and advisory chips.
-- The recorded contract tape (`pnpm fixtures:tape-check`) pins real GitHub response shapes.
+- The recorded contract tape
+  (`packages/core/src/backends/github/__tests__/fixtures/recorded-contract-tape.json`) is a static
+  JSON fixture replayed by `github-backend-replay.test.ts`; the capture script that produced it was
+  deleted, so it is updated only by regenerating by hand against a real repo.
 
 ## The fake repo lives in the page
 
-This is the most surprising thing about e2e here: the fake repository is **in-page state**, rebuilt
-from fixtures on every reload. Therefore:
+The playground's fake repository is **in-page state**, rebuilt from fixtures on every reload.
+Therefore:
 
-- Playwright must not assert on browser storage or intercepted network alone — a reload erases the
+- Tests must not assert on browser storage or intercepted network alone — a reload erases the
   evidence.
 - `window.__mycmsHarness` (`playground/src/harness.ts`) exposes the live server: `server`,
   `requestLog`, `defaultBranch`, `readFile`, `commitCount`, `head`.
-- `commitCount()` is how a journey asserts "exactly one commit"; `requestLog` is how it asserts "zero
+- `commitCount()` is how a test asserts "exactly one commit"; `requestLog` is how it asserts "zero
   `force:true` PATCHes" and "exactly one ref update".
 - The harness is installed only by the playground build. Production hosts never get it.
 
@@ -68,35 +79,28 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 | Suite | Location | Pins |
 |---|---|---|
 | Unit | `packages/*/src/**/__tests__` | Pure logic, invariants, state machine, parsers |
-| Contract | `packages/core/src/backend/contract-suite` | Backend admission |
-| E2E | `e2e/specs` | Publish loop, conflict, kill-tab, lease, rate limit, token death, slow wifi, deploy status, widgets, a11y, zoom |
-
-E2E runs against the playground **build and preview** on port 4173
-(`e2e/playwright.config.ts`), chromium only, trace on failure. Not against the dev server — the
-shipped bundle is what gets tested.
+| Contract | `packages/core/src/__tests__/support/contract-suite.ts` | Backend admission (driven by `backend/__tests__/contract-suite.test.ts`) |
+| Tarball | `scripts/check-tarball.mjs` | Published artifact hygiene and entry resolution |
 
 ## Local loop
 
 | You want | Command |
 |---|---|
 | Explore the admin against the fake repo | `pnpm -C playground dev` |
-| Run one unit file | `pnpm --filter @mycms/core test -- <file>` |
-| Run the shipped-bundle journeys | `pnpm e2e` |
+| Run one unit file | `pnpm --filter patcms test -- <file>` |
 | Verify fixture bytes | `pnpm fixtures:check` |
-| Verify the recorded tape | `pnpm fixtures:tape-check` |
-
-The playground dev server and the e2e preview are different builds. A fix that only appears in `dev`
-has not been tested the way Playwright sees it.
+| Verify the published tarball | `pnpm run pack:check` |
 
 ## Known traps
 
 | Trap | Why it bites |
 |---|---|
 | Asserting on IndexedDB or network after a reload | The fake repo rebuilds from fixtures; only `window.__mycmsHarness` survives in the page |
-| Trusting a green run that reused an old preview | `reuseExistingServer` is on outside CI; kill stale previews before believing a result |
 | Adding git behaviour to an MSW handler | The contract suite stops covering it; semantics belong in `FakeGithubServer` |
 | Assuming the harness exists in production | It is installed only by the playground build |
 | Editing fixture bytes by hand | `fixtures:check` fails on the manifest; regenerate instead |
+| Importing a test double from a public entry | `advanced.ts` must never re-export `src/__tests__/support/*`; the bans scan and `pack:check` fail the build |
+| Trusting the workspace for packaging | pnpm resolves source `exports`; only `pack:check` proves the tarball |
 
 ## CI guards
 
@@ -104,19 +108,16 @@ has not been tested the way Playwright sees it.
 |---|---|
 | `scripts/ci-workflow-guard.mjs` | SHA-pinned actions, job-level `contents: read`, no `pull_request_target` |
 | `scripts/prod-purity-scan.mjs` | No sourcemaps or third-party runtime scripts in the built artifact |
+| `scripts/check-tarball.mjs` | No `src/`, tests, fixtures, maps, or msw bytes in the `patcms` tarball; all three entries resolve |
 | `scripts/audit-waiver-filter.mjs` | Audits pass except explicitly waived advisories |
-| `e2e/support/origin-allowlist.ts` | Runtime requests stay within `self`, `api.github.com`, `blob:`, `data:` |
-
-The origin allowlist is the executable form of "zero third-party runtime scripts". Adding an external
-service means changing that allowlist deliberately — which is the point.
 
 ## Decisions and claims
 
-The harness owns two claims about the *shipped artifact* rather than about a subsystem. The contract
+The harness owns claims about the *shipped artifact* rather than about a subsystem. The contract
 suite that makes `FakeGithubServer` the reference model is ADR-0001, defined in
 `backend-and-auth-architecture.md`; this file only explains how it is driven.
 
 | ID | Claim | Enforcing test |
 |---|---|---|
 | INV-N04 | The shipped admin bundle contains no sourcemaps, no `sourceMappingURL`, no `mockServiceWorker` bytes, and no telemetry strings | `scripts/prod-purity-scan.mjs` (CI: `pnpm run scan:prod-purity`) |
-| INV-N05 | Runtime requests stay inside `self`, `api.github.com`, `blob:`, and `data:`; a catch-all route aborts anything else | `e2e/support/origin-allowlist.ts`, installed by every journey in `e2e/specs` |
+| INV-N05 | The published `patcms` tarball contains no `src/`, no test doubles, no fixtures, no sourcemaps, and no msw bytes, and all three entries resolve through the publishConfig wiring | `scripts/check-tarball.mjs` (CI: `pnpm run pack:check`) |

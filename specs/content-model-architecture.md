@@ -2,15 +2,15 @@
 
 > Parent: [`specs/CMS.md`](CMS.md)
 
-Config is TypeScript plus zod on the host, content is JSON in the repo, and the admin only ever sees
-JSON-safe descriptors. Three different shapes, one direction of travel.
+Config is TypeScript plus zod on the host, content is JSON in the repo, and the client only ever
+exposes JSON-safe descriptors. Three different shapes, one direction of travel.
 
 ## The three shapes
 
 | Shape | Lives | Contains | Never contains |
 |---|---|---|---|
 | `ConfigDefinition` | host code | zod schemas, factories, decorations | — |
-| `AdminConfig` | passed to `mountAdmin`, JSON-safe | field **descriptors**, collection metadata | zod instances, functions |
+| `AdminConfig` | passed to `createCMS()` / `mountAdmin`, JSON-safe | field **descriptors**, collection metadata | zod instances, functions |
 | Entry document | the repo | plain JSON | defaults that were never written, the virtual slug |
 
 `toAdminConfig()` (`packages/core/src/config/document.ts`) performs the projection.
@@ -30,8 +30,9 @@ Twelve value types plus one decoration. Each factory returns a zod schema carryi
   representation.
 
 **Default values are metadata only.** `parseEntry` never injects them. They materialise in exactly one
-place — the new-entry fold (`foldFieldDefaults` and `cloneEntryAsTemplate` in
-`packages/admin/src/editor/template-clone.ts`) — plus the hidden-field repair-on-save backfill.
+place — the new-entry fold (`foldFieldDefaults` / `createBlankEntryValue` in
+`packages/core/src/fields/defaults.ts`, exported from `patcms/advanced`; the reference admin's
+`cloneEntryAsTemplate` builds on it) — plus the hidden-field repair-on-save backfill.
 Anywhere else, injecting a default is a data change the user did not make.
 
 ## Parse is lenient, save is strict
@@ -94,9 +95,12 @@ Only one serialiser exists. A second one bypassing the editor save path is a sta
 `resolveMediaFolders(config, collectionName?)` (`packages/core/src/media/bijection.ts`) is the only
 place an override is applied. Do not re-implement the fallback.
 
-## Editor wiring
+## Editor wiring (reference admin)
 
-- Router → screen → `EntryEditor` (`packages/admin/src/editor/entry-editor.tsx`) holds the form value,
+The frozen admin's editor shows how a host wires the pieces; the primitives it uses all come from
+`patcms/advanced`:
+
+- `EntryEditor` (`packages/admin/src/editor/entry-editor.tsx`) holds the form value,
   `untouched`, `dirtyPaths`, and `baseSha`.
 - Dirtiness is computed in the **value domain** (`computeDirtyPaths`, `fieldEquals`), never by
   comparing serialised strings.
