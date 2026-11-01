@@ -1,23 +1,30 @@
-import { mountAdmin } from "@patcms/admin"
-import "@patcms/admin/styles.css"
+/**
+ * Playground host — boots the MSW FakeGithub, loads the shared fixture
+ * mirror, and mounts the EXAMPLE PANEL against it. No real network target is
+ * reachable here; the panel itself imports only `patcms` + `patcms/web`.
+ *
+ * Dev knobs (query parameters, fake-only):
+ * - `conflictDemo=save` — a foreign commit lands right before the CAS check.
+ * - `tokenChaos=expire-on-write` — the token expires after the first write.
+ * - `rateLimitWriteSeconds=<n>` — writes rate-limited for n seconds.
+ * - `failBlobUploadIndex=<n>` — the n-th blob POST fails with a 503.
+ */
+
 import { setupWorker } from "msw/browser"
-import type { SaveDraftPayload, StatusTiming } from "patcms/advanced"
-import { createIdbDraftStore } from "patcms/web"
-import { yveAdminConfig } from "./config/yve"
+import { yveConfig } from "./config/yve"
 import { loadFixtureRepoFromBrowser } from "./fake-github/browser-fixture-repo"
 import { pushForeignEntryCommit } from "./fake-github/foreign-commit"
 import { createFakeGithubHandlers, DEFAULT_TAGS } from "./fake-github/handlers"
 import type { FakeGithubServer } from "./fake-github/server"
-import { installHarness } from "./harness"
+import { mountPanel } from "./panel"
 
-/**
- * Playground host — boots MSW FakeGithub, loads the shared fixture mirror, and
- * mounts the real admin against it. No real network target is reachable here.
- */
+const TARGET_PATH = "src/content/products/the-rock-pendant.json"
+
 async function main(): Promise<void> {
   const snapshot = await loadFixtureRepoFromBrowser()
-  const conflictDemo = new URLSearchParams(window.location.search).get("conflictDemo")
+  const params = new URLSearchParams(window.location.search)
 
+  const conflictDemo = params.get("conflictDemo")
   let conflictInjected = false
   const beforeRefPatch =
     conflictDemo === "save"
@@ -27,7 +34,7 @@ async function main(): Promise<void> {
           await pushForeignEntryCommit({
             server,
             branch,
-            path: "src/content/products/the-rock-pendant.json",
+            path: TARGET_PATH,
             mutator: (content) => ({
               ...content,
               material: "Wool felt · Leather (foreign push)",
@@ -37,15 +44,15 @@ async function main(): Promise<void> {
         }
       : undefined
 
-  const tokenChaos = new URLSearchParams(window.location.search).get("tokenChaos")
-  const rateLimitWrite = new URLSearchParams(window.location.search).get("rateLimitWrite")
+  const tokenChaos = params.get("tokenChaos")
+  const rateLimitWrite = params.get("rateLimitWrite")
   const rateLimitWriteSeconds =
     rateLimitWrite !== null && Number(rateLimitWrite) > 0 ? Number(rateLimitWrite) : undefined
-  const failBlobParam = new URLSearchParams(window.location.search).get("failBlobUploadIndex")
+  const failBlobParam = params.get("failBlobUploadIndex")
   const failBlobUploadIndex =
     failBlobParam !== null && Number(failBlobParam) > 0 ? Number(failBlobParam) : undefined
 
-  const { handlers, server } = createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
+  const { handlers } = createFakeGithubHandlers(snapshot, DEFAULT_TAGS, {
     requireAuth: true,
     chaos: {
       expireTokenOnWrite: tokenChaos === "expire-on-write",
@@ -57,144 +64,19 @@ async function main(): Promise<void> {
   })
   const worker = setupWorker(...handlers)
   await worker.start()
-  installHarness({ server, defaultBranch: snapshot.defaultBranch })
-
-  if (conflictDemo === "boot") {
-    const targetPath = "src/content/products/the-rock-pendant.json"
-    const file = server.contents(snapshot.defaultBranch, targetPath)
-    if (file) {
-      const initialText = new TextDecoder().decode(file.bytes)
-      const initialParsed = JSON.parse(initialText) as Record<string, unknown>
-      const initialHeadSha = server.ref(snapshot.defaultBranch) ?? snapshot.headSha
-
-      const draftStore = createIdbDraftStore()
-      await draftStore.put<SaveDraftPayload>({
-        key: `${DEFAULT_TAGS.repo}/products/the-rock-pendant`,
-        savedAt: new Date().toISOString(),
-        value: {
-          filePath: targetPath,
-          baseSha: initialHeadSha,
-          baseRaw: initialText,
-          formValue: {
-            ...initialParsed,
-            title: "The Rock Pendant (draft edit)",
-            material: "Wool felt · Leather (stored in draft)",
-          },
-        },
-      })
-
-      await pushForeignEntryCommit({
-        server,
-        branch: snapshot.defaultBranch,
-        path: targetPath,
-        mutator: (content) => ({
-          ...content,
-          material: "Wool felt · Leather (foreign push)",
-        }),
-        message: "foreign push pre-boot (conflict demo)",
-      })
-    }
-  }
-
-  const bootDraftDemo = new URLSearchParams(window.location.search).get("bootDraftDemo")
-  if (bootDraftDemo === "equal") {
-    const targetPath = "src/content/products/the-rock-pendant.json"
-    const file = server.contents(snapshot.defaultBranch, targetPath)
-    if (file) {
-      await pushForeignEntryCommit({
-        server,
-        branch: snapshot.defaultBranch,
-        path: targetPath,
-        mutator: (content) => ({
-          ...content,
-          material: "Wool felt · Leather (already live on site)",
-        }),
-        message: "already live commit pre-boot (equal draft demo)",
-      })
-
-      const liveFile = server.contents(snapshot.defaultBranch, targetPath)
-      if (liveFile) {
-        const liveText = new TextDecoder().decode(liveFile.bytes)
-        const liveParsed = JSON.parse(liveText) as Record<string, unknown>
-
-        const draftStore = createIdbDraftStore()
-        await draftStore.put<SaveDraftPayload>({
-          key: `${DEFAULT_TAGS.repo}/products/the-rock-pendant`,
-          savedAt: new Date().toISOString(),
-          value: {
-            filePath: targetPath,
-            baseSha: snapshot.headSha,
-            baseRaw: new TextDecoder().decode(file.bytes),
-            formValue: liveParsed,
-          },
-        })
-      }
-    }
-  }
 
   const host = document.getElementById("app")
-  if (host === null) {
-    const message = "playground host element missing"
-    throw new Error(message)
-  }
+  if (host === null) throw new Error("playground host element missing")
 
-  // E2e determinism seam (ADR-0004 P2.7 pins): hosts may override the lease TTL;
-  // shipped admin behavior keeps the 15s default when no parameter is present.
-  const requested = new URLSearchParams(window.location.search).get("leaseTtlMs")
-  const leaseTtlMs = requested === null ? undefined : parseLeaseTtl(requested)
-
-  // Deploy-status cadence seam (ADR-0008 P2.8): the six parameters let a
-  // journey reach terminal states without waiting out real minutes. Absent or
-  // invalid values keep the shipped defaults.
-  const statusTiming = parseStatusTiming(window.location.search)
-
-  mountAdmin(host, {
-    config: yveAdminConfig,
-    support: { name: "Ing" },
+  mountPanel(host, {
+    config: yveConfig,
     repository: {
       owner: DEFAULT_TAGS.owner,
       repo: DEFAULT_TAGS.repo,
       branch: snapshot.defaultBranch,
     },
-    ...(leaseTtlMs === undefined ? {} : { leaseTtlMs }),
-    ...(statusTiming === undefined ? {} : { statusTiming }),
+    title: "patcms example panel",
   })
-}
-
-function parseLeaseTtl(value: string): number | undefined {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed) || parsed <= 0) return undefined
-  return Math.round(parsed)
-}
-
-/**
- * `statusFastPollMs` / `statusSlowPollMs` / `statusFastWindowMs` /
- * `statusGraceMs` / `statusMaxWatchMs` / `statusJitterRatio` on the playground
- * URL map onto `AdminMountOptions.statusTiming`. Jitter may be 0 (exact
- * cadence); everything else must be a positive number of milliseconds.
- */
-function parseStatusTiming(search: string): Partial<StatusTiming> | undefined {
-  const params = new URLSearchParams(search)
-  const read = (key: string, allowZero = false): number | undefined => {
-    const raw = params.get(key)
-    if (raw === null) return undefined
-    const parsed = Number(raw)
-    if (!Number.isFinite(parsed) || parsed < 0 || (!allowZero && parsed === 0)) return undefined
-    return Math.round(parsed)
-  }
-  const timing: { -readonly [K in keyof StatusTiming]?: number } = {}
-  const assign = (field: keyof StatusTiming, param: string): void => {
-    const value = read(param)
-    if (value !== undefined) timing[field] = value
-  }
-  assign("fastPollMs", "statusFastPollMs")
-  assign("slowPollMs", "statusSlowPollMs")
-  assign("fastWindowMs", "statusFastWindowMs")
-  assign("graceMs", "statusGraceMs")
-  assign("maxWatchMs", "statusMaxWatchMs")
-  const jitter = read("statusJitterRatio", true)
-  if (jitter !== undefined && jitter <= 1) timing.jitterRatio = jitter
-  return Object.keys(timing).length === 0 ? undefined : timing
 }
 
 void main().catch((error: unknown) => {

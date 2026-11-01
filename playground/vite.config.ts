@@ -1,8 +1,7 @@
-/** Playground dev/build config — serves the shared fixture mirror + admin SPA. */
+/** Playground dev/build config - serves the shared fixture mirror + example panel. */
 import { createReadStream, statSync } from "node:fs"
 import { extname, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
-import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import type { Plugin, PreviewServer, ViteDevServer } from "vite"
 import { defineConfig } from "vite"
@@ -80,7 +79,7 @@ function fixtureServer(): Plugin {
 
 export default defineConfig({
   envPrefix: ["VITE_", "MYCMS_"],
-  plugins: [react(), tailwindcss(), fixtureServer()],
+  plugins: [react(), fixtureServer()],
   resolve: {
     dedupe: ["react", "react-dom"],
   },
