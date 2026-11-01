@@ -1,11 +1,4 @@
-import type {
-  AdminConfig,
-  CMS,
-  ConfigDefinition,
-  DraftStore,
-  RepositoryTarget,
-  TokenStore,
-} from "patcms"
+import type { CMS, CreateCMSOptions, DraftStore, RepositoryTarget, TokenStore } from "patcms"
 
 /** Navigation state of the panel — no router library, just a discriminated union. */
 export type PanelView =
@@ -16,12 +9,14 @@ export type PanelView =
 
 export interface PanelOptions {
   /** Output of `defineConfig(...)`, or an already-projected `AdminConfig`. */
-  readonly config: ConfigDefinition | AdminConfig
+  readonly config: CreateCMSOptions["config"]
   readonly repository: RepositoryTarget
   /** Token persistence. Defaults to IndexedDB in the browser, memory elsewhere. */
   readonly tokenStore?: TokenStore
   /** Draft persistence. Defaults to IndexedDB in the browser, memory elsewhere. */
   readonly drafts?: DraftStore
+  /** Override the HTTP transport (the harness uses this to guard the fake). */
+  readonly fetch?: CreateCMSOptions["fetch"]
   readonly title?: string
 }
 

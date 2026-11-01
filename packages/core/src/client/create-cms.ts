@@ -194,5 +194,7 @@ function resolveFetch(provided?: FetchLike): FetchLike {
   if (typeof candidate !== "function") {
     throw new CMSError("INVALID_CONFIG", "global fetch is unavailable; pass options.fetch")
   }
-  return candidate as FetchLike
+  // Browsers throw "Illegal invocation" when fetch runs unbound; Node is
+  // unaffected. Bind so a host can rely on the default transport directly.
+  return (candidate as (...args: unknown[]) => unknown).bind(globalThis) as FetchLike
 }

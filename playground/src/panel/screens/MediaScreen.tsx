@@ -48,7 +48,8 @@ function MediaLibrary({ cms }: { cms: CMS }) {
   >(undefined)
   const cache = useMemo(() => new MediaPreviewCache(cms), [cms])
 
-  useEffect(() => cache.dispose, [cache])
+  // Wrapped so React invokes it bound; a bare method reference would lose `this`.
+  useEffect(() => () => cache.dispose(), [cache])
 
   const load = useCallback(async () => {
     setReferences(undefined)

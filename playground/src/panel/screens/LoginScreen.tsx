@@ -17,7 +17,8 @@ export function LoginScreen({ cms, checking }: { cms: CMS; checking: boolean }) 
     setBusy(true)
     setError(undefined)
     try {
-      await cms.auth.signIn(token)
+      // remember: true persists through the host-chosen tokenStore (IDB here).
+      await cms.auth.signIn(token, { remember: true })
       // App re-renders from the auth:change subscription.
     } catch (cause) {
       if (isCMSError(cause)) {

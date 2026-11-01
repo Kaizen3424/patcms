@@ -11,7 +11,12 @@ import type { WidgetProps } from "./contract"
 import { FieldList } from "./FieldList"
 import { ScalarInput } from "./ScalarInput"
 
-export function ListWidget({ field, value, onChange }: WidgetProps<ListFieldDescriptor>) {
+export function ListWidget({
+  field,
+  value,
+  onChange,
+  idPrefix = "panel",
+}: WidgetProps<ListFieldDescriptor> & { readonly idPrefix?: string }) {
   const items = Array.isArray(value) ? value : []
   const atMax = field.max !== undefined && items.length >= field.max
 
@@ -78,13 +83,14 @@ export function ListWidget({ field, value, onChange }: WidgetProps<ListFieldDesc
                 field={scalarField(field)}
                 value={item}
                 onChange={(next) => replaceItem(index, next)}
-                id={`panel-list-${field.name}-${index}`}
+                id={`${idPrefix}-${index}`}
               />
             ) : (
               <FieldList
                 fields={field.fields}
                 value={asRecord(item)}
                 onChange={(next) => replaceItem(index, next)}
+                idPrefix={`${idPrefix}-${index}`}
               />
             )}
           </fieldset>

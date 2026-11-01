@@ -10,6 +10,7 @@ import { createCMS } from "patcms"
 import { createIdbDraftStore, createIdbTokenStore } from "patcms/web"
 import { createRoot } from "react-dom/client"
 import { PanelApp } from "./App"
+import "./panel.css"
 import type { PanelHandle, PanelOptions } from "./types"
 
 export function mountPanel(element: HTMLElement, options: PanelOptions): PanelHandle {
@@ -22,6 +23,7 @@ export function mountPanel(element: HTMLElement, options: PanelOptions): PanelHa
     repository: options.repository,
     ...(tokenStore === undefined ? {} : { tokenStore }),
     ...(drafts === undefined ? {} : { drafts }),
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   })
 
   const root = createRoot(element)

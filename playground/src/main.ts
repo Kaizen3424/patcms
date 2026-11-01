@@ -11,6 +11,7 @@
  */
 
 import { setupWorker } from "msw/browser"
+import type { CreateCMSOptions } from "patcms"
 import { yveConfig } from "./config/yve"
 import { loadFixtureRepoFromBrowser } from "./fake-github/browser-fixture-repo"
 import { pushForeignEntryCommit } from "./fake-github/foreign-commit"
@@ -65,6 +66,20 @@ async function main(): Promise<void> {
   const worker = setupWorker(...handlers)
   await worker.start()
 
+  // Harness guard: if the MSW service worker is not controlling this page (a
+  // reload/HMR race can leave a window where it is not), a GitHub request
+  // would silently reach the REAL api.github.com. Refuse loudly instead.
+  const guardFetch: CreateCMSOptions["fetch"] = (input, init) => {
+    if (navigator.serviceWorker.controller === null) {
+      return Promise.reject(
+        new Error("playground guard: MSW worker not controlling the page; GitHub request refused"),
+      )
+    }
+    // Forward through the DOM fetch; the SDK's init type is structurally the
+    // same object the browser expects, only named differently.
+    return fetch(input as Parameters<typeof fetch>[0], init as Parameters<typeof fetch>[1])
+  }
+
   const host = document.getElementById("app")
   if (host === null) throw new Error("playground host element missing")
 
@@ -75,6 +90,7 @@ async function main(): Promise<void> {
       repo: DEFAULT_TAGS.repo,
       branch: snapshot.defaultBranch,
     },
+    fetch: guardFetch,
     title: "patcms example panel",
   })
 }

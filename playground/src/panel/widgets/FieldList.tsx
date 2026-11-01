@@ -23,7 +23,10 @@ export function FieldList(props: {
   fields: readonly FieldDescriptor[]
   value: Record<string, unknown>
   onChange: (next: Record<string, unknown>) => void
+  /** Uniqueness scope for DOM ids — list items and objects nest deeper. */
+  idPrefix?: string
 }) {
+  const idPrefix = props.idPrefix ?? "panel"
   return (
     <div className="panel-fields">
       {props.fields.map((field, index) => (
@@ -32,6 +35,8 @@ export function FieldList(props: {
           field={field}
           value={props.value}
           onChange={props.onChange}
+          idPrefix={idPrefix}
+          index={index}
         />
       ))}
     </div>
@@ -42,6 +47,8 @@ function FieldItem(props: {
   field: FieldDescriptor
   value: Record<string, unknown>
   onChange: (next: Record<string, unknown>) => void
+  idPrefix: string
+  index: number
 }) {
   const { field } = props
   if (field.type === "divider") {
@@ -60,10 +67,22 @@ function FieldItem(props: {
   const setField = (next: unknown): void => {
     props.onChange({ ...props.value, [field.name]: next })
   }
-  return <FieldRow field={field} value={props.value[field.name]} onChange={setField} />
+  return (
+    <FieldRow
+      field={field}
+      value={props.value[field.name]}
+      onChange={setField}
+      id={`${props.idPrefix}-${field.name}`}
+    />
+  )
 }
 
-function FieldRow({ field, value, onChange }: WidgetProps<EditableField>) {
+function FieldRow({
+  field,
+  value,
+  onChange,
+  id,
+}: WidgetProps<EditableField> & { readonly id: string }) {
   if (field.type === "boolean") {
     return (
       <div className="panel-field panel-field-plain">
@@ -72,7 +91,6 @@ function FieldRow({ field, value, onChange }: WidgetProps<EditableField>) {
       </div>
     )
   }
-  const id = `panel-field-${field.name}`
   return (
     <div className={`panel-field${field.width === "half" ? " panel-half" : ""}`}>
       <label className="panel-label" htmlFor={id}>
@@ -105,9 +123,9 @@ function renderWidget(
     case "datetime":
       return <DatetimeWidget field={field} value={value} onChange={onChange} id={id} />
     case "list":
-      return <ListWidget field={field} value={value} onChange={onChange} />
+      return <ListWidget field={field} value={value} onChange={onChange} idPrefix={id} />
     case "object":
-      return <ObjectWidget field={field} value={value} onChange={onChange} />
+      return <ObjectWidget field={field} value={value} onChange={onChange} idPrefix={id} />
     case "image":
       return <ImageWidget field={field} value={value} onChange={onChange} />
     case "relation":
