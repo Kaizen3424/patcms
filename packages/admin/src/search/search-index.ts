@@ -1,4 +1,4 @@
-import type { AdminConfig } from "@mycms/core"
+import type { AdminConfig } from "patcms/advanced"
 import type { IndexedEntry } from "../runtime/entry-index"
 
 export interface TextPart {

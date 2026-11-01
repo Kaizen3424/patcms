@@ -1,10 +1,10 @@
-import type { TokenExpiryConfig } from "@mycms/core/web"
+import type { TokenExpiryConfig } from "../storage/token-expiry-store"
 
 export {
   clearTokenExpiryConfig,
   getTokenExpiryConfig,
   setTokenExpiryConfig,
-} from "@mycms/core/web"
+} from "../storage/token-expiry-store"
 export type { TokenExpiryConfig }
 
 export interface TokenExpiryState {

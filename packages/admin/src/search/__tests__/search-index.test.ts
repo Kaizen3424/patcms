@@ -1,4 +1,4 @@
-import type { AdminConfig, FolderCollectionDescriptor } from "@mycms/core"
+import type { AdminConfig, FolderCollectionDescriptor } from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import type { IndexedEntry } from "../../runtime/entry-index"
 import { searchIndex, splitByMatch } from "../search-index"

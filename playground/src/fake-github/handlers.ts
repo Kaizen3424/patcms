@@ -8,10 +8,10 @@
  * ETag/304, truncation chaos, auth + rate-limit guards, response shaping.
  */
 
-import type { FakeResponse } from "@mycms/core"
-import { FakeGithubServer } from "@mycms/core"
 import { HttpResponse, http } from "msw"
 import type { FixtureRepoFile, FixtureRepoSnapshot } from "./fixture-repo"
+import type { FakeResponse } from "./server"
+import { FakeGithubServer } from "./server"
 
 const API_ORIGIN = "https://api.github.com"
 

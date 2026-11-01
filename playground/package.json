@@ -12,8 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@mycms/admin": "workspace:*",
-    "@mycms/core": "workspace:*",
+    "@patcms/admin": "workspace:*",
+    "patcms": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "zod": "catalog:"

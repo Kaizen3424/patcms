@@ -12,3 +12,19 @@ export function deriveSlug(filePath: string): string | null {
   if (slug.includes("/") || slug.includes("\\")) return null
   return slug
 }
+
+/**
+ * Proposes a filename-safe slug from arbitrary text (usually the identifier
+ * field). ASCII-folded and lowercased so the result is always a valid repo
+ * path segment; non-Latin text that folds to nothing becomes `"entry"`, which
+ * the caller can override with an explicit slug.
+ */
+export function slugify(input: string): string {
+  const folded = input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return folded.length > 0 ? folded : "entry"
+}

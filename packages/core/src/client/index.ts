@@ -1,0 +1,35 @@
+/** Public client surface — everything reachable from `patcms`. */
+export { type CreateCMSOptions, createCMS } from "./create-cms"
+export type { CMSErrorCode, CMSErrorOptions } from "./errors"
+export { CMSError, isCMSError, toCMSError } from "./errors"
+export type {
+  AuthAPI,
+  AuthStatus,
+  CMS,
+  CMSEventMap,
+  CreateOptions,
+  DeleteOptions,
+  DeleteResult,
+  Draft,
+  DraftsAPI,
+  EntriesAPI,
+  Entry,
+  EntryStub,
+  EntrySummary,
+  EntryValue,
+  EventsAPI,
+  ListOptions,
+  MediaAPI,
+  MediaBlob,
+  MediaDeleteOptions,
+  MediaDeleteResult,
+  MediaFile,
+  MediaListOptions,
+  MediaUploadInput,
+  RepositoryTarget,
+  SaveOptions,
+  SaveResult,
+  Session,
+  UploadOptions,
+  ValidationResult,
+} from "./types"

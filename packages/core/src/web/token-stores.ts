@@ -2,7 +2,7 @@
 /**
  * Browser token stores — ADR-0002. IndexedDB is the opted-in persistent store;
  * sessionStorage is the per-device fallback. Core never imports these from the
- * Node-safe main entry; hosts import `@mycms/core/web`.
+ * Node-safe main entry; hosts import `patcms/web`.
  */
 import { del, get, set } from "idb-keyval"
 import type { TokenStore } from "../auth"

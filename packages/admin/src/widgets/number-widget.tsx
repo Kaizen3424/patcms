@@ -1,4 +1,4 @@
-import type { NumberFieldDescriptor } from "@mycms/core"
+import type { NumberFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { describedBy, inputClass, WidgetFrame } from "./chrome"
 import type { WidgetProps } from "./contract"

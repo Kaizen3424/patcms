@@ -21,7 +21,7 @@ import type {
   SaveDraftPayload,
   SaveMachineState,
   StagedMediaTileRecord,
-} from "@mycms/core"
+} from "patcms/advanced"
 import {
   adjudicateDraft,
   computeDirtyPaths,
@@ -35,7 +35,7 @@ import {
   resolveMediaFolders,
   SaveInFlightError,
   validateEntryForSave,
-} from "@mycms/core"
+} from "patcms/advanced"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useDiscardStore, usePublishEntry, useRuntime, useSnapshot } from "../runtime/context"

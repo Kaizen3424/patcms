@@ -1,5 +1,12 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  type FakeGithubHarness,
+  successfulRefUpdates,
+} from "../../__tests__/support/fake-github-fetch"
 import type { GitBackend } from "../../backend/types"
 import { GithubBackend } from "../../backends/github"
 import type { FetchLike } from "../../composition"
@@ -10,13 +17,6 @@ import type { JsonValue } from "../../safety/untrusted-json"
 import { canonicalJson } from "../../serialization/document"
 import { createSaveCoordinator, type SaveRequest } from "../save-controller"
 import { createForeignBlob, createForeignCommit } from "./conflict-fixtures"
-import {
-  BASE_CONTENT,
-  buildSpec,
-  createHarness,
-  type FakeGithubHarness,
-  successfulRefUpdates,
-} from "./fake-github-fetch"
 
 /**
  * P2.5 — the coordinator's conflict machinery (ADR-0004 C.3 pins + INV-P05):

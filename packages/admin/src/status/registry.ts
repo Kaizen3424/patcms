@@ -9,8 +9,8 @@
  * same injected seams the core watcher uses.
  */
 
-import type { DeployStatusSnapshot, StatusReads, StatusTiming } from "@mycms/core"
-import { createStatusWatcher, type StatusWatcher } from "@mycms/core"
+import type { DeployStatusSnapshot, StatusReads, StatusTiming } from "patcms/advanced"
+import { createStatusWatcher, type StatusWatcher } from "patcms/advanced"
 
 export interface StatusRegistryOptions {
   readonly reads: StatusReads

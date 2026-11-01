@@ -1,8 +1,13 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  hasForceTrue,
+} from "../../__tests__/support/fake-github-fetch"
 import { encodeUtf8 } from "../../safety/encoding"
 import { runSave, type SaveVerdict } from "../save-driver"
-import { BASE_CONTENT, buildSpec, createHarness, hasForceTrue } from "./fake-github-fetch"
 
 describe("INV-P01 — FF-only: 422 handled, HEAD unchanged, no force:true (L1)", () => {
   it("a concurrent push is met with the typed CAS_CONFLICT and zero force flags", async () => {

@@ -6,7 +6,7 @@
  * Object URLs are reference-counted and revoked when all subscribers unmount.
  */
 
-import type { GitBackend } from "@mycms/core"
+import type { GitBackend } from "patcms/advanced"
 import type { ReactNode } from "react"
 import { createContext, useContext, useEffect, useMemo, useState } from "react"
 

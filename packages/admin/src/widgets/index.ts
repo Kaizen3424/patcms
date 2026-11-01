@@ -2,7 +2,7 @@
  * Admin widget registry — `defineWidget(fieldTypeName, Component)` joined to
  * the core field types BY NAME (ADR-0009 §1).
  */
-import type { SelectFieldDescriptor } from "@mycms/core"
+import type { SelectFieldDescriptor } from "patcms/advanced"
 import { BooleanWidget } from "./boolean-widget"
 import { createWidgetRegistry, defineWidget } from "./contract"
 import { DatetimeWidget } from "./datetime-widget"

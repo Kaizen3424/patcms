@@ -1,5 +1,5 @@
-import type { FieldDescriptor } from "@mycms/core"
-import { canonicalJson } from "@mycms/core"
+import type { FieldDescriptor } from "patcms/advanced"
+import { canonicalJson } from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import type { IndexedEntry } from "../../runtime/entry-index"
 import {

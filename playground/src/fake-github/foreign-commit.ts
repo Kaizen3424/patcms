@@ -2,7 +2,8 @@
  * Helper to push a foreign commit onto FakeGithubServer (P2.9 conflict seams).
  * Uses server.handle() directly so it honors FakeGithubServer CAS and git-data rules.
  */
-import { encodeBase64, encodeUtf8, type FakeGithubServer } from "@mycms/core"
+import { encodeBase64, encodeUtf8 } from "patcms/advanced"
+import type { FakeGithubServer } from "./server"
 
 export interface PushForeignEntryCommitInput {
   readonly server: FakeGithubServer

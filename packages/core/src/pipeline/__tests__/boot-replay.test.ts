@@ -1,11 +1,16 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  successfulRefUpdates,
+} from "../../__tests__/support/fake-github-fetch"
 import type { GitBackend, TreeEntryTuple } from "../../backend/types"
 import type { DraftRecord, SaveDraftPayload } from "../../drafts"
 import { encodeUtf8 } from "../../safety/encoding"
 import { adjudicateDraft } from "../boot-replay"
 import { createForeignBlob, createForeignCommit } from "./conflict-fixtures"
-import { BASE_CONTENT, buildSpec, createHarness, successfulRefUpdates } from "./fake-github-fetch"
 
 /**
  * INV-P12 — boot replay classes (ADR-0004 C.3 pins). Boot NEVER auto-writes

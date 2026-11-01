@@ -1,12 +1,12 @@
 /// <reference types="node" />
 import { Buffer } from "node:buffer"
 import { describe, expect, it } from "vitest"
+import { buildSpecFromBytes, createHarness } from "../../__tests__/support/fake-github-fetch"
 import { BackendWriteError, classifyWriteResponse } from "../../backend/write-errors"
 import { GithubBackend } from "../../backends/github"
 import type { FetchLike, FetchResponseLike } from "../../composition"
 import { encodeUtf8 } from "../../safety/encoding"
 import { runSave } from "../save-driver"
-import { buildSpecFromBytes, createHarness } from "./fake-github-fetch"
 
 /**
  * INV-A02 — the write error taxonomy. GitHub transport failures collapse into

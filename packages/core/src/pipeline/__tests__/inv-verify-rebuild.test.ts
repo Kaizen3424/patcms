@@ -1,8 +1,13 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  successfulRefUpdates,
+} from "../../__tests__/support/fake-github-fetch"
 import { encodeUtf8 } from "../../safety/encoding"
 import { runSave } from "../save-driver"
-import { BASE_CONTENT, buildSpec, createHarness, successfulRefUpdates } from "./fake-github-fetch"
 
 /**
  * INV-P09/P10 (C.1 scope) — unknown-outcome recovery: the driver re-GETs the

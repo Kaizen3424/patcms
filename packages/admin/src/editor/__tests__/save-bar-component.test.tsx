@@ -1,6 +1,6 @@
-import { BackendWriteError } from "@mycms/core"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { BackendWriteError } from "patcms/advanced"
 import { describe, expect, it, vi } from "vitest"
 import { ACTION_COPY, RECOVERY_COPY, VALIDATION_COPY } from "../copy"
 import { SaveBar } from "../save-bar"

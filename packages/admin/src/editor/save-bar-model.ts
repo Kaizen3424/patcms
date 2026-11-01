@@ -14,7 +14,7 @@
  * diff (the write will land; the diff is re-evaluated after it settles), and a
  * fresh edit outranks the receipt of the save that preceded it.
  */
-import type { SaveMachineState } from "@mycms/core"
+import type { SaveMachineState } from "patcms/advanced"
 import type { SaveBarStatus } from "./copy"
 
 export type SaveBarTone = "neutral" | "positive" | "warning" | "danger"

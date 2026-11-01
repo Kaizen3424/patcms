@@ -11,14 +11,14 @@
  *  - Late keystrokes typed while saving replay onto the reconciled tree
  *    (keystrokes-onto-chosen, never chosen-over-keystrokes).
  */
-import type { FieldDescriptor, FieldPath } from "@mycms/core"
+import type { FieldDescriptor, FieldPath } from "patcms/advanced"
 import {
   computeDirtyPaths,
   deleteAtFieldPath,
   fieldPathKey,
   parseUntrustedJson,
   writeAtFieldPath,
-} from "@mycms/core"
+} from "patcms/advanced"
 
 export interface FreezeRow {
   readonly path: FieldPath

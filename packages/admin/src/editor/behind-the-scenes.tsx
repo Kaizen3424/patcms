@@ -1,4 +1,4 @@
-import type { FieldDescriptor, HiddenFieldDescriptor } from "@mycms/core"
+import type { FieldDescriptor, HiddenFieldDescriptor } from "patcms/advanced"
 import { useState } from "react"
 
 export interface BehindTheScenesProps {

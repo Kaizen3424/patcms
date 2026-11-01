@@ -16,7 +16,7 @@
     "noUncheckedIndexedAccess": true,
     "useDefineForClassFields": true,
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "node"]
   },
   "include": ["src", "vite.config.ts"]
 }

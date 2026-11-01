@@ -1,4 +1,4 @@
-import { mustacheLite, safePath, safeUrl } from "@mycms/core"
+import { mustacheLite, safePath, safeUrl } from "patcms/advanced"
 
 /**
  * Image source guard for repository-provided paths. P1 renders only the

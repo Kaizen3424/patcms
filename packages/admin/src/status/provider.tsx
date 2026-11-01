@@ -15,8 +15,8 @@ import type {
   DeployStatusSnapshot,
   GitBackend,
   StatusTiming,
-} from "@mycms/core"
-import { createStatusReads } from "@mycms/core"
+} from "patcms/advanced"
+import { createStatusReads } from "patcms/advanced"
 import {
   createContext,
   type ReactNode,

@@ -1,4 +1,4 @@
-import { CapabilityProbeError } from "@mycms/core"
+import { CapabilityProbeError } from "patcms/advanced"
 import type { FormEvent } from "react"
 import { useState } from "react"
 import { EXPIRY_COPY, fillName } from "../editor/copy"

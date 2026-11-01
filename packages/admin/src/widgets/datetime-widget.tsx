@@ -1,4 +1,4 @@
-import type { DatetimeFieldDescriptor } from "@mycms/core"
+import type { DatetimeFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { describedBy, inputClass, WidgetFrame } from "./chrome"
 import type { WidgetProps } from "./contract"

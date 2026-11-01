@@ -4,10 +4,10 @@
  * so every assertion observes what GithubBackend observes.
  */
 
+import type { FakeGithubHarness } from "../../__tests__/support/fake-github-fetch"
 import type { TreeEntryTuple, TreeRead } from "../../backend/types"
 import { encodeBase64, encodeUtf8 } from "../../safety/encoding"
 import type { ConflictEngineInput, OurWrite } from "../invariant-engine"
-import type { FakeGithubHarness } from "./fake-github-fetch"
 
 export const BRANCH = "fixture-branch"
 

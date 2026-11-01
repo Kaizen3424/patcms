@@ -1,5 +1,5 @@
-import type { LogRecord } from "@mycms/core"
 import * as Dialog from "@radix-ui/react-dialog"
+import type { LogRecord } from "patcms/advanced"
 import { useId, useState } from "react"
 import { DIAGNOSTICS_COPY, fillName } from "../editor/copy"
 import { copyToClipboard } from "../editor/failure-report"

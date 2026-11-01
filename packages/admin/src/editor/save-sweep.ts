@@ -16,7 +16,7 @@
  *  - an advisory NEVER gates a save (standing veto); the chip state lives
  *    outside the save-bar model entirely.
  */
-import type { AdminConfig, GitBackend, ParseIssue } from "@mycms/core"
+import type { AdminConfig, GitBackend, ParseIssue } from "patcms/advanced"
 import type { EntryIndex } from "../runtime/entry-index"
 import { loadEntryIndex } from "../runtime/entry-index"
 

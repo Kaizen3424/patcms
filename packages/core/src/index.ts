@@ -1,128 +1,63 @@
 /**
- * @mycms/core public entry — ADR-0001 (one composition root) + ADR-0010 §1
- * (naming appears here + docs headers only).
+ * patcms — a headless, git-backed CMS.
  *
- * P0 state: laws encoded as seams (interfaces, DI stubs, runner, masked
- * logger). Mechanisms land per the ADR roster: config P1.1, fields P1.2,
- * backend reads P1.4, pipeline P2, drafts P2.5, web adapters P2.5.
+ * The main entry is Node-safe and carries the high-level client plus everything
+ * a host needs to describe content and build its own admin. Transport
+ * primitives, the save driver, the contract suite, and test tooling live in
+ * `patcms/advanced`; browser stores live in `patcms/web`.
+ *
+ * @example
+ * ```ts
+ * const cms = createCMS({
+ *   config: defineConfig({ media, collections: [products] }),
+ *   repository: { owner: "acme", repo: "site", branch: "main" },
+ *   token: import.meta.env.GITHUB_TOKEN,
+ * })
+ *
+ * const products = await cms.entries.list("products")
+ * ```
  */
 
+// ---- token lifecycle -----------------------------------------------------
+export type { TokenStore } from "./auth"
+export { MemoryTokenStore } from "./auth"
+// ---- high-level client ---------------------------------------------------
 export type {
-  AuthKind,
-  AuthProvider,
-  CapabilityProbeResult,
-  CapabilityStatus,
-  PatProviderOptions,
-  ProbeErrorCode,
-  RateLimitSnapshot,
-  SignInOptions,
-  TokenStore,
-} from "./auth"
-export {
-  CapabilityProbeError,
-  MemoryTokenStore,
-  PatProvider,
-} from "./auth"
-export type {
-  ContractCheck,
-  ContractContext,
-  ContractFailure,
-  ContractReport,
-} from "./backend/contract-suite"
-export {
-  BLOB_READ_CHECK,
-  CORE_CONTRACT_SUITE,
-  defineContractSuite,
-  runContractSuite,
-  SHAPE_CHECK,
-  STATUS_READ_CHECK,
-  WRITE_CAS_CHECK,
-  WRITE_COMMIT_CHECK,
-} from "./backend/contract-suite"
-export type { ReadErrorCode } from "./backend/errors"
-export { BackendReadError, isBackendReadError } from "./backend/errors"
-export type {
-  FakeCheckRunInput,
-  FakeCommitStatusInput,
-  FakeGithubSpec,
-  FakeRequest,
-  FakeRequestLogEvent,
-  FakeResponse,
-} from "./backend/fake-github-server"
-export { FakeGithubServer } from "./backend/fake-github-server"
-export type { GitTreeEntry } from "./backend/git-sha"
-export { gitBlobSha, gitCommitShaCanonical, gitTreeSha, sha1Hex } from "./backend/git-sha"
-export type { GithubProbeOptions } from "./backend/github/probe"
-export { probeGithubCapabilities } from "./backend/github/probe"
-export type { ReadTreeLike, Result, TreeTruncationIssue } from "./backend/guards"
-export { assertNotTruncated } from "./backend/guards"
-// backend / pipeline seams
-export type {
-  CheckRunConclusion,
-  CheckRunStatus,
-  CheckRunSummary,
-  CheckRunsRead,
-  CommitChangeSet,
-  CommitResult,
-  CommitStatusesRead,
-  CommitStatusState,
-  CommitStatusSummary,
-  FileRead,
-  FileWrite,
-  GitBackend,
-  GitBackendCapabilities,
-  ReadFileOptions,
-  ReadFileResult,
-  ReadTreeOptions,
-  ReadTreeResult,
-  Ref,
-  RefObject,
-  TreeEntryTuple,
-  TreeRead,
-} from "./backend/types"
-export type { WriteErrorCode } from "./backend/write-errors"
-export {
-  BackendWriteError,
-  classifyWriteResponse,
-  isBackendWriteError,
-  networkWriteError,
-} from "./backend/write-errors"
-export type {
-  GithubBackendOptions,
-  RecordedInteraction,
-  RecordedRequest,
-  RecordedResponse,
-  RecordedTape,
-  RecordedTapeMeta,
-  ReplayFetch,
-  ReplayFetchOptions,
-} from "./backends/github"
-export {
-  buildMatchKey,
-  canonicalizeJson,
-  createReplayFetch,
-  encodeBranch,
-  GithubBackend,
-  normalizeBodyString,
-  normalizeRequestPath,
-} from "./backends/github"
-export type { FixtureFile, FixtureRepoSpec } from "./backends/reference-fixture-backend"
-export {
-  ContractStubNotImplementedError,
-  FixtureBackend,
-  textFixtureFile,
-} from "./backends/reference-fixture-backend"
-export type { FileCacheEntry, SnapshotRef, TreeCacheEntry } from "./cache"
-export { SnapshotStore } from "./cache"
-// transport seam
-export type {
-  CreateMyCMSDeps,
-  FetchLike,
-  FetchRequestInitLike,
-  FetchResponseLike,
-  MyCMSInstance,
-} from "./composition"
-export { createMyCMS } from "./composition"
+  AuthAPI,
+  AuthStatus,
+  CMS,
+  CMSErrorCode,
+  CMSErrorOptions,
+  CMSEventMap,
+  CreateCMSOptions,
+  CreateOptions,
+  DeleteOptions,
+  DeleteResult,
+  Draft,
+  DraftsAPI,
+  EntriesAPI,
+  Entry,
+  EntryStub,
+  EntrySummary,
+  EntryValue,
+  EventsAPI,
+  ListOptions,
+  MediaAPI,
+  MediaBlob,
+  MediaDeleteOptions,
+  MediaDeleteResult,
+  MediaFile,
+  MediaListOptions,
+  MediaUploadInput,
+  RepositoryTarget,
+  SaveOptions,
+  SaveResult,
+  Session,
+  UploadOptions,
+  ValidationResult,
+} from "./client"
+export { CMSError, createCMS, isCMSError, toCMSError } from "./client"
+// ---- config DSL ----------------------------------------------------------
 export type {
   AdminConfig,
   CollectionDefinition,
@@ -144,7 +79,6 @@ export type {
   MediaFolders,
   ViewGroup,
 } from "./config"
-// config (zod-first DSL + strict admin document)
 export {
   CONFIG_SCHEMA_VERSION,
   ConfigValidationError,
@@ -158,7 +92,10 @@ export {
   safeParseAdminConfig,
   toAdminConfig,
 } from "./config"
+// ---- drafts --------------------------------------------------------------
 export type { DraftKey, DraftRecord, DraftStore, SaveDraftPayload } from "./drafts"
+export { createMemoryDraftStore } from "./drafts/memory-store"
+// ---- fields --------------------------------------------------------------
 export type {
   BaseFieldDescriptor,
   BaseFieldMeta,
@@ -216,7 +153,6 @@ export type {
   TextFieldMeta,
   TextFieldOptions,
 } from "./fields"
-// fields (schema factories, parse, strict-save validator)
 export {
   boolean,
   CMS_META_KEY,
@@ -240,6 +176,8 @@ export {
   unwrapFieldSchema,
   validateEntryForSave,
 } from "./fields"
+export { createBlankEntryValue, foldFieldDefaults } from "./fields/defaults"
+// ---- media ---------------------------------------------------------------
 export type {
   DeleteCheckResult,
   MediaBudget,
@@ -247,7 +185,6 @@ export type {
   ReferenceQuery,
   RestoreChangesResult,
   SearchableEntry,
-  StagedMediaTileRecord,
 } from "./media"
 export {
   CLIENT_BLOCK_BYTES,
@@ -266,83 +203,11 @@ export {
   WARNING_THRESHOLD_BYTES,
   WARNING_THRESHOLD_COUNT,
 } from "./media"
-// pipeline (C.1 driver, C.2 engine, P2.5 coordinator): save laws + policy
-export type {
-  AdjudicateDraftInput,
-  CommitMessageVerdict,
-  ConcurrencyLimiter,
-  ConflictEngineInput,
-  ConflictEngineResult,
-  ConflictMergePreview,
-  CoordinatorSnapshot,
-  DraftAdjudication,
-  FieldPath,
-  FieldPathSegment,
-  FieldPathWriteIssue,
-  FieldPathWriteResult,
-  FileConflictVerdict,
-  LeaseCarrier,
-  LeaseMessage,
-  OneFlightQueue,
-  OurWrite,
-  RateDescriptor,
-  RebaseInput,
-  RebaseIssue,
-  RebaseIssueCode,
-  RebaseResult,
-  RebaseSuccess,
-  SaveConflictDetails,
-  SaveCoordinator,
-  SaveCoordinatorOptions,
-  SaveDriverInput,
-  SaveLease,
-  SaveLeaseOptions,
-  SaveMachineEvent,
-  SaveMachineState,
-  SavePauseReason,
-  SavePhase,
-  SaveReconciliation,
-  SaveRequest,
-  SaveVerdict,
-} from "./pipeline"
-export {
-  adjudicateDraft,
-  commonAncestorFieldPath,
-  composeCommitMessage,
-  computeDirtyPaths,
-  containsSkipToken,
-  createConcurrencyLimiter,
-  createOneFlightQueue,
-  createRateResume,
-  createSaveCoordinator,
-  createSaveLease,
-  DEFAULT_LEASE_HEARTBEAT_MS,
-  DEFAULT_LEASE_TTL_MS,
-  deleteAtFieldPath,
-  describeRatePause,
-  diffPaths,
-  equalsFieldPath,
-  fieldEquals,
-  fieldPathKey,
-  isAncestorFieldPath,
-  isRetryableWriteCode,
-  isZeroDiffChangeSet,
-  parseRateWindowReset,
-  parseRetryAfter,
-  readAtFieldPath,
-  rebase,
-  relatedFieldPaths,
-  resolveConflictPaths,
-  runSave,
-  SAVE_PHASE_ORDER,
-  SaveInFlightError,
-  transitionSaveState,
-  writeAtFieldPath,
-} from "./pipeline"
+
+// ---- safety --------------------------------------------------------------
 export type {
   JsonPrimitive,
   JsonValue,
-  MoneyFormatOptions,
   SafePathFailureCode,
   SafePathOptions,
   SafePathResult,
@@ -350,18 +215,15 @@ export type {
   SafeUrlOptions,
   SafeUrlResult,
   SortDirection,
-  TemplateValues,
   UntrustedJsonFailureCode,
   UntrustedJsonIssue,
   UntrustedJsonOptions,
   UntrustedJsonResult,
 } from "./safety"
-// safety (masked logger, untrusted JSON, path/url, templates, collation, money, slug)
 export {
   compareNumbers,
   compareText,
   compareValues,
-  createLogger,
   createTextCollator,
   DEFAULT_LOCALE,
   decodeBase64,
@@ -379,12 +241,12 @@ export {
   readPath,
   safePath,
   safeUrl,
+  slugify,
   sortBy,
   UNTRUSTED_JSON_LIMITS,
   utf8ByteLength,
 } from "./safety"
-export type { Logger, LogLevel, LogRecord } from "./safety/logger"
-// serialization (source-preserving documents + the one save-path composer)
+// ---- serialization -------------------------------------------------------
 export type {
   ComposedEntryDocument,
   ComposeEntryDocumentInput,
@@ -402,23 +264,3 @@ export {
   parseJsonDocument,
   serializeDocument,
 } from "./serialization"
-export type {
-  DeployStatusCause,
-  DeployStatusKind,
-  DeployStatusSnapshot,
-  StatusDecision,
-  StatusReads,
-  StatusTiming,
-  StatusWatcher,
-  StatusWatcherOptions,
-} from "./status"
-export {
-  classifyCheckRuns,
-  classifyCommitStatuses,
-  createStatusReads,
-  createStatusWatcher,
-  DEFAULT_STATUS_TIMING,
-  decideStatus,
-} from "./status"
-export type { WebKeyValueStore } from "./web"
-export { clearIdbDraftStore, createIdbDraftStore } from "./web"

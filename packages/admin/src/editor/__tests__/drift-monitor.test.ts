@@ -1,5 +1,5 @@
-import type { GitBackend, TreeEntryTuple } from "@mycms/core"
 import { act, renderHook } from "@testing-library/react"
+import type { GitBackend, TreeEntryTuple } from "patcms/advanced"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useDriftMonitor } from "../drift-monitor"
 

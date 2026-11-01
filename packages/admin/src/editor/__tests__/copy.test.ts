@@ -1,4 +1,4 @@
-import type { DeployStatusCause, DeployStatusKind } from "@mycms/core"
+import type { DeployStatusCause, DeployStatusKind } from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import {
   STATUS_CAUSE_COPY,

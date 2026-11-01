@@ -7,7 +7,7 @@ import type {
   NumberFieldDescriptor,
   RelationFieldDescriptor,
   SelectFieldDescriptor,
-} from "@mycms/core"
+} from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import { yveAdminConfig } from "../yve"
 

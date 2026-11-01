@@ -1,6 +1,6 @@
-import type { AdminConfig, GitBackend, TreeEntryTuple } from "@mycms/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { AdminConfig, GitBackend, TreeEntryTuple } from "patcms/advanced"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { BlobCacheManager, BlobCacheProvider } from "../../runtime/blob-cache"
 import type { EntryIndex } from "../../runtime/entry-index"

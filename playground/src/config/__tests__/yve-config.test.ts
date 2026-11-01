@@ -2,8 +2,8 @@
 import { readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import type { FieldDescriptor, MediaFolders } from "@mycms/core"
-import { parseAdminConfig, parseEntry, validateEntryForSave } from "@mycms/core"
+import type { FieldDescriptor, MediaFolders } from "patcms/advanced"
+import { parseAdminConfig, parseEntry, validateEntryForSave } from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import { yveAdminConfig } from "../yve"
 

@@ -1,16 +1,13 @@
-import { mountAdmin } from "@mycms/admin"
-import "@mycms/admin/styles.css"
-import {
-  createIdbDraftStore,
-  type FakeGithubServer,
-  type SaveDraftPayload,
-  type StatusTiming,
-} from "@mycms/core"
+import { mountAdmin } from "@patcms/admin"
+import "@patcms/admin/styles.css"
 import { setupWorker } from "msw/browser"
+import type { SaveDraftPayload, StatusTiming } from "patcms/advanced"
+import { createIdbDraftStore } from "patcms/web"
 import { yveAdminConfig } from "./config/yve"
 import { loadFixtureRepoFromBrowser } from "./fake-github/browser-fixture-repo"
 import { pushForeignEntryCommit } from "./fake-github/foreign-commit"
 import { createFakeGithubHandlers, DEFAULT_TAGS } from "./fake-github/handlers"
+import type { FakeGithubServer } from "./fake-github/server"
 import { installHarness } from "./harness"
 
 /**

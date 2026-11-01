@@ -4,8 +4,8 @@
  * Complex presentation blocks that P3 will model stay `hidden` so their bytes
  * are preserved untouched (ADR-0003, INV-S03).
  */
-import * as fields from "@mycms/core"
-import { defineCollection, defineConfig, defineFiles, toAdminConfig } from "@mycms/core"
+import * as fields from "patcms/advanced"
+import { defineCollection, defineConfig, defineFiles, toAdminConfig } from "patcms/advanced"
 import { z } from "zod"
 
 const productMedia = { folder: "public/images/products", publicFolder: "/images/products" } as const

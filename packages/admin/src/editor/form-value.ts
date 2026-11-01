@@ -12,8 +12,8 @@
  * Dirtiness is recomputed from the value domain on every edit
  * (`computeDirtyPaths`), never from the machine phase (ADR-0004 P2.6 pin).
  */
-import type { FieldDescriptor, FieldPath, JsonDocument } from "@mycms/core"
-import { composeEntryDocument, computeDirtyPaths, parseJsonDocument } from "@mycms/core"
+import type { FieldDescriptor, FieldPath, JsonDocument } from "patcms/advanced"
+import { composeEntryDocument, computeDirtyPaths, parseJsonDocument } from "patcms/advanced"
 import type { IndexedEntry } from "../runtime/entry-index"
 import { replayLateKeystrokes } from "./freeze-model"
 

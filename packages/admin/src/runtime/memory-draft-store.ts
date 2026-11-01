@@ -3,7 +3,7 @@
  * mode, exotic engines) and by admin tests. Crash protection degrades to the
  * lifetime of the tab — never a silent no-op, the editor still writes drafts.
  */
-import type { DraftKey, DraftRecord, DraftStore } from "@mycms/core"
+import type { DraftKey, DraftRecord, DraftStore } from "patcms/advanced"
 
 export function createMemoryDraftStore(): DraftStore {
   const records = new Map<DraftKey, DraftRecord>()

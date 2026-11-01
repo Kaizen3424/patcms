@@ -4,7 +4,7 @@ import {
   createAutoCarrier,
   createBroadcastCarrier,
   createStorageCarrier,
-} from "../../web/lease-carriers"
+} from "../../__tests__/support/lease-carriers"
 import {
   createSaveLease,
   DEFAULT_LEASE_HEARTBEAT_MS,

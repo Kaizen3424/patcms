@@ -5,6 +5,8 @@
  * usage via findReferences, and allows in-place asset replacement with 1h CDN honesty.
  */
 
+import { useQueryClient } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import {
   calculateMediaBudget,
   createTrashChanges,
@@ -12,9 +14,7 @@ import {
   repoPathToPublicPath,
   resolveMediaFolders,
   type SearchableEntry,
-} from "@mycms/core"
-import { useQueryClient } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
+} from "patcms/advanced"
 import { useMemo, useState } from "react"
 import { fillName, MEDIA_COPY, TRASH_COPY } from "../editor/copy"
 import { useBlobPreview } from "../runtime/blob-cache"

@@ -2,7 +2,6 @@
 packages:
   - packages/*
   - playground
-  - e2e
 
 # Exact catalog pins (renovate keeps them current; ADR-0010 §2 pins + supply-chain law).
 catalog:

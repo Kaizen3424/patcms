@@ -1,4 +1,3 @@
-import type { ParseIssueCode } from "@mycms/core"
 import {
   createMemoryHistory,
   createRootRoute,
@@ -8,6 +7,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router"
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import type { ParseIssueCode } from "patcms/advanced"
 import type { ReactElement } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AdvisoryChips } from "../advisory-chip"

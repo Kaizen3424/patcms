@@ -9,7 +9,7 @@
  * dashboard. All copy comes from `./copy` (the banned-word sweep scans it).
  */
 
-import type { DeployStatusKind, DeployStatusSnapshot } from "@mycms/core"
+import type { DeployStatusKind, DeployStatusSnapshot } from "patcms/advanced"
 import {
   STATUS_CAUSE_COPY,
   STATUS_COPY,

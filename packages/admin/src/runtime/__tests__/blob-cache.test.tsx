@@ -1,5 +1,5 @@
-import type { GitBackend } from "@mycms/core"
 import { render, renderHook, screen, waitFor } from "@testing-library/react"
+import type { GitBackend } from "patcms/advanced"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { BlobCacheManager, BlobCacheProvider, sniffMimeType, useBlobPreview } from "../blob-cache"
 

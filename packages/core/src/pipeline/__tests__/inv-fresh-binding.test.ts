@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest"
+import { buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
 import { encodeUtf8 } from "../../safety/encoding"
 import { resolveConflictPaths } from "../invariant-engine"
 import { runSave } from "../save-driver"
@@ -18,7 +19,6 @@ import {
   makeReadFreshBlob,
   pushForeignCommit,
 } from "./conflict-fixtures"
-import { buildSpec, createHarness } from "./fake-github-fetch"
 
 const SITE = "src/content/site.json"
 const DOC = '{\n  "title": "site",\n  "price": 100\n}\n'

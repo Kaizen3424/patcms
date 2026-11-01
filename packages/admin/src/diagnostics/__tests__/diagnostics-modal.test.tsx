@@ -1,5 +1,5 @@
-import { createLogger } from "@mycms/core"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { createLogger } from "patcms/advanced"
 import { describe, expect, it, vi } from "vitest"
 import { DiagnosticsModal, formatDiagnosticsReport } from "../diagnostics-modal"
 

@@ -1,5 +1,5 @@
 {
-  "name": "mycms",
+  "name": "patcms",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.9",
@@ -12,14 +12,12 @@
     "format": "biome check --write .",
     "test": "pnpm -r --no-bail run test",
     "build": "pnpm -r --no-bail run build",
-    "e2e": "pnpm -C e2e run e2e",
+    "pack:check": "node scripts/check-tarball.mjs",
     "audit:waivers": "pnpm audit --json | node scripts/audit-waiver-filter.mjs",
     "scan:workflows": "node scripts/ci-workflow-guard.mjs",
     "scan:prod-purity": "node scripts/prod-purity-scan.mjs",
     "fixtures:sync": "node scripts/sync-yve-fixtures.mjs",
     "fixtures:check": "node scripts/sync-yve-fixtures.mjs --check",
-    "fixtures:capture": "node scripts/capture-recorded-fixtures.mjs",
-    "fixtures:tape-check": "node scripts/capture-recorded-fixtures.mjs --check",
     "changeset": "changeset"
   },
   "devDependencies": {

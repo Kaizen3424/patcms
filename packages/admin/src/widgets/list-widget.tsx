@@ -1,5 +1,5 @@
-import type { FieldDescriptor, ListFieldDescriptor, ParseIssue } from "@mycms/core"
-import { mustacheLite } from "@mycms/core"
+import type { FieldDescriptor, ListFieldDescriptor, ParseIssue } from "patcms/advanced"
+import { mustacheLite } from "patcms/advanced"
 import { useId, useRef, useState } from "react"
 import { FieldMessages } from "./chrome"
 import { useWidgetRegistry } from "./context"

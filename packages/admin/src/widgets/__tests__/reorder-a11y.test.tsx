@@ -1,6 +1,6 @@
-import type { ListFieldDescriptor } from "@mycms/core"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ListFieldDescriptor } from "patcms/advanced"
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { WidgetRegistryProvider } from "../context"

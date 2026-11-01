@@ -1,4 +1,4 @@
-import type { SelectFieldDescriptor } from "@mycms/core"
+import type { SelectFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { describedBy, inputClass, WidgetFrame } from "./chrome"
 import type { WidgetProps } from "./contract"

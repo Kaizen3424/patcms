@@ -12,7 +12,7 @@ import type {
   GitBackend,
   ParseIssue,
   ParseIssueCode,
-} from "@mycms/core"
+} from "patcms/advanced"
 import { describe, expect, it, vi } from "vitest"
 import { loadEntryIndex } from "../../runtime/entry-index"
 import type { SweepCandidate } from "../save-sweep"

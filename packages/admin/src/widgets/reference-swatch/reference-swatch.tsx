@@ -14,7 +14,7 @@
  *    `swatch: z.enum(["accent", "muted", "secondary"]).default("accent")`
  *
  * 2. VALIDATE:
- *    Validation is strictly pure and isolated in `@mycms/core` (ADR-0003).
+ *    Validation is strictly pure and isolated in `patcms` (ADR-0003).
  *    The core validator ensures values match enum bounds, types, or custom rules.
  *    Widgets NEVER execute network I/O during validation.
  *
@@ -31,7 +31,7 @@
  *    - It uses accessible semantic markup (`role="radiogroup"`, `aria-checked`,
  *      clear labels, keyboard navigation) and sanitizes any injected styles.
  */
-import type { SelectFieldDescriptor } from "@mycms/core"
+import type { SelectFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { FieldMessages } from "../chrome"
 import type { WidgetProps } from "../contract"

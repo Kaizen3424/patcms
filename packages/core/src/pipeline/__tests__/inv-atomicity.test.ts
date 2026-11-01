@@ -1,9 +1,14 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import type { ChaosSpec } from "../../__tests__/support/fake-github-fetch"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  successfulRefUpdates,
+} from "../../__tests__/support/fake-github-fetch"
 import { encodeUtf8 } from "../../safety/encoding"
 import { runSave } from "../save-driver"
-import type { ChaosSpec } from "./fake-github-fetch"
-import { BASE_CONTENT, buildSpec, createHarness, successfulRefUpdates } from "./fake-github-fetch"
 
 /**
  * INV-P02 — transactional atomicity (L1, FakeGithubServer chaos): a fault

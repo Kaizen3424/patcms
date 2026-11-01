@@ -5,7 +5,7 @@
  * documents) across the repository to locate all references to a media path
  * or relation slug.
  *
- * Pure function in `@mycms/core` with zero DOM dependencies.
+ * Pure function in `patcms` with zero DOM dependencies.
  */
 
 import type { AdminConfig } from "../config/types"

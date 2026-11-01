@@ -9,7 +9,7 @@
  * degraded read says the words are saved and never blames her text.
  */
 
-import type { DeployStatusCause, DeployStatusKind } from "@mycms/core"
+import type { DeployStatusCause, DeployStatusKind } from "patcms/advanced"
 
 export const STATUS_COPY: Readonly<Record<DeployStatusKind, string>> = {
   awaiting: "Waiting for the public site to start updating.",

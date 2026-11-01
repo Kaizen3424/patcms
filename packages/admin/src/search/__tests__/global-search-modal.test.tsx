@@ -1,9 +1,9 @@
+import { fireEvent, render, screen } from "@testing-library/react"
 import type {
   AdminConfig,
   FilesCollectionDescriptor,
   FolderCollectionDescriptor,
-} from "@mycms/core"
-import { fireEvent, render, screen } from "@testing-library/react"
+} from "patcms/advanced"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { IndexedEntry } from "../../runtime/entry-index"
 import { GlobalSearchModal } from "../global-search-modal"

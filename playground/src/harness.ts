@@ -7,7 +7,7 @@
  * Production hosts never install this; `main.ts` does, and only for the
  * playground build. It exposes state, never a credential.
  */
-import type { FakeGithubServer, FakeRequestLogEvent } from "@mycms/core"
+import type { FakeGithubServer, FakeRequestLogEvent } from "./fake-github/server"
 
 export interface MycmsHarness {
   /** The live reference server (refs, trees, blobs, request log). */

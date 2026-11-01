@@ -1,15 +1,15 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
-import { encodeUtf8 } from "../../safety/encoding"
-import { runSave } from "../save-driver"
-import type { DropAckSpec } from "./fake-github-fetch"
+import type { DropAckSpec } from "../../__tests__/support/fake-github-fetch"
 import {
   BASE_CONTENT,
   blobCreateShas,
   buildSpec,
   createHarness,
   successfulRefUpdates,
-} from "./fake-github-fetch"
+} from "../../__tests__/support/fake-github-fetch"
+import { encodeUtf8 } from "../../safety/encoding"
+import { runSave } from "../save-driver"
 
 /**
  * INV-P03 (C.1 scope) — idempotent retry: repeated blob/tree/commit calls for

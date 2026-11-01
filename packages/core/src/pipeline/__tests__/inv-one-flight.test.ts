@@ -1,9 +1,14 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  successfulRefUpdates,
+} from "../../__tests__/support/fake-github-fetch"
 import type { DraftRecord, DraftStore } from "../../drafts"
 import { encodeUtf8 } from "../../safety/encoding"
 import { createSaveCoordinator, type SaveRequest } from "../save-controller"
-import { BASE_CONTENT, buildSpec, createHarness, successfulRefUpdates } from "./fake-github-fetch"
 
 /**
  * INV-P04 — one-flight queue (ADR-0004 C.3 pins): overlapping saves for a

@@ -16,14 +16,14 @@ import type {
   JsonValue,
   ParseIssue,
   TreeRead,
-} from "@mycms/core"
+} from "patcms/advanced"
 import {
   compareText,
   decodeUtf8,
   parseEntry,
   parseUntrustedJson,
   validateEntryForSave,
-} from "@mycms/core"
+} from "patcms/advanced"
 
 export interface IndexedEntry {
   readonly collectionName: string

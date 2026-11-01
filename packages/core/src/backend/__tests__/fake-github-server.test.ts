@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import type { FakeGithubSpec } from "../../__tests__/support/fake-github-server"
+import { FakeGithubServer } from "../../__tests__/support/fake-github-server"
 import { encodeUtf8 } from "../../safety/encoding"
-import type { FakeGithubSpec } from "../fake-github-server"
-import { FakeGithubServer } from "../fake-github-server"
 
 /**
  * FakeGithubServer unit contract — the truthful reference model every harness

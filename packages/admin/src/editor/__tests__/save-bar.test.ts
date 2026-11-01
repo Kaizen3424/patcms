@@ -1,4 +1,4 @@
-import { BackendWriteError, type SaveMachineState } from "@mycms/core"
+import { BackendWriteError, type SaveMachineState } from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import { describeSaveBar, type SaveBarInput, saveBarStatus } from "../save-bar-model"
 

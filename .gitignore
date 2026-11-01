@@ -1,4 +1,4 @@
-# MyCMS · @mycms/packages · ESM-only
+# patcms · ESM-only
 
 node_modules/
 */node_modules/*
@@ -31,6 +31,10 @@ Thumbs.db
 
 # pnpm temp
 .pnpm-store/
+
+# tarball hygiene scratch (scripts/check-tarball.mjs)
+.tarball-check/
+*.tgz
 
 # agent scratch (never committed)
 ABANDONED_FILES/

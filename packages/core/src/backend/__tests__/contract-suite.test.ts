@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { FixtureBackend, textFixtureFile } from "../../backends/reference-fixture-backend"
-import { encodeUtf8 } from "../../safety/encoding"
 import {
   CORE_CONTRACT_SUITE,
   defineContractSuite,
   runContractSuite,
   SHAPE_CHECK,
   STATUS_READ_CHECK,
-} from "../contract-suite"
+} from "../../__tests__/support/contract-suite"
+import { FixtureBackend, textFixtureFile } from "../../__tests__/support/reference-fixture-backend"
+import { encodeUtf8 } from "../../safety/encoding"
 import type { GitBackend } from "../types"
 
 const HEAD = "2a".repeat(20)

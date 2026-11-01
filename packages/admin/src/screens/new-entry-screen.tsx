@@ -1,6 +1,6 @@
-import type { FolderCollectionDescriptor } from "@mycms/core"
 import { useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
+import type { FolderCollectionDescriptor } from "patcms/advanced"
 import { useMemo } from "react"
 import { EntryEditor } from "../editor/entry-editor"
 import { deriveSlugFromTitle } from "../editor/slug-chip"

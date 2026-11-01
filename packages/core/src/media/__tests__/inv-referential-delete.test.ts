@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import { BASE_CONTENT, buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
 import type { TreeEntryTuple } from "../../backend/types"
 import type { AdminConfig } from "../../config/types"
-import { BASE_CONTENT, buildSpec, createHarness } from "../../pipeline/__tests__/fake-github-fetch"
 import { runSave } from "../../pipeline/save-driver"
 import { encodeUtf8 } from "../../safety/encoding"
 import {

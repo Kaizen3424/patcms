@@ -1,7 +1,7 @@
-import { createMemoryJournalStore } from "@mycms/core/web"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { HEARTBEAT_COPY } from "../../editor/copy"
+import { createMemoryJournalStore } from "../../storage/idb-journal-store"
 import { LoginHeartbeat, TopBarHeartbeat } from "../heartbeat"
 
 let mockJournalStore = createMemoryJournalStore()

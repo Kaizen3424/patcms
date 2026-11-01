@@ -1,4 +1,4 @@
-import type { FieldDescriptor } from "@mycms/core"
+import type { FieldDescriptor } from "patcms/advanced"
 import { describe, expect, it } from "vitest"
 import {
   allFreezeRowsDecided,

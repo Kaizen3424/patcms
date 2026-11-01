@@ -1,4 +1,4 @@
-import type { TextFieldDescriptor } from "@mycms/core"
+import type { TextFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { describedBy, inputClass, WidgetFrame } from "./chrome"
 import type { WidgetProps } from "./contract"

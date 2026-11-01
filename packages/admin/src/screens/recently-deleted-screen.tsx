@@ -5,8 +5,8 @@
  * and restores media assets with honest founder-facing copy.
  */
 
-import { createRestoreChanges, restoreMediaPath } from "@mycms/core"
 import { useQueryClient } from "@tanstack/react-query"
+import { createRestoreChanges, restoreMediaPath } from "patcms/advanced"
 import { useMemo, useState } from "react"
 import { TRASH_COPY } from "../editor/copy"
 import { useRuntime, useSnapshot } from "../runtime/context"

@@ -3,6 +3,7 @@
  * immutable snapshot cache, and React Query as the ONLY UI cache (ADR-0001/0002/0004).
  */
 
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type {
   AdminConfig,
   CapabilityProbeResult,
@@ -13,7 +14,7 @@ import type {
   SaveCoordinator,
   SaveLease,
   TokenStore,
-} from "@mycms/core"
+} from "patcms/advanced"
 import {
   createLogger,
   createSaveCoordinator,
@@ -23,21 +24,8 @@ import {
   PatProvider,
   probeGithubCapabilities,
   SnapshotStore,
-} from "@mycms/core"
-import type { DiscardStore, JournalStore, OnboardingStore } from "@mycms/core/web"
-import {
-  createAutoCarrier,
-  createBroadcastCarrier,
-  createIdbDiscardStore,
-  createIdbDraftStore,
-  createIdbJournalStore,
-  createIdbOnboardingStore,
-  createIdbTokenStore,
-  createMemoryDiscardStore,
-  createMemoryJournalStore,
-  createMemoryOnboardingStore,
-} from "@mycms/core/web"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+} from "patcms/advanced"
+import { createIdbDraftStore, createIdbTokenStore } from "patcms/web"
 import type { ReactNode } from "react"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import type { AdminMountOptions, AdminRepository, SupportContext } from "../admin/types"
@@ -45,6 +33,17 @@ import type { StatusProviderDeps } from "../status/provider"
 import { StatusProvider } from "../status/provider"
 import type { PublishStore } from "../status/publish-store"
 import { createPublishStore } from "../status/publish-store"
+import type { DiscardStore, JournalStore, OnboardingStore } from "../storage/stores"
+import {
+  createAutoCarrier,
+  createBroadcastCarrier,
+  createIdbDiscardStore,
+  createIdbJournalStore,
+  createIdbOnboardingStore,
+  createMemoryDiscardStore,
+  createMemoryJournalStore,
+  createMemoryOnboardingStore,
+} from "../storage/stores"
 import { BlobCacheProvider } from "./blob-cache"
 import type { EntryIndex } from "./entry-index"
 import { loadEntryIndex } from "./entry-index"

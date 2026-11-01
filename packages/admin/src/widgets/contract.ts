@@ -8,7 +8,7 @@
  * Standing veto: no `backend`, no credential, no transport in `WidgetProps`.
  * A widget is a pure function of its value + descriptor.
  */
-import type { FieldDescriptor, ParseIssue, StagedMediaTileRecord } from "@mycms/core"
+import type { FieldDescriptor, ParseIssue, StagedMediaTileRecord } from "patcms/advanced"
 import type { ComponentType } from "react"
 import type { IndexedEntry } from "../runtime/entry-index"
 

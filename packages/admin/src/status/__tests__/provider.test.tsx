@@ -6,8 +6,8 @@
  * degrades to `unavailable` — never `failed`.
  */
 
-import type { CapabilityProbeResult, CheckRunsRead, GitBackend } from "@mycms/core"
 import { act, render, screen } from "@testing-library/react"
+import type { CapabilityProbeResult, CheckRunsRead, GitBackend } from "patcms/advanced"
 import type { ReactElement } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { StatusBanner, StatusChip } from "../chip"

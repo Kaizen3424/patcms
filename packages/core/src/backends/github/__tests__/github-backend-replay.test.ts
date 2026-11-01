@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { CORE_CONTRACT_SUITE, runContractSuite } from "../../../backend/contract-suite"
+import { CORE_CONTRACT_SUITE, runContractSuite } from "../../../__tests__/support/contract-suite"
 import { GithubBackend } from ".."
 import type { RecordedTape } from "../recorded-replay"
 import { createReplayFetch } from "../recorded-replay"

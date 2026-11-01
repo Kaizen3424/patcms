@@ -1,7 +1,6 @@
-import type { CollectionDescriptor, FolderCollectionDescriptor } from "@mycms/core"
-import { compareValues, formatFriendlyDate, mustacheLite, readPath } from "@mycms/core"
-import type { OnboardingState } from "@mycms/core/web"
 import { Link, useParams } from "@tanstack/react-router"
+import type { CollectionDescriptor, FolderCollectionDescriptor } from "patcms/advanced"
+import { compareValues, formatFriendlyDate, mustacheLite, readPath } from "patcms/advanced"
 import { useEffect, useState } from "react"
 import {
   describeTokenExpiry,
@@ -15,6 +14,7 @@ import { useEntryIndex, useOnboardingStore, useRuntime } from "../runtime/contex
 import type { IndexedEntry } from "../runtime/entry-index"
 import { issueCounts } from "../runtime/entry-index"
 import { imageSource } from "../runtime/media"
+import type { OnboardingState } from "../storage/idb-onboarding-store"
 
 interface Group {
   readonly label: string

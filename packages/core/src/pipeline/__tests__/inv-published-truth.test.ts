@@ -1,16 +1,16 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
-import { GithubBackend } from "../../backends/github"
-import type { FetchLike } from "../../composition"
-import { encodeUtf8 } from "../../safety/encoding"
-import { runSave } from "../save-driver"
 import {
   BASE_CONTENT,
   blobCreateShas,
   buildSpec,
   createHarness,
   successfulRefUpdates,
-} from "./fake-github-fetch"
+} from "../../__tests__/support/fake-github-fetch"
+import { GithubBackend } from "../../backends/github"
+import type { FetchLike } from "../../composition"
+import { encodeUtf8 } from "../../safety/encoding"
+import { runSave } from "../save-driver"
 
 /**
  * INV-P10 — published-by-content + orphan-blob law (ADR-0005 P2/C.3):

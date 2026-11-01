@@ -2,7 +2,7 @@
  * Browser fixture loader — fetches the SAME manifest + bytes the node loader
  * uses. Vite serves /fixtures/repo/** and /images/** from the mirror.
  */
-import { decodeUtf8 } from "@mycms/core"
+import { decodeUtf8 } from "patcms/advanced"
 import type {
   FixtureRepoFile,
   FixtureRepoManifest,

@@ -1,4 +1,4 @@
-import type { FieldDescriptor, ListFieldDescriptor, ParseIssue } from "@mycms/core"
+import type { FieldDescriptor, ListFieldDescriptor, ParseIssue } from "patcms/advanced"
 
 /**
  * Static copy deck for parse and validation messages.

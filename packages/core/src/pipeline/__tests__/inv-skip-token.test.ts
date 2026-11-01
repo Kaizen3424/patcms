@@ -1,9 +1,9 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import { buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
 import { encodeUtf8 } from "../../safety/encoding"
 import { composeCommitMessage, containsSkipToken } from "../commit-message"
 import { runSave } from "../save-driver"
-import { buildSpec, createHarness } from "./fake-github-fetch"
 
 /**
  * INV-D02 — deploy-muting skip tokens (ADR-0008 §4). `[skip ci]|[ci skip]|

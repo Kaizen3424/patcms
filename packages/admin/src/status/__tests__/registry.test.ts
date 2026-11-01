@@ -8,7 +8,12 @@
  * watcher does, so these tests own the clock and the scheduler.
  */
 
-import type { CheckRunSummary, CheckRunsRead, CommitStatusesRead, StatusReads } from "@mycms/core"
+import type {
+  CheckRunSummary,
+  CheckRunsRead,
+  CommitStatusesRead,
+  StatusReads,
+} from "patcms/advanced"
 import { describe, expect, it, vi } from "vitest"
 import { createStatusRegistry } from "../registry"
 

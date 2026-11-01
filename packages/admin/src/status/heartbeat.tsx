@@ -1,8 +1,8 @@
-import { formatRelativeTime } from "@mycms/core"
-import type { JournalRecord } from "@mycms/core/web"
+import { formatRelativeTime } from "patcms/advanced"
 import { useEffect, useState } from "react"
 import { fillName, HEARTBEAT_COPY } from "../editor/copy"
 import { useJournalStore, useRuntimeSafe } from "../runtime/context"
+import type { JournalRecord } from "../storage/idb-journal-store"
 import { useSiteStatus } from "./provider"
 
 export function TopBarHeartbeat({ onOpenJournal }: { readonly onOpenJournal?: () => void }) {

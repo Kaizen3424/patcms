@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from "vitest"
+import { BASE_CONTENT, buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
 import { encodeUtf8 } from "../../safety/encoding"
 import type { FieldPath } from "../field-paths"
 import type { OurWrite } from "../invariant-engine"
@@ -18,7 +19,6 @@ import {
   createForeignBlob,
   pushForeignCommit,
 } from "./conflict-fixtures"
-import { BASE_CONTENT, buildSpec, createHarness } from "./fake-github-fetch"
 
 const SITE = "src/content/site.json"
 const IRIS = "src/content/products/iris.json"

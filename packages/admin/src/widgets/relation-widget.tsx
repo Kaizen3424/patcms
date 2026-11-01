@@ -1,4 +1,4 @@
-import type { RelationFieldDescriptor } from "@mycms/core"
+import type { RelationFieldDescriptor } from "patcms/advanced"
 import { useId, useMemo, useState } from "react"
 import { inputClass, WidgetFrame } from "./chrome"
 import type { WidgetProps } from "./contract"

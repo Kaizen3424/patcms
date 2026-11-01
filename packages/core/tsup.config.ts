@@ -4,7 +4,7 @@
 import { defineConfig } from "tsup"
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/advanced.ts", "src/web/index.ts"],
   format: ["esm"],
   target: "es2023",
   dts: false,

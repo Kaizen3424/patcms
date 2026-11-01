@@ -4,6 +4,9 @@
  * boot replay), lease contract. C.1 mechanics: save driver, skip-token law,
  * rate policy, zero-diff gate. C.2 mechanics: conflict invariant engine
  * (file-level) + `rebase()` (field-level merge).
+ *
+ * Everything here is `patcms/advanced` surface: `createCMS()` uses only the
+ * save driver and the field-path helpers.
  */
 
 export type { AdjudicateDraftInput, DraftAdjudication } from "./boot-replay"
@@ -38,10 +41,7 @@ export type {
 export { resolveConflictPaths } from "./invariant-engine"
 export type { OneFlightQueue } from "./one-flight"
 export { createOneFlightQueue } from "./one-flight"
-export type {
-  ConcurrencyLimiter,
-  RateDescriptor,
-} from "./rate-policy"
+export type { ConcurrencyLimiter, RateDescriptor } from "./rate-policy"
 export {
   createConcurrencyLimiter,
   createRateResume,
@@ -72,12 +72,7 @@ export type {
   SaveVerdict,
 } from "./save-driver"
 export { runSave } from "./save-driver"
-export type {
-  LeaseCarrier,
-  LeaseMessage,
-  SaveLease,
-  SaveLeaseOptions,
-} from "./save-lease"
+export type { LeaseCarrier, LeaseMessage, SaveLease, SaveLeaseOptions } from "./save-lease"
 export {
   createSaveLease,
   DEFAULT_LEASE_HEARTBEAT_MS,

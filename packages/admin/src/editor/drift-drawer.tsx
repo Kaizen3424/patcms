@@ -1,5 +1,5 @@
-import { formatRelativeTime } from "@mycms/core"
 import * as Dialog from "@radix-ui/react-dialog"
+import { formatRelativeTime } from "patcms/advanced"
 import { useId } from "react"
 import { DRIFT_COPY, fillName } from "./copy"
 import type { DriftInfo } from "./drift-monitor"

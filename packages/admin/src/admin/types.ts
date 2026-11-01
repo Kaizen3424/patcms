@@ -7,8 +7,8 @@ import type {
   Logger,
   StatusTiming,
   TokenStore,
-} from "@mycms/core"
-import type { DiscardStore, JournalStore, OnboardingStore } from "@mycms/core/web"
+} from "patcms/advanced"
+import type { DiscardStore, JournalStore, OnboardingStore } from "../storage/stores"
 
 export interface SupportContext {
   /** The named human every founder-facing surface references — never "someone" (master-plan §7). */

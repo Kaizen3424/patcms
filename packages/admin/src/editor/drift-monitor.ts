@@ -1,4 +1,4 @@
-import type { GitBackend } from "@mycms/core"
+import type { GitBackend } from "patcms/advanced"
 import { useEffect, useRef, useState } from "react"
 
 export interface DriftInfo {

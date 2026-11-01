@@ -1,6 +1,6 @@
-import type { FieldDescriptor, ParseIssue } from "@mycms/core"
-import { formatMoney, isBackendReadError } from "@mycms/core"
 import { Link, useParams } from "@tanstack/react-router"
+import type { FieldDescriptor, ParseIssue } from "patcms/advanced"
+import { formatMoney, isBackendReadError } from "patcms/advanced"
 import { useState } from "react"
 import {
   FAILURE_CARD_COPY,

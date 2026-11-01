@@ -1,5 +1,5 @@
 /** Shared widget chrome — one input look, one label/hint/error pattern. */
-import type { BaseFieldDescriptor } from "@mycms/core"
+import type { BaseFieldDescriptor } from "patcms/advanced"
 import type { ReactNode } from "react"
 
 export const INPUT_CLASS =

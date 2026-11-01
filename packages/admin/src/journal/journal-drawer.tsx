@@ -1,9 +1,9 @@
-import { formatRelativeTime } from "@mycms/core"
-import type { JournalRecord } from "@mycms/core/web"
 import * as Dialog from "@radix-ui/react-dialog"
+import { formatRelativeTime } from "patcms/advanced"
 import { useEffect, useId, useState } from "react"
 import { fillName, JOURNAL_COPY } from "../editor/copy"
 import { useJournalStore, useRuntime } from "../runtime/context"
+import type { JournalRecord } from "../storage/idb-journal-store"
 
 export interface JournalDrawerProps {
   readonly open: boolean

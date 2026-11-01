@@ -1,12 +1,17 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
+import type { DropAckSpec } from "../../__tests__/support/fake-github-fetch"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  successfulRefUpdates,
+} from "../../__tests__/support/fake-github-fetch"
 import type { DraftRecord, DraftStore } from "../../drafts"
 import type { StagedMediaTileRecord } from "../../media"
 import { encodeUtf8 } from "../../safety/encoding"
 import { createSaveCoordinator } from "../save-controller"
 import { runSave } from "../save-driver"
-import type { DropAckSpec } from "./fake-github-fetch"
-import { BASE_CONTENT, buildSpec, createHarness, successfulRefUpdates } from "./fake-github-fetch"
 
 function memoryDrafts(): DraftStore & { readonly size: () => number } {
   const store = new Map<string, DraftRecord>()

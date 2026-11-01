@@ -1,5 +1,5 @@
-import type { AdminConfig } from "@mycms/core"
-import { CONFIG_SCHEMA_VERSION } from "@mycms/core"
+import type { AdminConfig } from "patcms/advanced"
+import { CONFIG_SCHEMA_VERSION } from "patcms/advanced"
 import { mountAdmin } from "./admin/mount"
 import "./styles/tokens.css"
 

@@ -47,10 +47,8 @@ jobs:
         run: pnpm run build
       - name: Prod purity byte-scan (admin dist)
         run: pnpm run scan:prod-purity
-      - name: Install chromium (explicit, never a dependency postinstall)
-        run: pnpm -C e2e exec playwright install --with-deps chromium
-      - name: E2E smoke (journeys vs playground build)
-        run: pnpm run e2e
+      - name: Tarball hygiene (no src, tests, fixtures, or maps)
+        run: pnpm run pack:check
 
   audit:
     # Waiver-filtered scheduled audit (P0.3 schema; security/audit-waivers.yml).

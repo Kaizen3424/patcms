@@ -1,4 +1,4 @@
-import type { ImageFieldDescriptor } from "@mycms/core"
+import type { ImageFieldDescriptor } from "patcms/advanced"
 import { useId, useMemo, useRef, useState } from "react"
 import { MEDIA_COPY } from "../editor/copy"
 import { useBlobPreview } from "../runtime/blob-cache"

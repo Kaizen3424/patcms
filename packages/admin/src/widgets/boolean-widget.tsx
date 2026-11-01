@@ -1,4 +1,4 @@
-import type { BooleanFieldDescriptor } from "@mycms/core"
+import type { BooleanFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { FieldMessages } from "./chrome"
 import type { WidgetProps } from "./contract"

@@ -1,4 +1,4 @@
-import { formatRelativeTime } from "@mycms/core"
+import { formatRelativeTime } from "patcms/advanced"
 import { DRIFT_COPY, fillName } from "./copy"
 import type { DriftInfo } from "./drift-monitor"
 

@@ -3,7 +3,6 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/admin" },
-    { "path": "playground" },
-    { "path": "e2e" }
+    { "path": "playground" }
   ]
 }

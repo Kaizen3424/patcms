@@ -1,5 +1,5 @@
 {
-  "name": "@mycms/admin",
+  "name": "@patcms/admin",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -19,7 +19,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@mycms/core": "workspace:*",
+    "patcms": "workspace:*",
+    "idb-keyval": "catalog:",
     "@radix-ui/react-checkbox": "catalog:",
     "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-dropdown-menu": "catalog:",
@@ -41,6 +42,7 @@
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
+    "@types/node": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",

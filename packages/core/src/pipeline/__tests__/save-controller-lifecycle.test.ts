@@ -1,4 +1,10 @@
 import { describe, expect, it } from "vitest"
+import {
+  BASE_CONTENT,
+  buildSpec,
+  createHarness,
+  type FakeGithubHarness,
+} from "../../__tests__/support/fake-github-fetch"
 import { GithubBackend } from "../../backends/github"
 import type { FetchLike } from "../../composition"
 import type { DraftRecord, DraftStore } from "../../drafts"
@@ -6,7 +12,6 @@ import { decodeUtf8, encodeUtf8 } from "../../safety/encoding"
 import type { JsonValue } from "../../safety/untrusted-json"
 import { canonicalJson } from "../../serialization/document"
 import { createSaveCoordinator, SaveInFlightError, type SaveRequest } from "../save-controller"
-import { BASE_CONTENT, buildSpec, createHarness, type FakeGithubHarness } from "./fake-github-fetch"
 
 /**
  * P2.6 — coordinator lifecycle the editor depends on (ADR-0004 appendix):

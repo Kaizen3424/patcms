@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { FixtureBackend } from "../../backends/reference-fixture-backend"
-import { buildSpec, createHarness } from "../../pipeline/__tests__/fake-github-fetch"
+import { buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
+import { FixtureBackend } from "../../__tests__/support/reference-fixture-backend"
 import { runSave } from "../../pipeline/save-driver"
 import {
   documentsCanonicallyEqual,

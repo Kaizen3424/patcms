@@ -1,4 +1,4 @@
-import type { ParseIssue } from "@mycms/core"
+import type { ParseIssue } from "patcms/advanced"
 
 /**
  * Filters all validation issues that apply to a given field name or path prefix.

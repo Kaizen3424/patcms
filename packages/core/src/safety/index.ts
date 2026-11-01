@@ -21,7 +21,7 @@ export type { SafePathFailureCode, SafePathOptions, SafePathResult } from "./saf
 export { isSafePath, safePath } from "./safe-path"
 export type { SafeUrlFailureCode, SafeUrlOptions, SafeUrlResult } from "./safe-url"
 export { isSafeUrl, safeUrl } from "./safe-url"
-export { deriveSlug } from "./slug"
+export { deriveSlug, slugify } from "./slug"
 export type {
   JsonPrimitive,
   JsonValue,

@@ -1,4 +1,4 @@
-import type { ObjectFieldDescriptor } from "@mycms/core"
+import type { ObjectFieldDescriptor } from "patcms/advanced"
 import { useId } from "react"
 import { FieldMessages } from "./chrome"
 import { useWidgetRegistry } from "./context"

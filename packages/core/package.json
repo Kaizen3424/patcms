@@ -1,17 +1,62 @@
 {
-  "name": "@mycms/core",
-  "version": "0.0.1",
+  "name": "patcms",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Framework-agnostic git-backed CMS core SDK: zod-first config builders, field-type registry, transactional GitHub backend (FF-only CAS), save pipeline, draft store, safety utils.",
+  "description": "Headless, git-backed CMS SDK. JSON content in a GitHub repository, a personal access token, and a small typed client — no database, no server.",
   "license": "MIT",
   "engines": {
     "node": ">=22.12.0"
   },
   "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist-types/index.d.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./advanced": "./src/advanced.ts",
     "./web": "./src/web/index.ts",
     "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "dist-types",
+    "README.md"
+  ],
+  "keywords": [
+    "cms",
+    "headless",
+    "git",
+    "github",
+    "content",
+    "json",
+    "sdk",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kaizen3424/pagesmith.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist-types/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist-types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./advanced": {
+        "types": "./dist-types/advanced.d.ts",
+        "import": "./dist/advanced.js"
+      },
+      "./web": {
+        "types": "./dist-types/web/index.d.ts",
+        "import": "./dist/web/index.js"
+      },
+      "./package.json": "./package.json"
+    }
   },
   "scripts": {
     "typecheck": "tsc -b .",

@@ -7,7 +7,7 @@
  *  - Escape hatch "Start over from the latest version" available on both normal
  *    and degraded branches.
  */
-import type { FieldPath } from "@mycms/core"
+import type { FieldPath } from "patcms/advanced"
 import { useState } from "react"
 import { FREEZE_COPY, fillName, personalize, SAVE_BAR_COPY } from "./copy"
 import { copyToClipboard } from "./failure-report"

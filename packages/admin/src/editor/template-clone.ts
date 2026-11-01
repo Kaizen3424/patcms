@@ -1,4 +1,8 @@
-import type { FieldDescriptor, FolderCollectionDescriptor, ListFieldDescriptor } from "@mycms/core"
+import type {
+  FieldDescriptor,
+  FolderCollectionDescriptor,
+  ListFieldDescriptor,
+} from "patcms/advanced"
 import type { IndexedEntry } from "../runtime/entry-index"
 
 /**
