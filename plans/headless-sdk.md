@@ -383,3 +383,15 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   `check-tarball.mjs` now rejects forbidden path segments and `.test.` files at any depth. Specs
   updated in the same change (INV-N05 wording + a Known-traps row). Gates green: check, pack:check
   (packed version reads 0.1.0), bun smoke, docs:check.
+- **2026-11-02 (7)** — First publish (owner, from their terminal): the Version Packages PR was
+  merged with a merge commit ("v0.1.0"), the rename shipped without its changeset (pre-release
+  churn needs no changelog entry — nothing had published), and the owner ran
+  `pnpm -r publish --no-git-checks --report-summary` with their npm login. npm's new-account
+  publish flow used browser authentication and placed the tarball in **staged review** — the
+  registry momentarily lists only `0.0.0-stage` (created 2026-11-02T05:59:43Z) until npm's
+  automated scan releases `0.1.0`. The published tarball listing confirmed the INV-N05 fix: 92
+  files / 104 kB, no `__tests__` declarations, no stale admin-era modules. CI release runs 5-7
+  failed at publish as designed (no credentials in CI). Remaining: confirm 0.1.0 visible on the
+  registry, run the bun registry smoke, tag `v0.1.0` + GitHub Release (owner, web UI — the PAT
+  lacks write on this repo), configure the npm trusted publisher (user `Kaizen3424`, repo
+  `patcms`, workflow `release.yml`) for OIDC automation.
