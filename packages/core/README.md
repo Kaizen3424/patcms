@@ -25,8 +25,7 @@ only entry that does, and only hosts that want persistent drafts or tokens need 
 
 Config is TypeScript plus zod, and it lives with your site:
 
-```ts
-// cms.config.ts
+```ts file="cms.config.ts"
 import { defineCollection, defineConfig } from "patcms"
 import * as fields from "patcms"
 
@@ -59,6 +58,9 @@ export const config = defineConfig({
 ```ts
 import { createCMS } from "patcms"
 import { config } from "./cms.config"
+
+declare const token: string // from your sign-in form
+declare const bytes: Uint8Array
 
 const cms = createCMS({
   config,

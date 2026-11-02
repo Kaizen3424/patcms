@@ -99,6 +99,29 @@ conflict value, upload and reference media, and sign in with a PAT. No `patcms/a
 3. `pnpm run pack:check` in CI (step already added; script now exists).
 4. Tag `v0.1.0`; the GitHub Release carries the changeset notes.
 
+### P2.5 — Consumer documentation and agent skill — done 2026-11-02
+
+Owner-requested between P2 and P3: a `docs/` folder for human developers and an AI-agent skill at
+`.agents/skills/patcms/`, both covering every feature of the package.
+
+- `docs/` — 15 task-oriented pages (index, getting-started, configuration, reading, writing,
+  conflicts-and-drafts, media, authentication, deploy-status, errors, advanced, web-stores,
+  building-an-admin, testing, pitfalls). Docs answer "how"; specs keep "why"; snippets use only
+  real signatures.
+- `.agents/skills/patcms/` — `SKILL.md` (vetoes first, decision tree into references) plus five
+  references (`api`, `configuration`, `workflows`, `pitfalls`, `testing`) and a committed
+  `eval/eval_set.json` (10 should-trigger + 10 near-miss should-not-trigger queries).
+- `pnpm run docs:check` (`scripts/check-docs-snippets.mjs`) — typechecks every ```ts snippet in
+  `docs/`, both READMEs, and the skill references against `packages/core/dist-types` (the published
+  surface), and verifies relative links. Wired into CI after `build`. This closed the open
+  "README snippet typecheck against the tarball" item and publish blocker #9.
+- Fence contract (documented in `docs/README.md`): `ts file="x.ts"` registers an importable module,
+  plain `ts` is a standalone module, `ts continue` appends.
+- Skill validated with `skill_validate`; trigger eval pending (the eval harness spawns many
+  OpenCode workers and twice crashed the dev server mid-run — rerun with fewer workers).
+- Gates green: frozen-lockfile, typecheck, check, tests (core 538 / playground 38), build,
+  `pack:check`, `scan:workflows`, `docs:check` (66 modules, 78 links).
+
 ## Publish blockers
 
 | # | Blocker | State |
@@ -111,7 +134,7 @@ conflict value, upload and reference media, and sign in with a PAT. No `patcms/a
 | 6 | Name and scope | Resolved: `patcms` everywhere. |
 | 7 | Release workflow | Open. |
 | 8 | Tarball hygiene | Resolved: `scripts/check-tarball.mjs`, wired into CI. |
-| 9 | README on the package page | Open (P1). |
+| 9 | README on the package page | Resolved (2026-11-02): `packages/core/README.md` is complete and its snippets typecheck against the published types via `pnpm run docs:check` (CI step after build). |
 | 10 | Example panel proves the SDK | Resolved (P2, 2026-11-01): the panel runs the full loop against the fake and a real repo; `packages/admin` is deleted. |
 
 ## Acceptance checklist
@@ -242,3 +265,18 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   (panel editor wiring), backend (A01/A02 enforcers). Gates green: core 538 / playground 38,
   `--frozen-lockfile`, build, `pack:check`. Remaining: P3 publish machinery (changesets, release
   workflow, tag).
+- **2026-11-02** — P2.5 closed (owner-requested between P2 and P3): consumer `docs/` (15 pages) and
+  the `.agents/skills/patcms` agent skill (SKILL.md + 5 references + committed eval set), both
+  snippet-checked by the new `pnpm run docs:check` — every ```ts block in docs/, both READMEs, and
+  the skill references typechecks against `packages/core/dist-types`, and relative links are
+  verified; wired into CI after `build`. Closed the open "README snippet typecheck against the
+  tarball" item and publish blocker #9; README snippets updated to the fence contract
+  (`file="cms.config.ts"`, `declare const` for runtime values). Real findings the checker caught:
+  `FetchLike` is advanced-only (not main), and a raw DOM `fetch` does NOT structurally satisfy
+  `FetchLike` under TS 5.7+ ArrayBuffer generics (`FetchRequestInitLike.body` vs `BodyInit`) — docs
+  teach the one-line adapter the SDK itself uses. AGENTS.md inventory/trigger-table/budget updated
+  (docs/ exempt from the specs budget), README Documentation + Development tables updated, anchor
+  §2 gains `docs:check`. Skill passed `skill_validate`; trigger eval still pending — the eval
+  harness (10 OpenCode workers) crashed the dev server twice mid-run; rerun with fewer workers.
+  Gates green: frozen-lockfile, typecheck, check, tests (core 538 / playground 38), build,
+  `pack:check`, `scan:workflows`, `docs:check`. Remaining: P3 publish machinery.

@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I'm adding a small admin to my astro site. The content is JSON files in the github repo kaizen3424/my-site on branch main, and editors sign in with a fine-grained PAT. Someone recommended patcms — how do I set up createCMS and wire sign-in?",
+    "should_trigger": true
+  },
+  {
+    "query": "using patcms in my vite app: sometimes when I save an entry I get back {status:'conflict', current, local} instead of an error. what am I supposed to do with that? force pushing is definitely not an option for us",
+    "should_trigger": true
+  },
+  {
+    "query": "need to let editors upload photos for my travel blog. images live in public/images in the repo and the site serves them at /images. does patcms media.upload handle that and what are the size limits?",
+    "should_trigger": true
+  },
+  {
+    "query": "my patcms integration throws CMSError with code VALIDATION and an issues array when saving an entry — how do I map those issues back to form fields so editors see what to fix?",
+    "should_trigger": true
+  },
+  {
+    "query": "write a node script that lists every entry in the 'products' collection of our github repo using patcms and prints the slugs, we have the token in an env var",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I make editor drafts survive a page reload with patcms? I remember something about indexedb stores in a separate entry",
+    "should_trigger": true
+  },
+  {
+    "query": "after a save lands through patcms I want to show a little 'deploying... live!' chip. our repo has cloudflare pages check runs on each commit",
+    "should_trigger": true
+  },
+  {
+    "query": "patcms media.delete returned {status:'referenced', references:[...]} instead of actually deleting the image — what am I supposed to do with those references?",
+    "should_trigger": true
+  },
+  {
+    "query": "is the patcms main entry safe to import in node for SSR or does it touch window? I'm seeing 'indexedDB is not defined' when I import it in an express route",
+    "should_trigger": true
+  },
+  {
+    "query": "we're evaluating building our admin by copying playground/src/panel from the patcms repo into our own app — walk me through what that panel gives us and what we'd customize",
+    "should_trigger": true
+  },
+  {
+    "query": "set up a github actions workflow that builds my vite site on every push to main and deploys it to cloudflare pages",
+    "should_trigger": false
+  },
+  {
+    "query": "my zod schema validation is rejecting the email field in my react-hook-form even though the format looks right — help me debug the regex",
+    "should_trigger": false
+  },
+  {
+    "query": "I need to create a commit from a CI script using the github git data API — trees, blobs, update-ref. can you show me the raw REST calls with curl?",
+    "should_trigger": false
+  },
+  {
+    "query": "which should I pick for my jekyll blog: decap cms, sveltia cms, or tina? my content is markdown files in github",
+    "should_trigger": false
+  },
+  {
+    "query": "write a python scraper that downloads all images from a product page and saves them locally with sensible filenames",
+    "should_trigger": false
+  },
+  {
+    "query": "my prisma migration failed with a foreign key error after I renamed a table — how do I fix the migration file?",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I create a fine-grained personal access token on github and which scopes do I need for reading private repos?",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to build my own headless cms from scratch with express and postgres — can you sketch the schema and API routes?",
+    "should_trigger": false
+  },
+  {
+    "query": "vitest keeps failing with 'already in use by another Vitest process' after I restart my dev server — how do I fix this?",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I squash the last three commits in my git repo into one before pushing to main?",
+    "should_trigger": false
+  }
+]

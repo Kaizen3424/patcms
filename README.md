@@ -48,8 +48,7 @@ or paid hosting. patcms takes the middle: your content, your repo, your UI.
 
 ### 1. Describe your content
 
-```ts
-// cms.config.ts
+```ts file="cms.config.ts"
 import { defineCollection, defineConfig } from "patcms"
 import * as fields from "patcms"
 
@@ -82,6 +81,9 @@ export const config = defineConfig({
 ```ts
 import { createCMS } from "patcms"
 import { config } from "./cms.config"
+
+declare const token: string // from your sign-in form
+declare const bytes: Uint8Array
 
 const cms = createCMS({
   config,
@@ -147,8 +149,14 @@ rotatable. Report vulnerabilities through GitHub Security Advisories, never a pu
 
 ## Documentation
 
+Usage documentation for developers building on the package lives in [`docs/`](docs/README.md) —
+start at [docs/getting-started.md](docs/getting-started.md). An AI-agent skill covering the same
+ground lives at [`.agents/skills/patcms/`](.agents/skills/patcms/SKILL.md). Architecture and
+internal invariants live in the specs:
+
 | Read | For |
 |---|---|
+| [`docs/README.md`](docs/README.md) | Usage documentation index: quickstart, every feature, pitfalls |
 | [`specs/CMS.md`](specs/CMS.md) | The whole system in one pass: stack, commands, surface, data model, auth, flows, vetoes |
 | [`specs/workflows/publish-and-recovery.md`](specs/workflows/publish-and-recovery.md) | The save machine, conflicts, drafts, boot recovery, deploy status |
 | [`specs/backend-and-auth-architecture.md`](specs/backend-and-auth-architecture.md) | The transport, token lifecycle, rate limits, adding a backend |
@@ -168,8 +176,9 @@ pnpm install --frozen-lockfile   # CI-parity install
 pnpm -r typecheck                # per-package tsc -b
 pnpm run check                   # biome lint + format, warnings are errors
 pnpm -r test                     # vitest across workspaces
-pnpm -r build                    # tsup (core) and vite (admin, playground)
+pnpm -r build                    # tsup (core) and vite (playground)
 pnpm run pack:check              # tarball hygiene + entry resolution for the published package
+pnpm run docs:check              # typecheck docs/README/skill snippets + link check (after build)
 pnpm fixtures:check              # verify byte-pinned fixtures
 ```
 

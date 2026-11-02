@@ -5,8 +5,9 @@
 browser talks directly to `api.github.com` with a fine-grained PAT. There is no server, database,
 user account, role, or job. `playground/src/panel` is the example admin proving `createCMS()` is
 sufficient — it is the reference consumer, not a published artifact. The durable description of the
-code lives in `specs/`; `plans/` holds the one active delivery plan. This file is the working manual,
-not a replacement for either.
+code lives in `specs/`; usage documentation for package consumers lives in `docs/` (with the
+`.agents/skills/patcms` agent skill mirroring it); `plans/` holds the one active delivery plan. This
+file is the working manual, not a replacement for either.
 
 ## Read order
 
@@ -29,9 +30,9 @@ confirming which behaviour is intended.
 | Trigger | Update |
 |---|---|
 | A route, screen, or navigation entry | anchor §4 |
-| A backend or pipeline signature/capability | anchor §3/§7 and `backend-and-auth-architecture.md` |
-| The data model: collection kinds, field types, descriptors | anchor §5 and `content-model-architecture.md` |
-| The auth flow, token storage, or probe | anchor §6 and `backend-and-auth-architecture.md` |
+| A backend or pipeline signature/capability | anchor §3/§7, `backend-and-auth-architecture.md`, and the matching page in `docs/` + the skill references |
+| The data model: collection kinds, field types, descriptors | anchor §5, `content-model-architecture.md`, and `docs/configuration.md` |
+| The auth flow, token storage, or probe | anchor §6, `backend-and-auth-architecture.md`, and `docs/authentication.md` |
 | An env var, flag, or fixture parameter | anchor §9 and `test-harness-architecture.md` |
 | Commands, CI jobs, build outputs, deploy config | anchor §2/§10 and this file |
 | A save, conflict, draft, or recovery rule | `workflows/publish-and-recovery.md` |
@@ -65,12 +66,19 @@ is a bug. If it cannot earn 100 lines, it belongs as a section in an existing fi
 - Every spec reachable from the anchor.
 - If a claim is duplicated elsewhere, say **"change all N together"** and name the places.
 - If a fact will be stale in a month, leave it out.
-- Budget: anchor 200–350 lines, deep-dives 100–250, whole tree under about 2.5% of hand-written source.
-  Over budget means you are copying code.
+- Budget: anchor 200–350 lines, deep-dives 100–250, whole `specs/` tree under about 2.5% of
+  hand-written source. Over budget means you are copying code. (`docs/` is exempt — it is the
+  consumer-facing usage layer, not the architecture layer, and every snippet in it is typechecked
+  by `pnpm run docs:check`.)
 
 ## Inventory
 
 ```
+docs/
+  README.md                            docs index: which page answers which task
+  getting-started.md … pitfalls.md     usage documentation for package consumers (snippet-checked)
+.agents/skills/patcms/
+  SKILL.md + references/               the AI-agent skill mirroring docs/ (also snippet-checked)
 specs/
   CMS.md                               anchor: the whole repo in one read
   workflows/publish-and-recovery.md    save machine, drafts, conflicts, boot, deploy status

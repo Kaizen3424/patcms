@@ -13,6 +13,7 @@
     "test": "pnpm -r --no-bail run test",
     "build": "pnpm -r --no-bail run build",
     "pack:check": "node scripts/check-tarball.mjs",
+    "docs:check": "node scripts/check-docs-snippets.mjs",
     "audit:waivers": "pnpm audit --json | node scripts/audit-waiver-filter.mjs",
     "scan:workflows": "node scripts/ci-workflow-guard.mjs",
     "fixtures:sync": "node scripts/sync-yve-fixtures.mjs",

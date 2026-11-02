@@ -36,6 +36,9 @@ Thumbs.db
 .tarball-check/
 *.tgz
 
+# docs snippet typecheck scratch (scripts/check-docs-snippets.mjs)
+playground/.docs-check/
+
 # agent scratch (never committed)
 ABANDONED_FILES/
 

@@ -45,6 +45,8 @@ jobs:
         run: pnpm run test
       - name: Build all
         run: pnpm run build
+      - name: Docs snippets typecheck (docs, READMEs, agent skill)
+        run: pnpm run docs:check
       - name: Tarball hygiene (no src, tests, fixtures, or maps)
         run: pnpm run pack:check
 

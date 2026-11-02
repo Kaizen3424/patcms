@@ -64,6 +64,7 @@ Consequences worth internalising:
 | One test file | `pnpm --filter patcms test -- <file>` |
 | Build all | `pnpm -r build` |
 | Tarball hygiene | `pnpm run pack:check` |
+| Docs snippets + links | `pnpm run docs:check` (needs `pnpm -r build` first) |
 | Fixture integrity | `pnpm fixtures:check` |
 | Guard rails | `pnpm run scan:workflows` · `audit:waivers` |
 
