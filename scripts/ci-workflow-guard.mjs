@@ -3,7 +3,10 @@
  * CI workflow guard — ADR-0010 §2.6 least-privilege CI law, enforced FROM P0 on
  * our own workflows: every `uses:` pinned to a full commit SHA, banned trigger
  * keys (pull_request_target), and `permissions: contents: read` at the top
- * level AND for every job.
+ * level AND for every job. The one exception is the OIDC release shape: a job
+ * may hold `contents: write` only together with `id-token: write` (npm trusted
+ * publishing) plus optional `pull-requests: write` — write access never rides
+ * tokenless, and no other permission scope is allowed.
  *
  * Runs BEFORE `pnpm install` in CI (fail-before-work ordering), so it MUST stay
  * dependency-free: the wf files are parsed by scripts/yaml-subset.mjs, a
@@ -96,11 +99,51 @@ for (const path of listWorkflows(WORKFLOWS_DIR)) {
       continue
     }
     const jobPerms = rawJob.entries.get("permissions")
-    const jobContents =
-      jobPerms != null && jobPerms.kind === "map" ? jobPerms.entries.get("contents") : null
-    if (jobContents == null || jobContents.kind !== "scalar" || jobContents.text !== "read") {
+    if (jobPerms == null || jobPerms.kind !== "map") {
+      issue(`${rel}: job ${JSON.stringify(jobName)} must declare a permissions mapping`)
+      continue
+    }
+    /** @type {Map<string, string>} */
+    const perms = new Map()
+    for (const [key, value] of jobPerms.entries) {
+      if (value.kind !== "scalar") {
+        issue(
+          `${rel}: job ${JSON.stringify(jobName)} permission ${JSON.stringify(key)} must be a scalar`,
+        )
+        continue
+      }
+      perms.set(key, value.text)
+    }
+    const contents = perms.get("contents")
+    if (contents === "read") {
+      // Default shape: read-only. No other permission may ride along.
+      for (const key of perms.keys()) {
+        if (key !== "contents") {
+          issue(
+            `${rel}: job ${JSON.stringify(jobName)}: only 'contents: read' is allowed on non-release jobs`,
+          )
+        }
+      }
+    } else if (contents === "write") {
+      // The OIDC release shape (ADR-0010 §2.6): the publish job may write
+      // contents (version commits, tags) and pull-requests (the Version
+      // Packages PR), but only together with `id-token: write` — write access
+      // never rides tokenless, and no other scope is allowed.
+      if (perms.get("id-token") !== "write") {
+        issue(
+          `${rel}: job ${JSON.stringify(jobName)}: 'contents: write' requires 'id-token: write' (the OIDC publish job shape)`,
+        )
+      }
+      for (const key of perms.keys()) {
+        if (!["contents", "pull-requests", "id-token"].includes(key)) {
+          issue(
+            `${rel}: job ${JSON.stringify(jobName)}: permission ${JSON.stringify(key)} is outside the release shape`,
+          )
+        }
+      }
+    } else {
       issue(
-        `${rel}: job ${JSON.stringify(jobName)} must declare 'permissions: contents: read' (job-level least privilege)`,
+        `${rel}: job ${JSON.stringify(jobName)} must declare 'contents: read', or the release shape 'contents: write' + 'id-token: write'`,
       )
     }
     /** @type {string[]} */

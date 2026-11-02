@@ -106,7 +106,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 
 | Script | Enforces |
 |---|---|
-| `scripts/ci-workflow-guard.mjs` | SHA-pinned actions, job-level `contents: read`, no `pull_request_target` |
+| `scripts/ci-workflow-guard.mjs` | SHA-pinned actions, job-level `contents: read` (the release job may hold `contents: write` only together with `id-token: write`), no `pull_request_target` |
 | `scripts/check-tarball.mjs` | No `src/`, tests, fixtures, maps, or msw bytes in the `patcms` tarball; all three entries resolve |
 | `scripts/audit-waiver-filter.mjs` | Audits pass except explicitly waived advisories |
 

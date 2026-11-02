@@ -92,12 +92,28 @@ conflict value, upload and reference media, and sign in with a PAT. No `patcms/a
   either becomes the example or is deleted with it — one artifact, not two. **Pending owner
   confirmation.**
 
-### P3 — Publish machinery
+### P3 — Publish machinery — done 2026-11-02 (first publish awaits owner npm config)
 
-1. Restore `.changeset/` (deleted in the working tree) and add the 0.1.0 changeset.
-2. Release workflow in `.github/workflows/` using npm trusted publishing (OIDC); no `NPM_TOKEN`.
-3. `pnpm run pack:check` in CI (step already added; script now exists).
-4. Tag `v0.1.0`; the GitHub Release carries the changeset notes.
+1. Changesets: `.changeset/` was already restored at the cutover (two changesets, rewritten for
+   `patcms` only); added `headless-client.md` — the `createCMS()` client and surface split had no
+   changeset. The version field moved `0.1.0` → `0.0.0` so the pending minors compute the first
+   release: `changeset status --verbose` lists `patcms -> 0.1.0` (playground takes the dependent
+   patch bump, `privatePackages.version: true` per the P0.9 decision).
+2. Release workflow `.github/workflows/release.yml` (push to main + workflow_dispatch): the
+   changesets action (v2.1.2, SHA-pinned) opens the Version Packages PR, or — when none are
+   pending — publishes with `pnpm -r publish --no-git-checks --report-summary` through npm
+   trusted publishing (OIDC; `id-token: write`; no `NPM_TOKEN` anywhere). pnpm, not
+   `changeset publish`: pnpm rewrites the `catalog:` protocol at pack time (npm would ship it
+   literally) and publishes only versions missing from the registry. The post-publish step
+   (`scripts/create-github-release.mjs`) reads the publish summary, tags `v<version>`, and
+   creates the GitHub Release from the changeset-generated changelog section.
+3. `pnpm run pack:check` in CI — already wired.
+4. The `v0.1.0` tag and GitHub Release are created by the workflow at publish time — tagging
+   now would pin a commit whose version field is still `0.0.0`. Owner steps before the first
+   publish: on npmjs.com, configure the trusted publisher (user `Kaizen3424`, repo `pagesmith`,
+   workflow filename `release.yml` — a fresh configuration must complete its first publish
+   within 2 days), and enable "Allow GitHub Actions to create and approve pull requests" in the
+   repo's Actions settings.
 
 ### P2.5 — Consumer documentation and agent skill — done 2026-11-02
 
@@ -129,10 +145,10 @@ Owner-requested between P2 and P3: a `docs/` folder for human developers and an 
 | 1 | Exports point at source in the workspace | Resolved: `publishConfig` maps the published tarball to `dist` + `dist-types`; workspace keeps source `exports`. `pack:check` proves the published wiring. |
 | 2 | Declarations in the artifact | Resolved: `tsc -b` writes `dist-types`; tsup stays `dts: false`. |
 | 3 | `./web` as a build entry | Resolved: three tsup entries. |
-| 4 | Changesets | Open: restore `.changeset/`, add the 0.1.0 changeset. |
-| 5 | Version | Resolved: `0.1.0` in `packages/core`. |
+| 4 | Changesets | Resolved (2026-11-02): `.changeset/` restored at the cutover; `headless-client.md` added; the three pending minors compute 0.1.0 (`changeset status --verbose`). |
+| 5 | Version | Amended (2026-11-02): 0.1.0 is the first release; the version field sits at `0.0.0` until the Version Packages PR lands, so changesets computes 0.1.0 instead of bumping past it. |
 | 6 | Name and scope | Resolved: `patcms` everywhere. |
-| 7 | Release workflow | Open. |
+| 7 | Release workflow | Resolved (2026-11-02): `.github/workflows/release.yml` — changesets action v2.1.2, `pnpm -r publish` over OIDC trusted publishing, `v<version>` tag + GitHub Release with changeset notes. First real run awaits the npm-side trusted-publisher configuration (owner step, P3 section). |
 | 8 | Tarball hygiene | Resolved: `scripts/check-tarball.mjs`, wired into CI. |
 | 9 | README on the package page | Resolved (2026-11-02): `packages/core/README.md` is complete and its snippets typecheck against the published types via `pnpm run docs:check` (CI step after build). |
 | 10 | Example panel proves the SDK | Resolved (P2, 2026-11-01): the panel runs the full loop against the fake and a real repo; `packages/admin` is deleted. |
@@ -145,7 +161,9 @@ Tick an item only with command output or a named manual check.
   (2026-11-01: core 539 / admin 238 / playground 38, all green after INV-N06)
 - [x] `pnpm -r build` and `pnpm run scan:prod-purity` green
 - [x] `pnpm run pack:check` green
-- [ ] `pnpm changeset status` lists exactly 0.1.0
+- [x] `pnpm changeset status` lists exactly 0.1.0 (2026-11-02: `changeset status --verbose` →
+      "minor - patcms -> 0.1.0"; the playground patch is the dependent bump from
+      `privatePackages.version: true`)
 - [x] Specs match the code: no `@mycms` package references outside git history (the
       `fixture@mycms.invalid` git identity in `backend/git-sha.ts` is SHA-pinning, not naming),
       `patcms/advanced` and the
@@ -161,7 +179,11 @@ Tick an item only with command output or a named manual check.
       core 538 / playground 38, build, `pack:check` all green after deletion; catalog pruned of the
       18 admin-only pins; `scan:prod-purity` and its script retired with it)
 - [ ] Release workflow publishes through OIDC; no `NPM_TOKEN` secret exists anywhere
-- [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes
+      (2026-11-02: workflow written and guard-approved; `git grep -il NPM_TOKEN` over
+      yml/yaml/json/mjs/ts finds nothing; the publish itself awaits the owner's npm
+      trusted-publisher configuration)
+- [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes (the workflow creates
+      both at publish time; awaits the first publish)
 
 ## Gotchas
 
@@ -176,12 +198,16 @@ Tick an item only with command output or a named manual check.
 | Admin store moves changed the IDB schema owner | `MYCMS_IDB_STORES` is `["auth", "drafts"]`; the admin's journal/onboarding/discard stores open their own databases via `patcms/web`'s `createSharedStore`. Bump the version there, not in core's list. |
 | Renaming stays cheap only if you keep it that way | The name lives in manifests and docs headers. Importing it into runtime code turns a rename into archaeology. |
 | A green CI run is not a green artifact | The core tarball has its own check (`pack:check`). The example panel is not published and has none — a green CI run says nothing about the panel's bundle. |
+| `catalog:` would ship literally under npm publish | `changeset publish` shells out to npm, which does not rewrite the pnpm `catalog:` protocol — the tarball would be uninstallable. The release workflow publishes with `pnpm -r publish` (pnpm rewrites at pack time, exactly as `pack:check`'s `pnpm pack` already does). |
+| changesets tags are `patcms@x.y.z`, not `vx.y.z` | The human-facing tag is `v<version>`, created by `scripts/create-github-release.mjs` from the publish summary; changesets' own tag stays local (`push-git-tags: false`). Renaming the release workflow moves the npm trusted-publisher configuration with it — the filename must match on both sides. |
 
 ## Release policy (carried from ADR-0010, amended)
 
 - **Versioning.** `patcms` is the npm package, `0.x`; a 0.x minor may break until the API freezes.
-- **Publishing.** npm trusted publishing over OIDC. No stored `NPM_TOKEN`. The publish job gets
-  `id-token: write`; every other job keeps `contents: read`.
+- **Publishing.** npm trusted publishing over OIDC. No stored `NPM_TOKEN`. The release job holds
+  `contents: write` + `id-token: write` (plus `pull-requests: write` for the Version Packages PR);
+  every other job keeps `contents: read`. `scripts/ci-workflow-guard.mjs` enforces the shape:
+  `contents: write` is illegal without `id-token: write`.
 - **Supply chain.** Frozen lockfile, `onlyBuiltDependencies` allowlist, waiver-filtered audit,
   SHA-pinned actions.
 - **Amendment.** The reference admin no longer ships as a build artifact; it is deleted at P2
@@ -280,3 +306,24 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   harness (10 OpenCode workers) crashed the dev server twice mid-run; rerun with fewer workers.
   Gates green: frozen-lockfile, typecheck, check, tests (core 538 / playground 38), build,
   `pack:check`, `scan:workflows`, `docs:check`. Remaining: P3 publish machinery.
+- **2026-11-02 (2)** — P3 closed (first publish awaits owner npm config). Added
+  `.changeset/headless-client.md` (the client itself had no changeset) and moved the version field
+  `0.1.0` → `0.0.0` so the three pending minors compute the first release — `changeset status
+  --verbose` lists `patcms -> 0.1.0` (playground takes the dependent patch,
+  `privatePackages.version: true`). Wrote `.github/workflows/release.yml`: changesets action
+  v2.1.2 (SHA-pinned) opens the Version Packages PR or publishes with `pnpm -r publish
+  --no-git-checks --report-summary` through npm trusted publishing (OIDC, `id-token: write`, no
+  `NPM_TOKEN` anywhere — pnpm, not `changeset publish`, because npm would ship the `catalog:`
+  protocol literally, while pnpm rewrites it at pack time and publishes only registry-missing
+  versions). `scripts/create-github-release.mjs` turns the publish summary into the `v<version>`
+  tag + GitHub Release with the changeset notes (idempotent on re-runs). Amended
+  `scripts/ci-workflow-guard.mjs`: the release shape (`contents: write` only together with
+  `id-token: write`, scopes limited to contents/pull-requests/id-token) is now legal; specs
+  updated in the same change (anchor §2 Release + CI actions rows, test-harness guard row).
+  READMEs: status lines made version-agnostic, root README gains a Releases section. Owner steps
+  before the first publish: npmjs.com trusted publisher (user `Kaizen3424`, repo `pagesmith`,
+  workflow `release.yml`, first publish within 2 days of configuring) + repo setting "Allow
+  GitHub Actions to create and approve pull requests". Gates green: frozen-lockfile, typecheck,
+  check, tests (core 538 / playground 38), build, `pack:check`, `scan:workflows`, `docs:check`,
+  and `changeset status` listing 0.1.0. Remaining: the first real publish (owner), then the
+  skill trigger eval rerun when the environment is stable.

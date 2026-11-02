@@ -126,7 +126,7 @@ rotatable.
 
 ## Status
 
-0.1.0, pre-1.0. A minor release may break the API until the surface freezes.
+Pre-1.0: a minor release may break the API until the surface freezes.
 
 ## License
 

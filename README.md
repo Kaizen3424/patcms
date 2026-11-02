@@ -5,7 +5,7 @@ GitHub repository; the client talks **directly to `api.github.com`** with a fine
 access token. Your token never leaves the browser. You build your own admin — `createCMS()` handles
 the backend.
 
-> **Status: 0.1.0, pre-1.0.** The implementation is complete and tested; publication is the last step.
+> **Status: pre-1.0.** The implementation is complete and tested; publication is the last step.
 > The npm package is `patcms`. Until 1.0, a minor release may break the API.
 
 ## Why
@@ -186,6 +186,15 @@ The playground under `playground/` runs a fake GitHub in the browser, so the ful
 offline. `pnpm -C playground dev` starts it.
 
 Node ≥ 22.12 and pnpm via corepack. CI runs the same gates on every push and pull request.
+
+## Releases
+
+Releases are changesets-driven: add a changeset (`pnpm changeset`), and
+`.github/workflows/release.yml` turns pending changesets into a Version Packages pull request;
+merging it publishes to npm through OIDC trusted publishing — no npm token is stored anywhere —
+then tags `v<version>` and creates the GitHub Release with the changeset notes. The npm side must
+have the trusted publisher configured for that exact workflow filename (see
+`plans/headless-sdk.md`).
 
 ## License
 

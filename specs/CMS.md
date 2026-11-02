@@ -52,8 +52,8 @@ Consequences worth internalising:
 | Build | `tsup` (core), `vite` (playground) |
 | Tests | Vitest, plus `fast-check` property tests in core |
 | Lint / format | Biome with `--error-on-warnings` |
-| Release | changesets |
-| CI actions | SHA-pinned, job-level `contents: read`, no `pull_request_target` |
+| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes |
+| CI actions | SHA-pinned, job-level `contents: read`, no `pull_request_target`; the release job alone may hold `contents: write` + `id-token: write` (enforced by `scripts/ci-workflow-guard.mjs`) |
 
 | Purpose | Command |
 |---|---|

@@ -39,6 +39,9 @@ Thumbs.db
 # docs snippet typecheck scratch (scripts/check-docs-snippets.mjs)
 playground/.docs-check/
 
+# pnpm -r publish output (release workflow reads it in CI)
+pnpm-publish-summary.json
+
 # agent scratch (never committed)
 ABANDONED_FILES/
 
