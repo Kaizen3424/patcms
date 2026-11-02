@@ -184,8 +184,10 @@ Tick an item only with command output or a named manual check.
       (2026-11-02: workflow written and guard-approved; `git grep -il NPM_TOKEN` over
       yml/yaml/json/mjs/ts finds nothing; the publish itself awaits the owner's npm
       trusted-publisher configuration)
-- [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes (the workflow creates
-      both at publish time; awaits the first publish)
+- [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes (the workflow would create
+      both at publish time, but the first publish was done locally by the owner — CI has no
+      credentials by law — so the owner creates the tag + Release via the web UI; notes source:
+      `packages/core/CHANGELOG.md`)
 
 ## Gotchas
 
@@ -391,7 +393,14 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   registry momentarily lists only `0.0.0-stage` (created 2026-11-02T05:59:43Z) until npm's
   automated scan releases `0.1.0`. The published tarball listing confirmed the INV-N05 fix: 92
   files / 104 kB, no `__tests__` declarations, no stale admin-era modules. CI release runs 5-7
-  failed at publish as designed (no credentials in CI). Remaining: confirm 0.1.0 visible on the
-  registry, run the bun registry smoke, tag `v0.1.0` + GitHub Release (owner, web UI — the PAT
-  lacks write on this repo), configure the npm trusted publisher (user `Kaizen3424`, repo
-  `patcms`, workflow `release.yml`) for OIDC automation.
+  failed at publish as designed (no credentials in CI). Remaining: tag `v0.1.0` + GitHub Release
+  (owner, web UI — the PAT lacks write on this repo), configure the npm trusted publisher (user
+  `Kaizen3424`, repo `patcms`, workflow `release.yml`) for OIDC automation.
+- **2026-11-02 (8)** — npm's staged review released `0.1.0` minutes after the publish (registry:
+  `0.1.0` is `latest`; the `0.0.0-stage` tombstone remains in the version list — normal for the
+  staged flow). The bun registry smoke passed end-to-end against the live package: `bun add patcms`
+  in a scratch project (bun 1.3.14) installs 0.1.0, `bun smoke.ts` imports `createCMS` /
+  `defineConfig` / `defineCollection` and `patcms/advanced`'s `runSave` and constructs a CMS, and
+  the repo's `tsc` typechecks the scratch under `moduleResolution: bundler` — registry types
+  resolve. This closes the bun deliverable: one npm publish serves bun, verified against the
+  registry, not just the local tarball.
