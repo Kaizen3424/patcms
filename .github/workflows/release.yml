@@ -46,7 +46,9 @@ jobs:
         id: changesets
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          version-script: changeset version
+          # Through pnpm: the changesets action does not put node_modules/.bin on
+          # PATH, so a bare `changeset` is not found (first remote run failed here).
+          version-script: pnpm changeset version
           # pnpm, not `changeset publish`: pnpm rewrites the `catalog:` protocol
           # into real versions at pack time (npm would ship it literally), and
           # pnpm -r publish publishes only versions missing from the registry.
