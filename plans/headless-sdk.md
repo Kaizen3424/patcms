@@ -27,19 +27,19 @@ panel proves `createCMS()` is sufficient to build a working admin, and `packages
 | Conflicts return `{ status: "conflict", current, local }` as a value | No field-level merge in the default path; `rebase()` stays in `advanced` for hosts that want it |
 | Drafts are optional persistence with a memory default; IDB via `patcms/web` | A host that never imports `patcms/web` gets zero DOM code |
 | Test doubles live in `packages/core/src/__tests__/support/`, never in the public surface | `FakeGithubServer`, the fetch harness, the fixture backend, and the contract suite are test-only |
-| No `@mycms/testing` package | The contract suite is an admission gate inside the repo, not a shipped artifact |
+| No `@patcms/testing` package | The contract suite is an admission gate inside the repo, not a shipped artifact |
 | Playwright `e2e` and `scripts/capture-recorded-fixtures.mjs` are deleted | The recorded tape stays as a static JSON fixture for replay tests |
 
 ## Current truth
 
 | Area | State |
 |---|---|
-| Rename | `@mycms/core` → `patcms`, `@mycms/admin` → `@patcms/admin`, root → `patcms`. Done; lockfile regenerated. |
+| Rename | `@patcms/core` → `patcms`, `@patcms/admin` → `@patcms/admin`, root → `patcms`. Done; lockfile regenerated. |
 | Client | `packages/core/src/client/` complete: errors, events, cache, repo, auth, entries, media, drafts, `createCMS()`. 13 client tests green. |
 | Surface split | `patcms` (slim, Node-safe), `patcms/advanced` (low-level), `patcms/web` (draft + token stores only). Build green: index 47.75 KB, advanced 91.53 KB, shared 136.08 KB, web 18.89 KB. |
 | Fakes | Moved to `src/__tests__/support/`; `advanced.ts` no longer exports them; 30+ test files rewired; playground has its own dev-only copy at `playground/src/fake-github/server.ts`. |
 | e2e | `e2e/` package, capture script, and their scripts deleted; workspace, root tsconfig, and CI updated. |
-| `patcms/web` | Shrunk to draft store + token stores; journal/onboarding/discard/expiry stores and lease carriers moved to `packages/admin/src/storage/`. `MYCMS_IDB_STORES` is now `["auth", "drafts"]`. |
+| `patcms/web` | Shrunk to draft store + token stores; journal/onboarding/discard/expiry stores and lease carriers moved to `packages/admin/src/storage/`. `PATCMS_IDB_STORES` is now `["auth", "drafts"]`. |
 | Defaults | `foldFieldDefaults`/`createBlankEntryValue` ported from the reference admin; 13 tests green; doc comment now matches code (optional lists with no value stay absent). |
 | Slugify | Added to `packages/core/src/safety/slug.ts`; accent folding, punctuation collapse, and the `"entry"` fallback are tested. |
 | Tarball | `scripts/check-tarball.mjs` green: no `src/`/tests/fixtures/`.map`/msw, dist-types present, all three entries resolve through publishConfig wiring. Wired into CI. |
@@ -164,8 +164,10 @@ Tick an item only with command output or a named manual check.
 - [x] `pnpm changeset status` lists exactly 0.1.0 (2026-11-02: `changeset status --verbose` →
       "minor - patcms -> 0.1.0"; the playground patch is the dependent bump from
       `privatePackages.version: true`)
-- [x] Specs match the code: no `@mycms` package references outside git history (the
-      `fixture@mycms.invalid` git identity in `backend/git-sha.ts` is SHA-pinning, not naming),
+- [x] Specs match the code: no `mycms`/`@mycms` references remain anywhere (2026-11-02: the
+      `fixture@patcms.invalid` git identity in `backend/git-sha.ts` — originally
+      `fixture@mycms.invalid`; SHA-pinning, not naming — was renamed with the identifier purge and
+      the fixtures re-synced),
       `patcms/advanced` and the
       shrunk `patcms/web` described, e2e gone, fakes documented as test-only
 - [x] `packages/core/README.md` exists; its snippets use the real factory signatures (snippet
@@ -195,7 +197,7 @@ Tick an item only with command output or a named manual check.
 | The playground must never enter the tarball | `files` is the allowlist; it lists `dist`, `dist-types`, `README.md` only. |
 | Test doubles are one `export *` away from public | `advanced.ts` must never re-export `src/__tests__/support/*`. The repo-bans scan and `pack:check` both guard this; treat a new fake as test-only by default. |
 | `save` composes untouched from the entry, not the validation result | `validation.untouched` only reflects the incoming modeled value; using it drops preserved unknown fields. |
-| Admin store moves changed the IDB schema owner | `MYCMS_IDB_STORES` is `["auth", "drafts"]`; the admin's journal/onboarding/discard stores open their own databases via `patcms/web`'s `createSharedStore`. Bump the version there, not in core's list. |
+| Admin store moves changed the IDB schema owner | `PATCMS_IDB_STORES` is `["auth", "drafts"]`; the admin's journal/onboarding/discard stores open their own databases via `patcms/web`'s `createSharedStore`. Bump the version there, not in core's list. |
 | Renaming stays cheap only if you keep it that way | The name lives in manifests and docs headers. Importing it into runtime code turns a rename into archaeology. |
 | A green CI run is not a green artifact | The core tarball has its own check (`pack:check`). The example panel is not published and has none — a green CI run says nothing about the panel's bundle. |
 | `catalog:` would ship literally under npm publish | `changeset publish` shells out to npm, which does not rewrite the pnpm `catalog:` protocol — the tarball would be uninstallable. The release workflow publishes with `pnpm -r publish` (pnpm rewrites at pack time, exactly as `pack:check`'s `pnpm pack` already does). |
@@ -283,7 +285,7 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   Claims retired with the deleted code: INV-P15/P16 (save sweep, freeze model — admin UX),
   INV-T05 (worker EXIF/raster pipeline), INV-N04 (admin-bundle byte-scan); each deep-dive carries a
   retirement note and the anchor index is renumbered (the no-store transport claim is INV-N06 —
-  media-architecture already owned INV-N03). cms_test dropped `@mycms/admin`/`@mycms/core` and their
+  media-architecture already owned INV-N03). cms_test dropped `@patcms/admin`/`@patcms/core` and their
   vendor tarballs (install, typecheck, build green). Specs updated in the same change: CMS.md
   (panel is the reference consumer, screens table, upload pipeline, copy/veto/env wording),
   publish-and-recovery (conflict rendering by the host, watcher wording, P17 enforcer),
@@ -356,3 +358,17 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   build; without this the first publish would have shipped broken types. After the fixes: ci
   (gates + bun-smoke) and release both green on `3184a57`; Version Packages PR #1 (patcms@0.1.0 +
   playground@0.0.2) is open, awaiting owner merge and the first publish.
+- **2026-11-02 (5)** — Identifier purge (owner-requested): every remaining `mycms` reference renamed
+  to `patcms` — the public `.meta()` key (`CMS_META_KEY`), the default IndexedDB database name and
+  the sessionStorage key, the `patcms/web` exports (`PATCMS_IDB_STORES`, `openPatcmsDatabase`,
+  `closePatcmsDatabases`), the save-lease wire strings, `PATCMS_ALLOW_REAL_GITHUB`, the fixture git
+  identity (`fixture@patcms.invalid` — a hash input, so the manifest `headSha` was recomputed with
+  the renamed domain string; content bytes untouched and `fixtures:check` green), the vite env
+  prefix/server name, the fake-GitHub owner tag, LICENSE, and the workspace comment. Also removed
+  two stale spec rows and one comment referencing `window.__patcmsHarness` — the page global died
+  with the e2e suite and the spec never caught up (code wins). `fixtures:sync` needs the absent yve
+  mirror, so the manifest headSha was recomputed with the generator's own formula rather than
+  hand-editing content. A changeset records the rename in the 0.1.0 notes; nothing is published, so
+  no migration path is needed. Gates green: fixtures:check, typecheck, check, tests (core 538 /
+  playground 38), build, pack:check, docs:check, scan:workflows, bun smoke; `git grep -in mycms`
+  empty outside the plan's historical note.

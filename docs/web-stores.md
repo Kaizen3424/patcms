@@ -63,10 +63,10 @@ Both stores share one IndexedDB database with per-purpose object stores:
 
 | Export | Job |
 |---|---|
-| `MYCMS_IDB_STORES` | `["auth", "drafts"]` — the store names the package owns |
-| `openMycmsDatabase(dbName?, storeNames?)` | Low-level opener returning the raw `IDBDatabase` |
+| `PATCMS_IDB_STORES` | `["auth", "drafts"]` — the store names the package owns |
+| `openPatcmsDatabase(dbName?, storeNames?)` | Low-level opener returning the raw `IDBDatabase` |
 | `createSharedStore(dbName, storeName)` | Build an `idb-keyval`-compatible custom store on the shared database |
-| `closeMycmsDatabases()` | Close every opened handle (tests, hot reload) |
+| `closePatcmsDatabases()` | Close every opened handle (tests, hot reload) |
 
 If you bring your own persistence, you do not need any of this: `createCMS` accepts any
 `DraftStore`/`TokenStore` implementation (see the seams in

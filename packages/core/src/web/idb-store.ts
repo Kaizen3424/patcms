@@ -14,10 +14,10 @@
 import type { UseStore } from "idb-keyval"
 
 /**
- * The object stores the default `mycms` database owns. A new store is added
+ * The object stores the default `patcms` database owns. A new store is added
  * HERE in the same change that starts using it (ADR-0004 note).
  */
-export const MYCMS_IDB_STORES = ["auth", "drafts"] as const
+export const PATCMS_IDB_STORES = ["auth", "drafts"] as const
 
 interface DbState {
   /** Every store an adapter has asked this database to carry so far. */
@@ -99,9 +99,9 @@ function connect(dbName: string, state: DbState): Promise<IDBDatabase> {
  * Opens (and caches) `dbName` with at least `storeNames`. Calls are additive:
  * the schema is the union of every store any adapter has asked for.
  */
-export async function openMycmsDatabase(
-  dbName: string = "mycms",
-  storeNames: readonly string[] = MYCMS_IDB_STORES,
+export async function openPatcmsDatabase(
+  dbName: string = "patcms",
+  storeNames: readonly string[] = PATCMS_IDB_STORES,
 ): Promise<IDBDatabase> {
   const state = stateFor(dbName)
   for (const name of storeNames) state.requested.add(name)
@@ -121,15 +121,15 @@ export async function openMycmsDatabase(
  * added to the schema automatically, so a custom store name is always creatable.
  */
 export function createSharedStore(dbName: string, storeName: string): UseStore {
-  const schema = [...MYCMS_IDB_STORES, storeName]
+  const schema = [...PATCMS_IDB_STORES, storeName]
   return (txMode, callback) =>
-    openMycmsDatabase(dbName, schema).then((db) =>
+    openPatcmsDatabase(dbName, schema).then((db) =>
       callback(db.transaction(storeName, txMode).objectStore(storeName)),
     )
 }
 
 /** Closes every cached connection (tests / teardown). */
-export async function closeMycmsDatabases(): Promise<void> {
+export async function closePatcmsDatabases(): Promise<void> {
   const states = [...databases.values()]
   databases.clear()
   await Promise.all(

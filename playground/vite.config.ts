@@ -67,7 +67,7 @@ function fixtureServer(): Plugin {
     })
   }
   return {
-    name: "mycms-fixture-server",
+    name: "patcms-fixture-server",
     configureServer(server) {
       mount(server.middlewares)
     },
@@ -78,7 +78,7 @@ function fixtureServer(): Plugin {
 }
 
 export default defineConfig({
-  envPrefix: ["VITE_", "MYCMS_"],
+  envPrefix: ["VITE_", "PATCMS_"],
   plugins: [react(), fixtureServer()],
   resolve: {
     dedupe: ["react", "react-dom"],

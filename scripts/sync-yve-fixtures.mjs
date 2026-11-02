@@ -206,7 +206,7 @@ function verify() {
   const computedTree = treeSha(blobs)
   if (computedTree !== manifest.treeSha)
     problems.push("manifest treeSha does not match file blob SHAs")
-  if (manifest.headSha !== sha1(Buffer.from(`mycms fixture head\n${computedTree}\n`))) {
+  if (manifest.headSha !== sha1(Buffer.from(`patcms fixture head\n${computedTree}\n`))) {
     problems.push("manifest headSha does not derive from treeSha")
   }
 
@@ -311,7 +311,7 @@ function sync() {
   entries.sort((a, b) => a.path.localeCompare(b.path))
   const blobs = new Map(entries.map((entry) => [entry.path, { sha: entry.sha }]))
   const tree = treeSha(blobs)
-  const headSha = sha1(Buffer.from(`mycms fixture head\n${tree}\n`))
+  const headSha = sha1(Buffer.from(`patcms fixture head\n${tree}\n`))
   const sourceCommit = execFileSync("git", ["-C", SOURCE_ROOT, "rev-parse", "HEAD"], {
     encoding: "utf8",
   }).trim()

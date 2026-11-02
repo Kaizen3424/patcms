@@ -143,7 +143,7 @@ never UI text).
 | `clearIdbDraftStore(options?)` | Wipe drafts |
 | `createIdbTokenStore(options?)` | IndexedDB `TokenStore`; options `{ dbName?, storeName?, key? }` |
 | `createSessionTokenStore(key?)` | `sessionStorage`-backed `TokenStore` (tab lifetime) |
-| `openMycmsDatabase` / `createSharedStore` / `closeMycmsDatabases` / `MYCMS_IDB_STORES` | Shared-database plumbing |
+| `openPatcmsDatabase` / `createSharedStore` / `closePatcmsDatabases` / `PATCMS_IDB_STORES` | Shared-database plumbing |
 
 ## `patcms/advanced` (Node-safe)
 

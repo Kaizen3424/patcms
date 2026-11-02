@@ -7,7 +7,7 @@
  */
 import type { LeaseCarrier, LeaseMessage } from "../../pipeline/save-lease"
 
-const LEASE_WIRE_PREFIX = "mycms:lease:"
+const LEASE_WIRE_PREFIX = "patcms:lease:"
 
 /** Minimal listener registry seam — globalThis in browsers, EventTarget in tests. */
 interface EventSource {
@@ -26,12 +26,12 @@ function parseWireMessage(data: unknown): LeaseMessage | undefined {
   }
   if (typeof parsed !== "object" || parsed === null) return undefined
   const record = parsed as Record<string, unknown>
-  if (record.purpose !== "mycms-save-lease") return undefined
+  if (record.purpose !== "patcms-save-lease") return undefined
   if (record.kind !== "claim" && record.kind !== "release") return undefined
   if (typeof record.key !== "string" || typeof record.holderId !== "string") return undefined
   if (typeof record.expiresAt !== "number") return undefined
   return {
-    purpose: "mycms-save-lease",
+    purpose: "patcms-save-lease",
     kind: record.kind,
     key: record.key,
     holderId: record.holderId,
@@ -40,7 +40,7 @@ function parseWireMessage(data: unknown): LeaseMessage | undefined {
 }
 
 /** BroadcastChannel carrier — same-origin tabs, lowest latency. */
-export function createBroadcastCarrier(channelName = "mycms-save-lease"): LeaseCarrier {
+export function createBroadcastCarrier(channelName = "patcms-save-lease"): LeaseCarrier {
   const channel = new BroadcastChannel(channelName)
   return {
     post(message: LeaseMessage) {
@@ -77,7 +77,7 @@ export interface StorageCarrierOptions {
  */
 export function createStorageCarrier(options: StorageCarrierOptions): LeaseCarrier {
   const storage = options.storage
-  const slotKey = options.slotKey ?? "mycms.save-lease.wire"
+  const slotKey = options.slotKey ?? "patcms.save-lease.wire"
   const events = options.events ?? defaultEventSource()
   return {
     post(message: LeaseMessage) {

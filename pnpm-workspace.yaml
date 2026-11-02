@@ -1,4 +1,4 @@
-# MyCMS workspace (pnpm 10) — AGENTS.md §6 mirrors the commands that act on this file.
+# patcms workspace (pnpm 10) — AGENTS.md §6 mirrors the commands that act on this file.
 packages:
   - packages/*
   - playground

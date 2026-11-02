@@ -84,11 +84,11 @@ transport never writes user-facing text.
 | Sign out | Wipe memory and store |
 | Auth error during work | Mark the session expired, keep drafts, require a fresh `auth.signIn()` |
 
-Stores (`packages/core/src/web/token-stores.ts`): IndexedDB `mycms` / `auth` is the opt-in persistent
+Stores (`packages/core/src/web/token-stores.ts`): IndexedDB `patcms` / `auth` is the opt-in persistent
 store, `sessionStorage` is the per-device fallback, and `MemoryTokenStore` is for tests. The probe
 result is **never persisted** — only the token may be.
 
-**Shared-IDB gotcha.** `auth` and `drafts` share one `mycms` database (`MYCMS_IDB_STORES` in
+**Shared-IDB gotcha.** `auth` and `drafts` share one `patcms` database (`PATCMS_IDB_STORES` in
 `packages/core/src/web/idb-store.ts` is `["auth", "drafts"]`). `idb-keyval` only creates its store
 during `onupgradeneeded`, which fires once — so the second adapter to open the database would get
 `NotFoundError` on its first transaction. `packages/core/src/web/idb-store.ts` opens the database

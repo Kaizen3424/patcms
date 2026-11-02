@@ -1,6 +1,6 @@
 /**
  * Zod-first factory set (ADR-0003). Each factory returns a zod schema carrying
- * CMS metadata via `.meta({mycms: ...})`; `required:false` wraps with `.optional()`
+ * CMS metadata via `.meta({patcms: ...})`; `required:false` wraps with `.optional()`
  * and `default` stays METADATA ONLY (parse never injects it).
  */
 import { z } from "zod"

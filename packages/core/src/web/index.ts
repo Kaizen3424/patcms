@@ -10,10 +10,10 @@ export type { SaveDraftPayload } from "../drafts"
 export type { IdbDraftStoreOptions } from "./idb-draft-store"
 export { clearIdbDraftStore, createIdbDraftStore } from "./idb-draft-store"
 export {
-  closeMycmsDatabases,
+  closePatcmsDatabases,
   createSharedStore,
-  MYCMS_IDB_STORES,
-  openMycmsDatabase,
+  openPatcmsDatabase,
+  PATCMS_IDB_STORES,
 } from "./idb-store"
 export type { IdbTokenStoreOptions } from "./token-stores"
 export { createIdbTokenStore, createSessionTokenStore } from "./token-stores"

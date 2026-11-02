@@ -21,7 +21,7 @@ and should fail loudly at mount.
 ## Field factories
 
 Twelve value types plus one decoration. Each factory returns a zod schema carrying metadata via
-`.meta({mycms})`; `required: false` wraps it with `.optional()`.
+`.meta({patcms})`; `required: false` wraps it with `.optional()`.
 
 - `fields.string`, `text`, `number`, `boolean`, `select`, `datetime`, `list`, `object`, `image`,
   `relation`, `hidden`, `slug` (`packages/core/src/fields/factories.ts`).

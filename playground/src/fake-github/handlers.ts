@@ -20,7 +20,7 @@ export interface FakeGithubTags {
   readonly repo: string
 }
 
-export const DEFAULT_TAGS: FakeGithubTags = { owner: "mycms-fixtures", repo: "demo" }
+export const DEFAULT_TAGS: FakeGithubTags = { owner: "patcms-fixtures", repo: "demo" }
 
 export interface FakeGithubChaos {
   /** Return `truncated: true` on the recursive tree read (subtree fallback must save it). */
@@ -54,10 +54,9 @@ export interface FakeGithubOptions {
 }
 
 /**
- * Handlers + the reference server behind them. The server is returned so the
- * playground can publish it on the e2e harness (`window.__mycmsHarness`): the
- * fake repo's state is the only place a save can be observed, because the MSW
- * worker resets it on reload.
+ * Handlers + the reference server behind them. The server is returned so tests
+ * can drive it directly: the fake repo's state is the only place a save can be
+ * observed, because the MSW worker resets it on reload.
  */
 export function createFakeGithubHandlers(
   snapshot: FixtureRepoSnapshot,

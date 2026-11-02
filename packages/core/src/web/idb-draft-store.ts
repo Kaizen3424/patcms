@@ -16,7 +16,7 @@ export interface IdbDraftStoreOptions {
 }
 
 export function createIdbDraftStore(options: IdbDraftStoreOptions = {}): DraftStore {
-  const store = createSharedStore(options.dbName ?? "mycms", options.storeName ?? "drafts")
+  const store = createSharedStore(options.dbName ?? "patcms", options.storeName ?? "drafts")
 
   const asRecord = (value: unknown): DraftRecord | undefined => {
     if (typeof value !== "object" || value === null) return undefined
@@ -62,5 +62,5 @@ export function createIdbDraftStore(options: IdbDraftStoreOptions = {}): DraftSt
 
 /** Test/SSR helper: empties the draft database (never touches auth). */
 export async function clearIdbDraftStore(options: IdbDraftStoreOptions = {}): Promise<void> {
-  await clear(createSharedStore(options.dbName ?? "mycms", options.storeName ?? "drafts"))
+  await clear(createSharedStore(options.dbName ?? "patcms", options.storeName ?? "drafts"))
 }

@@ -176,7 +176,7 @@ statuses, rate limit, and repo/branch-protection reads.
 | Credential | One GitHub **fine-grained PAT** |
 | Scopes | `Contents: read+write`, `Checks: read`, optional `Administration: read` |
 | Lifetime in memory | From a successful capability probe until sign-out or an auth failure |
-| Persistence | Opt-in via `tokenStore`; `patcms/web` ships IndexedDB (`mycms` / `auth`) and sessionStorage stores; default is memory-only |
+| Persistence | Opt-in via `tokenStore`; `patcms/web` ships IndexedDB (`patcms` / `auth`) and sessionStorage stores; default is memory-only |
 | Transport | `Authorization` header only — never a URL, log line, or UI state |
 | Roles | None. GitHub repo/branch permission *is* the authorization model |
 
@@ -246,7 +246,7 @@ configuration is passed to `createCMS()` / `mountPanel` (`playground/src/panel`)
 
 | Name | Used by | Meaning |
 |---|---|---|
-| `MYCMS_ALLOW_REAL_GITHUB` | `playground/src/fake-github/env-guard.ts` | Must be exactly `"1"` to aim the harness at a real repo; anything else refuses |
+| `PATCMS_ALLOW_REAL_GITHUB` | `playground/src/fake-github/env-guard.ts` | Must be exactly `"1"` to aim the harness at a real repo; anything else refuses |
 | `YVE_REPO` | `scripts/sync-yve-fixtures.mjs` | Path to the yve source checkout (default `../yve_gallery_decap`) |
 
 Never commit a token. `.gitignore` keeps `.env*` out.

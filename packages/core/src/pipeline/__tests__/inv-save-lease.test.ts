@@ -13,7 +13,7 @@ import {
   type LeaseMessage,
 } from "../save-lease"
 
-const LEASE_WIRE_PREFIX = "mycms:lease:"
+const LEASE_WIRE_PREFIX = "patcms:lease:"
 
 /**
  * INV-P13 — the save lease (ADR-0004 §cross-tab lease + C.3 pins):
@@ -88,7 +88,7 @@ describe("INV-P13 — claim/hold/renew/release over a deterministic carrier", ()
     // If the split reality happens at all, the CAS (INV-P01) — never the
     // lease — is the correctness mechanism.
     const stolenClaim: LeaseMessage = {
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
@@ -205,7 +205,7 @@ describe("INV-P13 — payload hygiene (no content, no token, no field values)", 
       for (const field of Object.keys(message)) {
         expect(LEGAL.has(field)).toBe(true)
       }
-      expect(message.purpose).toBe("mycms-save-lease")
+      expect(message.purpose).toBe("patcms-save-lease")
       expect(message.holderId).toBe("aaa")
       // The key is a storage coordinate, never content.
       expect(message.key).toBe(KEY)
@@ -253,7 +253,7 @@ describe("INV-P13 — edge defenses (clock skew, re-acquire, unsubscribe, genera
     const lease = createSaveLease({ carrier, now: () => t, holderId: "mmm", claimSettleMs: 1 })
     // A foreign claim arrives (smaller id) while we hold NOTHING: recorded.
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
@@ -285,7 +285,7 @@ describe("INV-P13 — edge defenses (clock skew, re-acquire, unsubscribe, genera
     const lease = createSaveLease({ carrier, now: () => t, holderId: "mmm", claimSettleMs: 1 })
     // A foreign claim arrives while we hold nothing: recorded with its stamp.
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
@@ -324,14 +324,14 @@ describe("INV-P13 — P2.7 freed signal (an observed foreign release regains the
     lease.onFreed(KEY, () => freed.push(KEY))
 
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
       expiresAt: t + DEFAULT_LEASE_TTL_MS,
     })
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "release",
       key: KEY,
       holderId: "aaa",
@@ -353,14 +353,14 @@ describe("INV-P13 — P2.7 freed signal (an observed foreign release regains the
 
     // A bigger-id foreign claim is recorded (no displacement), then released.
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "zzz",
       expiresAt: t + DEFAULT_LEASE_TTL_MS,
     })
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "release",
       key: KEY,
       holderId: "zzz",
@@ -379,7 +379,7 @@ describe("INV-P13 — P2.7 freed signal (an observed foreign release regains the
     lease.onFreed(KEY, () => freed.push(KEY))
 
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
@@ -388,7 +388,7 @@ describe("INV-P13 — P2.7 freed signal (an observed foreign release regains the
     // A release from an unknown holder is ignored: the recorded aaa claim
     // stays live, so the key is NOT free.
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "release",
       key: KEY,
       holderId: "bbb",
@@ -408,14 +408,14 @@ describe("INV-P13 — P2.7 freed signal (an observed foreign release regains the
     unsubscribe()
 
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
       expiresAt: t + DEFAULT_LEASE_TTL_MS,
     })
     carrier.deliver({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "release",
       key: KEY,
       holderId: "aaa",
@@ -457,9 +457,9 @@ describe("INV-P13 — storage fallback carrier (post + event sides, both node-te
 
     expect(written).toHaveLength(1)
     const [slot, value] = written[0] as [string, string]
-    expect(slot.startsWith("mycms.save-lease.wire.")).toBe(true)
+    expect(slot.startsWith("patcms.save-lease.wire.")).toBe(true)
     expect(JSON.parse(value)).toMatchObject({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
@@ -496,7 +496,7 @@ describe("INV-P13 — storage fallback carrier (post + event sides, both node-te
 
     fire(
       `${LEASE_WIRE_PREFIX}${JSON.stringify({
-        purpose: "mycms-save-lease",
+        purpose: "patcms-save-lease",
         kind: "claim",
         key: KEY,
         holderId: "zzz",
@@ -504,13 +504,13 @@ describe("INV-P13 — storage fallback carrier (post + event sides, both node-te
       })}`,
     )
     fire("garbage")
-    fire("mycms:lease:not-json")
+    fire("patcms:lease:not-json")
     fire(`${LEASE_WIRE_PREFIX}${JSON.stringify({ purpose: "wrong", kind: "claim" })}`)
     fire(42) // non-string payloads never parse
 
     expect(received).toHaveLength(1)
     expect(received[0]).toEqual({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "zzz",
@@ -552,14 +552,14 @@ describe("INV-P13 — storage fallback carrier (post + event sides, both node-te
       target.dispatchEvent(event)
     }
     fire({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "claim",
       key: KEY,
       holderId: "aaa",
       expiresAt: 1500,
     })
     fire({
-      purpose: "mycms-save-lease",
+      purpose: "patcms-save-lease",
       kind: "release",
       key: KEY,
       holderId: "aaa",

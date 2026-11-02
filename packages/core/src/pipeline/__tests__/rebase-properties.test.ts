@@ -44,8 +44,8 @@ const docArb: fc.Arbitrary<JsonObject> = fc.dictionary(keyArb, jsonValueArb, {
 })
 
 /** Edit values are wrapper-tagged so collisions with base values are ~never. */
-const oursEditValue = (v: JsonValue): JsonValue => ({ mycms: "ours", v })
-const foreignEditValue = (v: JsonValue): JsonValue => ({ mycms: "foreign", v })
+const oursEditValue = (v: JsonValue): JsonValue => ({ patcms: "ours", v })
+const foreignEditValue = (v: JsonValue): JsonValue => ({ patcms: "foreign", v })
 
 function rebaseOf(
   base: JsonObject,

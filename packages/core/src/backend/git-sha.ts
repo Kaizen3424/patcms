@@ -127,7 +127,7 @@ export interface CanonicalCommitInput {
 
 /** Git commit SHA-1 with a FIXED author/committer (fixture determinism). */
 export async function gitCommitShaCanonical(input: CanonicalCommitInput): Promise<string> {
-  const identity = "MyCMS (fixture) <fixture@mycms.invalid> 0 +0000"
+  const identity = "patcms (fixture) <fixture@patcms.invalid> 0 +0000"
   const lines = [
     `tree ${input.treeSha}`,
     ...input.parentShas.map((sha) => `parent ${sha}`),

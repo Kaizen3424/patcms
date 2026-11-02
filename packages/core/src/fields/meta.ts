@@ -2,7 +2,7 @@
 import { z } from "zod"
 import type { FieldMeta } from "./types"
 
-export const CMS_META_KEY = "mycms"
+export const CMS_META_KEY = "patcms"
 
 export function setFieldMeta<T extends z.ZodType>(schema: T, meta: FieldMeta): T {
   return schema.meta({ [CMS_META_KEY]: meta }) as unknown as T

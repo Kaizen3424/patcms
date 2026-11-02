@@ -15,7 +15,7 @@ export interface IdbTokenStoreOptions {
 }
 
 export function createIdbTokenStore(options: IdbTokenStoreOptions = {}): TokenStore {
-  const store = createSharedStore(options.dbName ?? "mycms", options.storeName ?? "auth")
+  const store = createSharedStore(options.dbName ?? "patcms", options.storeName ?? "auth")
   const key = options.key ?? "pat"
   return {
     async read() {
@@ -31,7 +31,7 @@ export function createIdbTokenStore(options: IdbTokenStoreOptions = {}): TokenSt
   }
 }
 
-export function createSessionTokenStore(key = "mycms.pat"): TokenStore {
+export function createSessionTokenStore(key = "patcms.pat"): TokenStore {
   return {
     async read() {
       const value = globalThis.sessionStorage?.getItem(key)

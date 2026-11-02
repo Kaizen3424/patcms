@@ -50,8 +50,9 @@ Therefore:
 
 - Tests must not assert on browser storage or intercepted network alone — a reload erases the
   evidence.
-- `window.__mycmsHarness` (`playground/src/harness.ts`) exposes the live server: `server`,
-  `requestLog`, `defaultBranch`, `readFile`, `commitCount`, `head`.
+- There is no page global — the e2e harness that once published one died with the e2e suite. Unit
+  tests import `createFakeGithubHandlers` and drive the returned server directly (`requestLog`,
+  `commitCount`, `head`).
 - `commitCount()` is how a test asserts "exactly one commit"; `requestLog` is how it asserts "zero
   `force:true` PATCHes" and "exactly one ref update".
 - The harness is installed only by the playground build. Production hosts never get it.
@@ -95,7 +96,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 
 | Trap | Why it bites |
 |---|---|
-| Asserting on IndexedDB or network after a reload | The fake repo rebuilds from fixtures; only `window.__mycmsHarness` survives in the page |
+| Asserting on IndexedDB or network after a reload | The fake repo rebuilds from fixtures and no page global survives — assert through the server object in unit tests |
 | Adding git behaviour to an MSW handler | The contract suite stops covering it; semantics belong in `FakeGithubServer` |
 | Assuming the harness exists in production | It is installed only by the playground build |
 | Editing fixture bytes by hand | `fixtures:check` fails on the manifest; regenerate instead |

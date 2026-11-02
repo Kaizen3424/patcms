@@ -32,7 +32,7 @@
  */
 
 export interface LeaseMessage {
-  readonly purpose: "mycms-save-lease"
+  readonly purpose: "patcms-save-lease"
   readonly kind: "claim" | "release"
   readonly key: string
   readonly holderId: string
@@ -109,7 +109,7 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
   }
 
   const unsubscribe = options.carrier.onMessage((message) => {
-    if (message.purpose !== "mycms-save-lease" || message.holderId === selfId) return
+    if (message.purpose !== "patcms-save-lease" || message.holderId === selfId) return
     const current = stateOf(message.key)
     if (message.kind === "claim") {
       // A RENEWAL by the same holder keeps its first-observation stamp, so a
@@ -176,7 +176,7 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
   }
 
   const claim = (key: string): LeaseMessage => ({
-    purpose: "mycms-save-lease",
+    purpose: "patcms-save-lease",
     kind: "claim",
     key,
     holderId: selfId,
@@ -238,7 +238,7 @@ export function createSaveLease(options: SaveLeaseOptions): SaveLease {
         foreignSeenAt: current.foreignSeenAt,
       })
       post({
-        purpose: "mycms-save-lease",
+        purpose: "patcms-save-lease",
         kind: "release",
         key,
         holderId: selfId,
