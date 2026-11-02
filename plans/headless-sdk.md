@@ -110,7 +110,7 @@ conflict value, upload and reference media, and sign in with a PAT. No `patcms/a
 3. `pnpm run pack:check` in CI — already wired.
 4. The `v0.1.0` tag and GitHub Release are created by the workflow at publish time — tagging
    now would pin a commit whose version field is still `0.0.0`. Owner steps before the first
-   publish: on npmjs.com, configure the trusted publisher (user `Kaizen3424`, repo `pagesmith`,
+   publish: on npmjs.com, configure the trusted publisher (user `Kaizen3424`, repo `patcms`,
    workflow filename `release.yml` — a fresh configuration must complete its first publish
    within 2 days), and enable "Allow GitHub Actions to create and approve pull requests" in the
    repo's Actions settings.
@@ -321,7 +321,7 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   `id-token: write`, scopes limited to contents/pull-requests/id-token) is now legal; specs
   updated in the same change (anchor §2 Release + CI actions rows, test-harness guard row).
   READMEs: status lines made version-agnostic, root README gains a Releases section. Owner steps
-  before the first publish: npmjs.com trusted publisher (user `Kaizen3424`, repo `pagesmith`,
+  before the first publish: npmjs.com trusted publisher (user `Kaizen3424`, repo `patcms`,
   workflow `release.yml`, first publish within 2 days of configuring) + repo setting "Allow
   GitHub Actions to create and approve pull requests". Gates green: frozen-lockfile, typecheck,
   check, tests (core 538 / playground 38), build, `pack:check`, `scan:workflows`, `docs:check`,
