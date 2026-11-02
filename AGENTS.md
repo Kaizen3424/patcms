@@ -87,8 +87,6 @@ specs/
   content-model-architecture.md        config DSL, 12 field types, parse/save, untouched, widgets
   media-architecture.md                bijection, upload guards, references, trash, budget
   test-harness-architecture.md         FakeGithub, fixtures, test doubles, CI guards
-plans/
-  headless-sdk.md                      patcms surface, publish blockers, admin cutover
 ```
 
 ## Project process
