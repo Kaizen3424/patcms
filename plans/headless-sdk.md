@@ -413,3 +413,12 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   Release carrying the changeset notes (verified via the public API: published
   2026-11-02T06:10:03Z, body holds the three `packages/core/CHANGELOG.md` bullets). The OIDC
   publish path itself is proven at the next changeset-driven release run.
+- **2026-11-02 (10)** — Skill and docs hygiene, global availability. The patcms skill gained an
+  Install section (npm / `bun add`, ESM-only, Node >= 22.12, runtime deps `zod` + `idb-keyval`,
+  bun-verified note) so it is self-sufficient outside the repository, and its intro states the
+  npm/bun publishing fact. AGENTS.md now carries the contract explicitly: docs/ and
+  `.agents/skills/patcms` change in the same commit as the behavior they describe, gated by
+  `pnpm run docs:check` (new trigger-table row + a sentence under the golden rule). The skill is
+  junction-linked into OpenCode's global skills directory
+  (`~/.config/opencode/skills/patcms` → the repo folder), so downstream projects always read the
+  repo copy — one source of truth. Gates: `pnpm run docs:check` green (66 snippets).

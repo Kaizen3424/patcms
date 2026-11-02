@@ -8,13 +8,30 @@ description: Use when working with patcms — the git-backed, zero-database head
 patcms is a headless, git-backed CMS SDK. Content is plain JSON committed to the user's own GitHub
 repository; the client talks directly to `api.github.com` with a fine-grained personal access
 token. There is no database, no server, and **no bundled UI** — `createCMS()` is the backend, the
-host builds the admin. Published package: `patcms` (0.x — a minor release may break the API).
+host builds the admin. Published on npm as `patcms` (0.x — a minor release may break the API);
+bun installs it directly because bun reads the npm registry.
 
 | Import | Gives you | Runtime |
 |---|---|---|
 | `patcms` | `createCMS()`, config DSL, field factories, media/safety helpers | Node-safe |
 | `patcms/advanced` | Backends, save driver, `rebase`, serialization — when the client is not enough | Node-safe |
 | `patcms/web` | IndexedDB draft store and token stores | Browser only |
+
+## Install
+
+```bash
+npm install patcms
+```
+
+or, with bun:
+
+```bash
+bun add patcms
+```
+
+ESM only; Node >= 22.12. Runtime dependencies are `zod` and `idb-keyval` — nothing else. Bun works —
+the packed tarball is smoke-tested under bun in CI (`patcms` and `patcms/advanced` touch no DOM and
+no Node-only globals; only `patcms/web` needs a browser).
 
 ## Non-negotiables (breaking one is a bug, not a style choice)
 

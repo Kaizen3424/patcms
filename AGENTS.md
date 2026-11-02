@@ -31,6 +31,7 @@ confirming which behaviour is intended.
 |---|---|
 | A route, screen, or navigation entry | anchor §4 |
 | A backend or pipeline signature/capability | anchor §3/§7, `backend-and-auth-architecture.md`, and the matching page in `docs/` + the skill references |
+| A user-facing behavior, install step, or public API shape | The matching `docs/` page **and** the `.agents/skills/patcms` mirror — same change; `pnpm run docs:check` gates both |
 | The data model: collection kinds, field types, descriptors | anchor §5, `content-model-architecture.md`, and `docs/configuration.md` |
 | The auth flow, token storage, or probe | anchor §6, `backend-and-auth-architecture.md`, and `docs/authentication.md` |
 | An env var, flag, or fixture parameter | anchor §9 and `test-harness-architecture.md` |
@@ -108,3 +109,6 @@ rule in two places — link to the owning section.
 ## Golden rule
 
 Leave the specs at least as accurate as you found them, and no heavier than they need to be.
+`docs/` and `.agents/skills/patcms` are the package's user-facing contract — change them in the
+same commit as the behavior they describe, never as a follow-up (the skill is junction-linked into
+OpenCode's global skills directory, so repo edits are what every other project reads).
