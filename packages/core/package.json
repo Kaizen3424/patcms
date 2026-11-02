@@ -1,6 +1,6 @@
 {
   "name": "patcms",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "Headless, git-backed CMS SDK. JSON content in a GitHub repository, a personal access token, and a small typed client — no database, no server.",
   "license": "MIT",
