@@ -55,7 +55,11 @@ function main() {
 
   const bad = entries.filter((entry) => {
     if (entry.endsWith(".map")) return true
-    return FORBIDDEN_SEGMENTS.some((segment) => entry.startsWith(segment))
+    if (entry.includes(".test.")) return true
+    const segments = entry.split("/")
+    return (
+      entry.startsWith("src/") || segments.some((segment) => FORBIDDEN_SEGMENTS.includes(segment))
+    )
   })
   if (bad.length > 0) fail(`forbidden entries:\n  ${bad.join("\n  ")}`)
   console.log("[check-tarball] no src/tests/fixtures/maps in tarball ✓")

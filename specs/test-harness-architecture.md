@@ -102,6 +102,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 | Editing fixture bytes by hand | `fixtures:check` fails on the manifest; regenerate instead |
 | Importing a test double from a public entry | `advanced.ts` must never re-export `src/__tests__/support/*`; the bans scan and `pack:check` fail the build |
 | Trusting the workspace for packaging | pnpm resolves source `exports`; only `pack:check` proves the tarball |
+| Trusting a long-lived `dist-types/` | `tsc -b` is incremental and never deletes outputs of deleted sources — the first publish attempt packed `d.ts` files for modules deleted in the admin cutover, plus test-support declarations. `typecheck` now cleans `dist-types` and the tsbuildinfo before emitting, `files` negates `**/__tests__`, and `pack:check` rejects forbidden segments and `.test.` files at any depth |
 
 ## CI guards
 
@@ -119,7 +120,7 @@ suite that makes `FakeGithubServer` the reference model is ADR-0001, defined in
 
 | ID | Claim | Enforcing test |
 |---|---|---|
-| INV-N05 | The published `patcms` tarball contains no `src/`, no test doubles, no fixtures, no sourcemaps, and no msw bytes, and all three entries resolve through the publishConfig wiring | `scripts/check-tarball.mjs` (CI: `pnpm run pack:check`) |
+| INV-N05 | The published `patcms` tarball contains no `src/`, no test doubles (no `__tests__`/`test`/`fixtures` path segment and no `.test.` file at any depth), no declarations of deleted modules, no sourcemaps, and no msw bytes, and all three entries resolve through the publishConfig wiring | `scripts/check-tarball.mjs` (CI: `pnpm run pack:check`) |
 
 > INV-N04 (admin-bundle prod-purity byte-scan) was retired with `packages/admin` (P2 parity,
 > 2026-11-01) along with `scripts/prod-purity-scan.mjs` and the `scan:prod-purity` script. The

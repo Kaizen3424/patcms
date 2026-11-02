@@ -372,3 +372,14 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   no migration path is needed. Gates green: fixtures:check, typecheck, check, tests (core 538 /
   playground 38), build, pack:check, docs:check, scan:workflows, bun smoke; `git grep -in mycms`
   empty outside the plan's historical note.
+- **2026-11-02 (6)** — The first publish attempt (local, owner's npm CLI login) was blocked twice,
+  both instructively. (1) npm 403: new accounts must publish with 2FA — the owner enabled 2FA and
+  the republish carries an OTP. (2) The tarball listing exposed a real INV-N05 hole: `dist-types/`
+  held declarations for modules deleted in the admin cutover (`web/lease-carriers`,
+  `idb-journal-store`, … — `tsc -b` is incremental and never deletes outputs) plus
+  `dist-types/__tests__/support/*` test doubles, and `pack:check` missed both because it matched
+  forbidden segments only as path prefixes. Fixes: core `typecheck` cleans `dist-types` + the
+  tsbuildinfo before emitting, `files` negates `**/__tests__` and `**/*.test.d.ts`, and
+  `check-tarball.mjs` now rejects forbidden path segments and `.test.` files at any depth. Specs
+  updated in the same change (INV-N05 wording + a Known-traps row). Gates green: check, pack:check
+  (packed version reads 0.1.0), bun smoke, docs:check.

@@ -20,6 +20,8 @@
   "files": [
     "dist",
     "dist-types",
+    "!**/__tests__",
+    "!**/*.test.d.ts",
     "README.md"
   ],
   "keywords": [
@@ -59,7 +61,7 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc -b .",
+    "typecheck": "node -e \"const fs=require('node:fs');fs.rmSync('dist-types',{recursive:true,force:true});fs.rmSync('tsconfig.tsbuildinfo',{force:true})\" && tsc -b .",
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest"
