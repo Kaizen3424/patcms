@@ -344,3 +344,15 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   publisher config first, else one local bootstrap publish with the CLI credentials (never stored
   in repo/CI), then trusted publishing takes over. Gates green: check, scan:workflows, build,
   docs:check, bun smoke.
+- **2026-11-02 (4)** — The first remote runs surfaced three defects the local gates could not see.
+  (1) `git commit -am` silently skips new untracked files: the bun-smoke commit shipped the CI job
+  but not `scripts/bun-smoke.mjs` (MODULE_NOT_FOUND in one second); committed explicitly. (2) The
+  changesets action does not put `node_modules/.bin` on PATH, so the bare `changeset version`
+  version-script failed ("Unable to locate executable file: changeset"); it is now `pnpm changeset
+  version`. (3) The bun smoke then caught a real packaging bug: `tsup` has `dts: false` and `tsc
+  -b` emits `dist-types`, so a job that runs only `build` packs a tarball whose published types
+  point at missing files — the local pass was an artifact of stale `dist-types` on disk.
+  `bun-smoke.mjs` now emits dist-types itself and `release.yml` gained a typecheck step before
+  build; without this the first publish would have shipped broken types. After the fixes: ci
+  (gates + bun-smoke) and release both green on `3184a57`; Version Packages PR #1 (patcms@0.1.0 +
+  playground@0.0.2) is open, awaiting owner merge and the first publish.

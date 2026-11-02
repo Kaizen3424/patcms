@@ -49,7 +49,7 @@ Consequences worth internalising:
 | Workspace | pnpm 10.34.9 (corepack), Node ≥ 22.12, ESM only, TS project references |
 | Panel + harness | React 19, Vite, plain CSS (the example panel and its MSW fake live in `playground`) |
 | Core deps | `zod`, `idb-keyval` — nothing DOM-shaped in the main entry |
-| Build | `tsup` (core), `vite` (playground) |
+| Build | `tsup` (core JS) + `tsc -b` (core d.ts → `dist-types`; `tsup` has `dts: false` — packing without a typecheck ships types pointing at nothing), `vite` (playground) |
 | Tests | Vitest, plus `fast-check` property tests in core |
 | Lint / format | Biome with `--error-on-warnings` |
 | Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes |
