@@ -3,8 +3,8 @@
  * Bun consumer smoke — proves the package a bun user will `bun add` installs,
  * imports, constructs, and typechecks under bun's toolchain.
  *
- * Packs the core tarball (publishConfig applied, `catalog:` rewritten), installs
- * it into a scratch project with bun, runs a consumer script that constructs
+ * Packs the core tarball (after `tsup` builds dist and `tsc -b` emits dist-types —
+ * the published types point there), installs it into a scratch project with bun, runs a consumer script that constructs
  * `createCMS()` from the real config DSL, and typechecks that script with
  * `moduleResolution: "bundler"` — the resolution bun users' TypeScript uses.
  * Bun reads the npm registry, so this is the same artifact npm serves; there is
@@ -74,8 +74,10 @@ function main() {
     fail("bun is not on PATH (https://bun.sh)")
   }
 
-  console.log("[bun-smoke] Building core...")
+  console.log("[bun-smoke] Building core (tsup → dist)...")
   execSync("pnpm run build", { cwd: CORE, stdio: "pipe" })
+  console.log("[bun-smoke] Emitting dist-types (tsc -b — the published types point there)...")
+  execSync("pnpm run typecheck", { cwd: CORE, stdio: "pipe" })
 
   console.log("[bun-smoke] Packing...")
   const packOutput = execSync("pnpm pack --pack-destination .", {

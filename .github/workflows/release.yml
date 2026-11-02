@@ -39,6 +39,8 @@ jobs:
           cache: pnpm
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
+      - name: Typecheck (tsc -b emits dist-types — the published types point there)
+        run: pnpm --filter patcms typecheck
       - name: Build the publishable package (publishConfig points at dist)
         run: pnpm --filter patcms build
       - name: Changesets — version PR, or publish when none are pending
