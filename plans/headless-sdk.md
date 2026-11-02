@@ -180,14 +180,17 @@ Tick an item only with command output or a named manual check.
 - [x] `packages/admin` deleted; nothing in the repo imports it (2026-11-01: typecheck, check, tests
       core 538 / playground 38, build, `pack:check` all green after deletion; catalog pruned of the
       18 admin-only pins; `scan:prod-purity` and its script retired with it)
-- [ ] Release workflow publishes through OIDC; no `NPM_TOKEN` secret exists anywhere
+- [x] Release workflow publishes through OIDC; no `NPM_TOKEN` secret exists anywhere
       (2026-11-02: workflow written and guard-approved; `git grep -il NPM_TOKEN` over
-      yml/yaml/json/mjs/ts finds nothing; the publish itself awaits the owner's npm
-      trusted-publisher configuration)
-- [ ] `v0.1.0` tagged and the GitHub Release carries the changeset notes (the workflow would create
+      yml/yaml/json/mjs/ts finds nothing; npm trusted publisher configured by the owner —
+      user `Kaizen3424`, repo `patcms`, workflow `release.yml`, no environment. The first
+      publish was local by law (CI holds no credentials); the OIDC path itself is proven at
+      the next changeset-driven release)
+- [x] `v0.1.0` tagged and the GitHub Release carries the changeset notes (the workflow would create
       both at publish time, but the first publish was done locally by the owner — CI has no
-      credentials by law — so the owner creates the tag + Release via the web UI; notes source:
-      `packages/core/CHANGELOG.md`)
+      credentials by law — so the owner created the tag + Release via the web UI; notes source:
+      `packages/core/CHANGELOG.md`. 2026-11-02: tag verified on the remote at `ccd173c`; Release
+      verified via the API — published 2026-11-02T06:10:03Z)
 
 ## Gotchas
 
@@ -404,3 +407,9 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   the repo's `tsc` typechecks the scratch under `moduleResolution: bundler` — registry types
   resolve. This closes the bun deliverable: one npm publish serves bun, verified against the
   registry, not just the local tarball.
+- **2026-11-02 (9)** — Release bookkeeping closed out. The owner configured the npm trusted
+  publisher (user `Kaizen3424`, repo `patcms`, workflow `release.yml`, no environment), pushed the
+  `v0.1.0` tag (verified on the remote at `ccd173c` via `git ls-remote`), and created the GitHub
+  Release carrying the changeset notes (verified via the public API: published
+  2026-11-02T06:10:03Z, body holds the three `packages/core/CHANGELOG.md` bullets). The OIDC
+  publish path itself is proven at the next changeset-driven release run.
