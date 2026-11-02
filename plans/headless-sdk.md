@@ -327,3 +327,20 @@ Unicode; only edited files may re-serialise; inline objects-in-arrays stay inlin
   check, tests (core 538 / playground 38), build, `pack:check`, `scan:workflows`, `docs:check`,
   and `changeset status` listing 0.1.0. Remaining: the first real publish (owner), then the
   skill trigger eval rerun when the environment is stable.
+- **2026-11-02 (3)** — Repo renamed on GitHub to `Kaizen3424/patcms` (owner action): manifest
+  `repository.url`, release.yml comment, plan owner steps, and the git remote updated — npm
+  trusted publishing validates `repository.url` exactly, so this had to land before the first
+  publish. Bun support (owner request): bun reads the npm registry, so there is no separate bun
+  publish — the same tarball must serve bun consumers. New `scripts/bun-smoke.mjs` (`pnpm run
+  bun:smoke`): builds, packs, `bun add`s the tarball into a scratch project, constructs
+  `createCMS()` from the real config DSL under bun (no network), and typechecks the consumer with
+  `moduleResolution: "bundler"`; green under bun 1.3.14 on the first run. Wired as a `bun-smoke`
+  CI job (`oven-sh/setup-bun` v2.2.0, SHA-pinned; guard unchanged — it enforces the shape
+  generically). Docs/spec updated in the same change: getting-started install gains the `bun add`
+  variant, anchor §2 bullet + commands row, README command list, root `bun:smoke` script (and the
+  "change all four together" note corrected to the three places that actually mirror commands —
+  AGENTS.md has no command list). No manifest change, so no changeset. npm account created
+  (`pnpm whoami` → kaizen3424, logged in via `npm login`); first-publish plan: try the trusted
+  publisher config first, else one local bootstrap publish with the CLI credentials (never stored
+  in repo/CI), then trusted publishing takes over. Gates green: check, scan:workflows, build,
+  docs:check, bun smoke.

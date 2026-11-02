@@ -20,7 +20,15 @@ Three facts explain almost everything about patcms:
 npm install patcms
 ```
 
-Runtime dependencies are `zod` and `idb-keyval` — nothing else. ESM only; Node >= 22.12.
+or, with bun:
+
+```bash
+bun add patcms
+```
+
+Runtime dependencies are `zod` and `idb-keyval` — nothing else. ESM only; Node >= 22.12. Bun works
+too — CI smoke-tests the packed tarball under bun on every change (`patcms` and `patcms/advanced`
+touch no DOM and no Node-only globals; only `patcms/web` needs a browser).
 
 ## The three entries
 

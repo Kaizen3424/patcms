@@ -38,9 +38,9 @@ Consequences worth internalising:
   permissions grant the token.
 - There are **no jobs, queues, cron tasks, or webhooks** in this repo. The only scheduled work is
   GitHub Actions CI.
-- There is **no deploy pipeline.** CI (`.github/workflows/ci.yml`) runs gates on push/PR to `main`
-  plus a weekly audit; it publishes nothing. Deployment is deferred and not yet decided — do not
-  document a pipeline that does not exist.
+- There is **no deploy pipeline.** CI (`.github/workflows/ci.yml`) runs gates and a bun consumer
+  smoke on push/PR to `main` plus a weekly audit; it publishes nothing. Deployment is deferred and
+  not yet decided — do not document a pipeline that does not exist.
 
 ## 2. Stack and commands
 
@@ -64,14 +64,15 @@ Consequences worth internalising:
 | One test file | `pnpm --filter patcms test -- <file>` |
 | Build all | `pnpm -r build` |
 | Tarball hygiene | `pnpm run pack:check` |
+| Bun consumer smoke | `pnpm run bun:smoke` (needs `bun` on PATH; packs the tarball, `bun add`s it, imports + typechecks) |
 | Docs snippets + links | `pnpm run docs:check` (needs `pnpm -r build` first) |
 | Fixture integrity | `pnpm fixtures:check` |
 | Guard rails | `pnpm run scan:workflows` · `audit:waivers` |
 
 `pnpm changeset status` is the non-interactive sanity check for release notes.
 
-> Commands are duplicated in `AGENTS.md`, `README.md`, root `package.json`, and here. **Change all
-> four together.**
+> Commands are duplicated in `README.md`, root `package.json`, and here. **Change all three
+> together.**
 
 ## 3. Package surface and folder map
 

@@ -178,6 +178,7 @@ pnpm run check                   # biome lint + format, warnings are errors
 pnpm -r test                     # vitest across workspaces
 pnpm -r build                    # tsup (core) and vite (playground)
 pnpm run pack:check              # tarball hygiene + entry resolution for the published package
+pnpm run bun:smoke               # pack → bun add → import + typecheck the tarball under bun
 pnpm run docs:check              # typecheck docs/README/skill snippets + link check (after build)
 pnpm fixtures:check              # verify byte-pinned fixtures
 ```
