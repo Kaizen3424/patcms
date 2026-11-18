@@ -151,6 +151,19 @@ function recordingLogger(): Logger & { readonly debugs: string[] } {
 
 const settle = (ms = 40): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+/**
+ * Poll until `predicate` holds. A wake is scheduled from the coordinator's own
+ * promise chain, so a fixed sleep races the machine under coverage; waiting for
+ * the observable effect keeps the claim (a wake exists, with this delay) exact.
+ */
+async function waitFor(predicate: () => boolean, timeoutMs = 3_000): Promise<void> {
+  const started = Date.now()
+  while (!predicate()) {
+    if (Date.now() - started > timeoutMs) throw new Error("timed out waiting for the predicate")
+    await settle(5)
+  }
+}
+
 describe("P2.5 coordinator — a satisfied predicate self-rebases (INV-P05)", () => {
   it("a foreign commit to ANOTHER file does not block our save", async () => {
     const spec = await buildSpec(BASE_CONTENT)
@@ -453,7 +466,7 @@ describe("P2.5 coordinator — backoff and manual parks (retryable failures)", (
     }
 
     const pending = coordinator.save(request)
-    await settle()
+    await waitFor(() => wakes.length === 1)
     expect(wakes).toHaveLength(1)
     expect(wakes[0]?.waitMs).toBe(1)
     wakes[0]?.wake()
@@ -487,7 +500,7 @@ describe("P2.5 coordinator — backoff and manual parks (retryable failures)", (
     }
 
     const pending = coordinator.save(request)
-    await settle()
+    await waitFor(() => coordinator.state("site")?.phase === "paused")
     const state = coordinator.state("site")
     expect(state?.phase).toBe("paused")
     expect(state !== undefined && state.phase === "paused" && state.reason).toBe("network")
@@ -602,7 +615,7 @@ describe("P2.5 coordinator — subscription + default wake", () => {
     })
 
     const pending = coordinator.save(siteRequest("site", spec.headSha, { title: "v2" }))
-    await settle()
+    await waitFor(() => wakes.length === 1)
     expect(wakes).toHaveLength(1) // park #1
     // Two synchronous wakes: the first releases the waiter, the second lands
     // BETWEEN waits (coalesced as `pending`) — consumed by the next wait.

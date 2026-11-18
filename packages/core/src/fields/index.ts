@@ -76,6 +76,12 @@ export type {
 export type {
   EntryValidationOptions,
   EntryValidationResult,
+  ParsedEntryValidationOptions,
   RelationServices,
 } from "./validate"
-export { mergeUntouched, validateEntryForSave } from "./validate"
+export {
+  collectRelationIssues,
+  mergeUntouched,
+  validateEntryForSave,
+  validateParsedEntryForSave,
+} from "./validate"

@@ -83,6 +83,7 @@ export {
   CONFIG_SCHEMA_VERSION,
   ConfigValidationError,
   collectionDivider,
+  DEFAULT_DEPLOY_PROPAGATION_MS,
   defineCollection,
   defineConfig,
   defineFile,

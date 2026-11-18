@@ -23,6 +23,25 @@ export const config = defineConfig({
 
 Absent or empty `contexts` turns the commit-status fallback off entirely.
 
+## "It may take a moment to go live"
+
+A commit lands instantly; the deploy behind it does not. Your UI should say so after a save instead
+of leaving the editor staring at a stale preview:
+
+```ts
+import { DEFAULT_DEPLOY_PROPAGATION_MS } from "patcms"
+
+declare const cms: import("patcms").CMS
+
+const delayMs = cms.config.deploy?.propagationMs ?? DEFAULT_DEPLOY_PROPAGATION_MS // 30 000
+
+// Show something like: "Saved. Your site may take about 30 seconds to show it."
+// `delayMs === 0` means the host asked for no notice at all.
+```
+
+`propagationMs` is config, not a measurement: set it to what your host's build normally takes. The
+SDK never fabricates a "live" verdict from it — that stays [the watcher](#watching-a-commit)'s job.
+
 ## The decision matrix
 
 | Verdict | Meaning |

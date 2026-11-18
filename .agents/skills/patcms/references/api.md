@@ -13,11 +13,15 @@ Signatures and result shapes for the published surface. Everything here is from 
 | `tokenStore` | `TokenStore` | memory-only | `read()` / `write(token)` / `clear()`, all async |
 | `drafts` | `DraftStore` | memory-only | `get` / `put` / `delete` / `list` / `deletePrefix` |
 | `fetch` | `FetchLike` | bound `globalThis.fetch` | Test/proxy seam; throws `INVALID_CONFIG` when no global fetch exists |
+| `readReuseMs` | `number` | `30_000` | How long a read may reuse the last head it confirmed. `0` = re-check on every call. Writes always re-check |
+| `readConcurrency` | `number` | `5` | Parallel body reads per listing (GitHub burst posture) |
+| `maxBlobBytes` / `maxBlobEntries` | `number` | 64 MiB / 256 | LRU caps for the in-memory blob cache |
 | `onAuthExpired` | `() => void` | — | Called after a 401 write wiped the session |
 
 Construction is offline. The `CMS` object: `config`, `repository`, `auth`, `entries`, `media`,
-`drafts`, `events`, plus `refresh()` (clear cache, re-read head+tree; drafts survive),
-`clearCache()`, `destroy()` (drops cache and listeners; does **not** sign out).
+`drafts`, `events`, plus `refresh()` (re-check the head only — unchanged entries and blobs stay
+cached; drafts survive), `clearCache()` (drops everything), `destroy()` (drops cache and listeners;
+does **not** sign out).
 
 ## `cms.auth`
 

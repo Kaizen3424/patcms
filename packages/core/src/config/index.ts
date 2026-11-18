@@ -2,6 +2,7 @@
  * Config module barrel — ADR-0003. Host apps build a ConfigDefinition with
  * zod schemas; the admin consumes only the strict JSON-safe AdminConfig.
  */
+export { DEFAULT_DEPLOY_PROPAGATION_MS } from "./deploy"
 export {
   collectionDivider,
   defineCollection,

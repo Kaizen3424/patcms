@@ -6,8 +6,8 @@ browser talks directly to `api.github.com` with a fine-grained PAT. There is no 
 user account, role, or job. `playground/src/panel` is the example admin proving `createCMS()` is
 sufficient — it is the reference consumer, not a published artifact. The durable description of the
 code lives in `specs/`; usage documentation for package consumers lives in `docs/` (with the
-`.agents/skills/patcms` agent skill mirroring it); `plans/` holds the one active delivery plan. This
-file is the working manual, not a replacement for either.
+`.agents/skills/patcms` agent skill mirroring it); `plans/` holds the active delivery plan when one
+exists. This file is the working manual, not a replacement for either.
 
 ## Read order
 
@@ -15,7 +15,7 @@ file is the working manual, not a replacement for either.
    flows, vetoes, and the identifier index.
 2. The one deep-dive for the area you are touching (inventory below). Its closing "Decisions and
    claims" section holds the binding rules and the tests that enforce them.
-3. Then the code. For release or cutover work, read `plans/headless-sdk.md`.
+3. Then the code. For release work, read `README.md` § Releases and `.github/workflows/release.yml`.
 
 Do not read all six specs for a one-file change.
 
@@ -91,18 +91,18 @@ specs/
 
 ## Project process
 
-Work follows the active plan in `plans/`: read it top-down and tick an item only with command output or
-a named manual check. A phase gates on its exit checklist **plus owner confirmation in chat** — agents
-never self-approve a gate. At session end, append a dated bullet to the plan's session log and keep its
-status current. When a phase closes, replace the plan rather than accumulating them; git has the
-history. If reality contradicts a spec or a decision row, update the spec first, then the code.
+Work follows the active plan when there is one: read it top-down and tick an item only with command
+output or a named manual check. A phase gates on its exit checklist **plus owner confirmation in
+chat** — agents never self-approve a gate. At session end, append a dated bullet to its session log
+and keep its status current. When a phase closes, replace the plan rather than accumulating them; git
+has the history. If reality contradicts a spec or a decision row, update the spec first, then the code.
 
 ## Where the rest lives
 
 Decision rationale and testable claims are not a separate register: each deep-dive ends with a
 "Decisions and claims" section, and `specs/CMS.md §8` indexes which file owns which id. Release policy
-(ADR-0010) and the yve cutover checklist (INV-C01–C04) live in the active plan. Never restate an id's
-rule in two places — link to the owning section.
+(ADR-0010) is enforced by `.github/workflows/release.yml` and `scripts/ci-workflow-guard.mjs`. Never
+restate an id's rule in two places — link to the owning section.
 
 ## Golden rule
 

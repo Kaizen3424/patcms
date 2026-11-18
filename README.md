@@ -135,8 +135,7 @@ Pass it to `auth.signIn(token)`. To remember it across reloads, pass a `tokenSto
 | Access | One fine-grained PAT; GitHub repository permissions are the authorization model |
 
 **Not in this release:** an OAuth flow, a second backend (GitLab), an importer for Decap/Sveltia
-configs, PR/staging-branch mode, WYSIWYG markdown, i18n, and inline SVG. See
-[`plans/headless-sdk.md`](plans/headless-sdk.md).
+configs, PR/staging-branch mode, WYSIWYG markdown, i18n, and inline SVG.
 
 ## Security model
 
@@ -163,7 +162,6 @@ internal invariants live in the specs:
 | [`specs/content-model-architecture.md`](specs/content-model-architecture.md) | Config, fields, parse/save, untouched preservation |
 | [`specs/media-architecture.md`](specs/media-architecture.md) | Bijection, upload guards, references, trash, budgets |
 | [`specs/test-harness-architecture.md`](specs/test-harness-architecture.md) | FakeGithub, fixtures, test doubles, CI guards |
-| [`plans/headless-sdk.md`](plans/headless-sdk.md) | Release policy, publish blockers, yve cutover |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Branching, commits, how to add a widget or backend |
 
 Each spec ends with the decisions and testable claims for its subsystem, so an `ADR-xxxx` or
@@ -195,7 +193,7 @@ Releases are changesets-driven: add a changeset (`pnpm changeset`), and
 merging it publishes to npm through OIDC trusted publishing — no npm token is stored anywhere —
 then tags `v<version>` and creates the GitHub Release with the changeset notes. The npm side must
 have the trusted publisher configured for that exact workflow filename (see
-`plans/headless-sdk.md`).
+[`.github/workflows/release.yml`](.github/workflows/release.yml)).
 
 ## License
 

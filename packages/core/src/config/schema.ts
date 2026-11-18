@@ -14,6 +14,8 @@ const deploySchema = z.strictObject({
   contexts: z
     .array(z.string().refine((value) => value.trim().length > 0, "context cannot be blank"))
     .optional(),
+  // Expected commit → live delay shown to editors (0 turns the notice off).
+  propagationMs: z.number().int().min(0).optional(),
 })
 
 const optionSchema = z.strictObject({

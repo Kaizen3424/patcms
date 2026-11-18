@@ -129,7 +129,8 @@ export class MediaClient implements MediaAPI {
 
     const publicPath = joinPublic(media.publicFolder, name)
     const repoPath = this.repoPath(publicPath, options)
-    const tree = await this.#repo.tree()
+    // A collision check must see the true head, not a reused snapshot.
+    const tree = await this.#repo.tree({ recheck: true })
     const existing = findTreeEntry(tree, repoPath)
     if (existing !== undefined && options.overwrite !== true) {
       throw new CMSError("CONFLICT", `"${publicPath}" already exists; pass overwrite to replace it`)
@@ -157,7 +158,8 @@ export class MediaClient implements MediaAPI {
 
   async delete(publicPath: string, options: MediaDeleteOptions = {}): Promise<MediaDeleteResult> {
     const repoPath = this.repoPath(publicPath, options)
-    const tuple = await this.#tuple(repoPath)
+    const tree = await this.#repo.tree({ recheck: true })
+    const tuple = await this.#tuple(repoPath, tree)
 
     if (options.checkReferences !== false) {
       const references = await this.references(publicPath, options)
@@ -181,9 +183,9 @@ export class MediaClient implements MediaAPI {
 
   async restore(trashPath: string, options: { message?: string } = {}): Promise<MediaFile> {
     const normalized = normalizeTrashPath(trashPath)
-    const tuple = await this.#tuple(normalized)
+    const tree = await this.#repo.tree({ recheck: true })
+    const tuple = await this.#tuple(normalized, tree)
     const bytes = await this.#repo.readBlob(tuple.sha)
-    const tree = await this.#repo.tree()
     const changes = createRestoreChanges(normalized, bytes, tree.entries)
     if (!changes.ok) {
       throw new CMSError("CONFLICT", `"${changes.destination}" is occupied; cannot restore`)
@@ -262,11 +264,11 @@ export class MediaClient implements MediaAPI {
     throw new CMSError("VALIDATION", `"${repoPath}" is not inside any configured media folder`)
   }
 
-  async #tuple(path: string): Promise<TreeEntryTuple> {
+  async #tuple(path: string, tree?: TreeRead): Promise<TreeEntryTuple> {
     const checked = safePath(path)
     if (!checked.ok) throw new CMSError("VALIDATION", `invalid media path "${path}"`)
-    const tree = await this.#repo.tree()
-    const tuple = findTreeEntry(tree, path)
+    const source = tree ?? (await this.#repo.tree())
+    const tuple = findTreeEntry(source, path)
     if (tuple === undefined) throw new CMSError("NOT_FOUND", `"${path}" does not exist`)
     return tuple
   }

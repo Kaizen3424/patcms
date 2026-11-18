@@ -16,10 +16,10 @@ function isNamedField(f: FieldDescriptor): f is Exclude<FieldDescriptor, Divider
 }
 
 /**
- * INV-C01 — Parity golden: frozen field-by-field diff between config-package
- * and plans/phase-7-publish.md appendix A. Drift changes break BOTH sides.
+ * INV-C01 — Parity golden: the yve config's shape is spelled out here field by
+ * field, so a change on either side without the other fails.
  */
-describe("INV-C01 · Parity golden against the Phase 7 appendix", () => {
+describe("INV-C01 · Parity golden for the yve config", () => {
   const collectionsByName = new Map(
     yveAdminConfig.collections.filter((c) => c.kind !== "divider").map((c) => [c.name, c]),
   )

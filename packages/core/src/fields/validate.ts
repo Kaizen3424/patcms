@@ -4,7 +4,7 @@
  * preserves unmodeled keys verbatim through JSON-Pointer composition.
  */
 import type { JsonValue } from "../safety/untrusted-json"
-import type { ParseEntryOptions, ParseIssue } from "./parse"
+import type { ParsedEntry, ParseEntryOptions, ParseIssue } from "./parse"
 import { parseEntry } from "./parse"
 import type { FieldDescriptor } from "./types"
 
@@ -13,6 +13,13 @@ export interface RelationServices {
 }
 
 export interface EntryValidationOptions extends ParseEntryOptions {
+  readonly services?: RelationServices
+}
+
+/** Validation for callers that already parsed (no second full parse). */
+export interface ParsedEntryValidationOptions {
+  readonly fields: readonly FieldDescriptor[]
+  readonly parsed: ParsedEntry
   readonly services?: RelationServices
 }
 
@@ -27,11 +34,20 @@ export type EntryValidationResult =
 export async function validateEntryForSave(
   options: EntryValidationOptions,
 ): Promise<EntryValidationResult> {
-  const parsed = parseEntry(options)
-  const issues = [...parsed.issues]
+  return validateParsedEntryForSave({
+    fields: options.fields,
+    parsed: parseEntry(options),
+    ...(options.services === undefined ? {} : { services: options.services }),
+  })
+}
+
+export async function validateParsedEntryForSave(
+  options: ParsedEntryValidationOptions,
+): Promise<EntryValidationResult> {
+  const issues = [...options.parsed.issues]
 
   // Repair-on-save: missing hidden fields with default values are backfilled (ADR-0003 P3 addendum)
-  const value = backfillHiddenDefaults(options.fields, parsed.value)
+  const value = backfillHiddenDefaults(options.fields, options.parsed.value)
 
   if (options.services?.hasEntry !== undefined) {
     await checkRelations(options.fields, value, options.services, issues, "")
@@ -40,7 +56,23 @@ export async function validateEntryForSave(
   if (issues.some((issue) => issue.severity === "error")) {
     return { ok: false, issues }
   }
-  return { ok: true, value, untouched: parsed.untouched }
+  return { ok: true, value, untouched: options.parsed.untouched }
+}
+
+/**
+ * Relation-only validation. Used when a cached entry is re-checked against a
+ * fresh tree without re-parsing or re-reading its bytes.
+ */
+export async function collectRelationIssues(options: {
+  readonly fields: readonly FieldDescriptor[]
+  readonly value: Readonly<Record<string, unknown>>
+  readonly services?: RelationServices
+}): Promise<ParseIssue[]> {
+  const issues: ParseIssue[] = []
+  if (options.services?.hasEntry !== undefined) {
+    await checkRelations(options.fields, options.value, options.services, issues, "")
+  }
+  return issues
 }
 
 function backfillHiddenDefaults(

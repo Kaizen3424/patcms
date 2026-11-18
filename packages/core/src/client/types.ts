@@ -219,8 +219,9 @@ export interface CMS {
   readonly media: MediaAPI
   readonly drafts: DraftsAPI
   readonly events: EventsAPI
-  /** Re-reads the ref and tree; drafts survive. */
+  /** Re-checks the repository head; unchanged entries and blobs stay cached. */
   refresh(): Promise<void>
+  /** Drops every cached entry, blob, and the tree snapshot. */
   clearCache(): void
   /** Drops cache and listeners. Does not sign out. */
   destroy(): void

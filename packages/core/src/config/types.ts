@@ -21,6 +21,11 @@ export interface ViewGroup {
  */
 export interface DeployConfig {
   readonly contexts?: readonly string[]
+  /**
+   * Expected delay between a commit and the live site, in milliseconds.
+   * Hosts use it for the "changes may take a moment to appear" notice.
+   */
+  readonly propagationMs?: number
 }
 
 export interface FolderCollectionOptions {

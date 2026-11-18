@@ -2,14 +2,26 @@
 
 ## How reads work
 
-- **One tree snapshot per load.** The client reads the branch head and the full tree, then serves
-  `entries.*` from that snapshot. Individual documents are fetched lazily, by blob sha.
+- **One tree snapshot per head, reused for 30 s.** The client checks the branch head once, reads
+  the full tree, then serves `entries.*` from that snapshot. For the next 30 seconds reads reuse
+  that head without touching the network; after that the next read re-checks the ref. Configure it
+  with `createCMS({ readReuseMs })` — `0` makes every read re-check the head. Saves always
+  re-check, so an editor you are saving over is never missed.
+- **Bodies are content-addressed and cached.** Each document is fetched once by blob sha and kept
+  in memory, so a repeat listing, a `get` right after a `list`, and a re-open after `refresh()`
+  download nothing. Only a file whose bytes actually moved is re-downloaded.
 - **The cache is keyed by commit sha.** Branch-addressed lookups (the ref, the tree) bypass the
   browser HTTP cache with `cache: "no-store"` — GitHub serves the ref route with `max-age=60`, and
-  without this a just-pushed foreign commit could be invisible for up to a minute.
-- **Re-reading is always fresh.** Call `list`/`get` again after anything happens on the branch;
-  the client re-reads the head and re-downloads only what changed. `cms.refresh()` forces it;
-  `cms.clearCache()` drops everything without re-reading. Drafts survive both.
+  without this a just-pushed foreign commit could be invisible for up to a minute. Blobs are
+  immutable, so they stay cacheable.
+- **`refresh()` re-checks the head; `clearCache()` starts over.** `cms.refresh()` makes one ref
+  request and keeps every unchanged body; `cms.clearCache()` drops entries, blobs, and the tree.
+  Drafts survive both.
+- **Bounded fan-out.** A collection lists with at most 5 parallel body reads (GitHub secondary-rate
+  posture). Override with `createCMS({ readConcurrency })`.
+
+The 30-second window only delays **other people's** changes on screen. After your own save the
+client forgets the head immediately, so your own edit is always visible on the next read.
 
 ## Listing entries
 

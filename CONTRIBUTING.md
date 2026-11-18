@@ -21,5 +21,5 @@
 
 ## Toolchain
 
-- Node 22 pinned for CI/tooling (`.nvmrc` = `22`); local runtimes may use any Node satisfying `engines` (≥22.12) — owner decision recorded in [ADR-0010](plans/phase-7-publish.md).
+- Node 22 pinned for CI/tooling (`.nvmrc` = `22`); local runtimes may use any Node satisfying `engines` (≥22.12) — owner decision recorded as ADR-0010 (see `README.md` § Releases).
 - pnpm pinned via the root `packageManager` field (corepack).

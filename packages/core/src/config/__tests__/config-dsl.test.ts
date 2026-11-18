@@ -142,6 +142,30 @@ describe("config DSL → AdminConfig", () => {
     ).toEqual({ contexts: [] })
   })
 
+  it("projects deploy.propagationMs as a validated millisecond delay", () => {
+    const media = { folder: "public/images", publicFolder: "/images" }
+    const withDelay = defineConfig({
+      media,
+      collections: [products],
+      deploy: { propagationMs: 45_000 },
+    })
+    expect(toAdminConfig(withDelay).deploy).toEqual({ propagationMs: 45_000 })
+    expect(JSON.parse(JSON.stringify(toAdminConfig(withDelay)))).toEqual(toAdminConfig(withDelay))
+
+    expect(() =>
+      defineConfig({ media, collections: [products], deploy: { propagationMs: -1 } }),
+    ).toThrow(/propagationMs/)
+    expect(() =>
+      defineConfig({ media, collections: [products], deploy: { propagationMs: 1.5 } }),
+    ).toThrow(/propagationMs/)
+
+    const parsed = parseAdminConfig(JSON.parse(JSON.stringify(toAdminConfig(withDelay))))
+    expect(parsed.deploy?.propagationMs).toBe(45_000)
+    const bogus = JSON.parse(JSON.stringify(toAdminConfig(config)))
+    bogus.deploy = { propagationMs: "30 seconds" }
+    expect(() => parseAdminConfig(bogus)).toThrow(ConfigValidationError)
+  })
+
   it("rejects duplicate/blank status contexts and unknown deploy keys", () => {
     const media = { folder: "public/images", publicFolder: "/images" }
     expect(() =>

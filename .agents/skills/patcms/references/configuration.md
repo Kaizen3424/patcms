@@ -18,7 +18,10 @@ import { defineConfig } from "patcms"
 
 export const config = defineConfig({
   site: { name: "Travel Blog", url: "https://example.com" },
-  deploy: { contexts: ["Cloudflare Pages"] }, // commit-status fallback for deploy status; empty/absent = off
+  deploy: {
+    contexts: ["Cloudflare Pages"], // commit-status fallback for deploy status; empty/absent = off
+    propagationMs: 30_000, // expected commit → live delay shown after a save; 0 = no notice
+  },
   media: { folder: "public/images", publicFolder: "/images" }, // root mapping: repo folder ⇄ public URL path
   collections: [],
 })

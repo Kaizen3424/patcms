@@ -1,6 +1,6 @@
 /**
- * yve fixture config — the exact 14-file shape from the frozen inventory
- * (plans/phase-7-publish.md, appendix A), reduced to the P1 read-side widget set.
+ * yve fixture config — the frozen 14-file shape recorded in the parity test
+ * (`__tests__/inv-c01-parity.test.ts`), reduced to the P1 read-side widget set.
  * Complex presentation blocks that P3 will model stay `hidden` so their bytes
  * are preserved untouched (ADR-0003, INV-S03).
  */

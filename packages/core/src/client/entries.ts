@@ -23,10 +23,11 @@ import type { ParseIssue } from "../fields/parse"
 import { parseEntry } from "../fields/parse"
 import type { FieldDescriptor } from "../fields/types"
 import type { RelationServices } from "../fields/validate"
-import { validateEntryForSave } from "../fields/validate"
+import { collectRelationIssues, validateEntryForSave } from "../fields/validate"
 import type { SearchableEntry } from "../media/references"
 import type { SaveVerdict } from "../pipeline/save-driver"
 import { compareText, compareValues } from "../safety/collator"
+import { mapConcurrent } from "../safety/concurrency"
 import { decodeUtf8, encodeUtf8 } from "../safety/encoding"
 import { safePath } from "../safety/safe-path"
 import { slugify } from "../safety/slug"
@@ -35,7 +36,7 @@ import { parseUntrustedJson } from "../safety/untrusted-json"
 import type { JsonDocument } from "../serialization/document"
 import { parseJsonDocument } from "../serialization/document"
 import { composeEntryDocument } from "../serialization/entry-document"
-import type { ClientCache } from "./cache"
+import type { CachedEntry, ClientCache } from "./cache"
 import { CMSError, toCMSError } from "./errors"
 import type { RepoReader } from "./repo"
 import type {
@@ -71,26 +72,35 @@ export interface EntriesClientOptions {
   readonly config: AdminConfig
   readonly repo: RepoReader
   readonly cache: ClientCache
+  /** Parallel entry reads (GitHub secondary-limit posture; INV-N01). */
+  readonly readConcurrency?: number
   /** Called when GitHub rejects the token mid-write; the client signs out. */
   readonly onAuthExpired: () => void
 }
+
+/** Reads stay well under GitHub's burst thresholds. */
+const DEFAULT_READ_CONCURRENCY = 5
 
 export class EntriesClient implements EntriesAPI {
   readonly #config: AdminConfig
   readonly #repo: RepoReader
   readonly #cache: ClientCache
+  readonly #readConcurrency: number
   readonly #onAuthExpired: () => void
 
   constructor(options: EntriesClientOptions) {
     this.#config = options.config
     this.#repo = options.repo
     this.#cache = options.cache
+    this.#readConcurrency = options.readConcurrency ?? DEFAULT_READ_CONCURRENCY
     this.#onAuthExpired = options.onAuthExpired
   }
 
   async list(collection: string, options: ListOptions = {}): Promise<EntrySummary[]> {
     const { sources, services } = await this.#snapshot(collection)
-    const entries = await Promise.all(sources.map((source) => this.#read(source, services)))
+    const entries = await mapConcurrent(sources, this.#readConcurrency, (source) =>
+      this.#read(source, services),
+    )
     const direction = options.direction ?? "asc"
     const sortField = options.sort
     entries.sort((left, right) =>
@@ -116,11 +126,7 @@ export class EntriesClient implements EntriesAPI {
 
   async get(collection: string, slug: string): Promise<Entry> {
     const { source, services } = await this.#findSource(collection, slug)
-    const cached = this.#cache.getEntry(source.path, source.blobSha)
-    if (cached !== undefined) return cached
-    const entry = await this.#read(source, services)
-    this.#cache.putEntry(entry)
-    return entry
+    return this.#read(source, services)
   }
 
   async create(
@@ -135,7 +141,7 @@ export class EntriesClient implements EntriesAPI {
 
     const slug = normalizeSlug(options.slug ?? this.slugFromValue(collection, value))
     const path = assertInsideFolder(`${descriptor.folder}/${slug}.json`, descriptor.folder)
-    const { tree, services } = await this.#snapshot(collection)
+    const { tree, services } = await this.#snapshot(collection, { recheck: true })
 
     const existing = findTreeEntry(tree, path)
     if (existing !== undefined) {
@@ -179,7 +185,6 @@ export class EntriesClient implements EntriesAPI {
       return { status: "conflict", current, local: value }
     }
     if (verdict.kind === "published") {
-      this.#cache.dropEntry(path)
       const source = this.#sourceFor(descriptor, path, slug, slug, {
         path,
         sha: blobSha,
@@ -187,7 +192,6 @@ export class EntriesClient implements EntriesAPI {
         type: "blob",
       })
       const saved = await this.#readFresh(source, composed.raw, blobSha)
-      this.#cache.putEntry(saved)
       return { status: "saved", commitSha: verdict.commitSha, entry: saved }
     }
     if (verdict.kind === "noop") {
@@ -208,7 +212,7 @@ export class EntriesClient implements EntriesAPI {
     let retried = false
 
     while (true) {
-      const { tree, services } = await this.#snapshot(entry.collection)
+      const { tree, services } = await this.#snapshot(entry.collection, { recheck: true })
       const current = findTreeEntry(tree, base.path)
       if (current === undefined) {
         throw new CMSError("CONFLICT", `"${base.path}" was deleted by someone else`)
@@ -243,14 +247,12 @@ export class EntriesClient implements EntriesAPI {
       )
 
       if (verdict.kind === "published") {
-        this.#cache.dropEntry(base.path)
         const raw = verdict.reconciliation?.reconciledRaw ?? composed.raw
         const sha =
           verdict.reconciliation === undefined
             ? blobSha
             : await gitBlobSha(encodeUtf8(verdict.reconciliation.reconciledRaw))
         const saved = await this.#readFresh({ ...source, blobSha: sha }, raw, sha)
-        this.#cache.putEntry(saved)
         return { status: "saved", commitSha: verdict.commitSha, entry: saved }
       }
 
@@ -261,7 +263,6 @@ export class EntriesClient implements EntriesAPI {
             ? blobSha
             : await gitBlobSha(encodeUtf8(verdict.reconciliation.reconciledRaw))
         const saved = await this.#readFresh({ ...source, blobSha: sha }, raw, sha)
-        this.#cache.putEntry(saved)
         return { status: "noop", entry: saved }
       }
 
@@ -270,7 +271,7 @@ export class EntriesClient implements EntriesAPI {
         // the fresh base; a change to OUR file is a real conflict.
         if (!retried && !verdict.details.changed.has(base.path)) {
           retried = true
-          const freshTree = await this.#repo.tree()
+          const freshTree = await this.#repo.tree({ recheck: true })
           const freshEntry = findTreeEntry(freshTree, base.path)
           if (freshEntry === undefined) {
             throw new CMSError("CONFLICT", `"${base.path}" was deleted by someone else`)
@@ -297,7 +298,7 @@ export class EntriesClient implements EntriesAPI {
       throw new CMSError("UNSUPPORTED", `collection "${entry.collection}" does not allow deletes`)
     }
 
-    const tree = await this.#repo.tree()
+    const tree = await this.#repo.tree({ recheck: true })
     const current = findTreeEntry(tree, entry.path)
     if (current === undefined) return { status: "noop" }
     if (current.sha !== entry.sha) {
@@ -339,10 +340,12 @@ export class EntriesClient implements EntriesAPI {
    * Internal to the client (media delete/restore); not part of `EntriesAPI`.
    */
   async searchable(): Promise<readonly SearchableEntry[]> {
-    const tree = await this.#repo.tree()
+    const tree = await this.#repo.tree({ recheck: true })
     const services = this.#services(tree)
-    const entries = await Promise.all(
-      collectSources(this.#config, tree).map((source) => this.#read(source, services)),
+    const entries = await mapConcurrent(
+      collectSources(this.#config, tree),
+      this.#readConcurrency,
+      (source) => this.#read(source, services),
     )
     return entries.map((entry) => ({
       collection: entry.collection,
@@ -378,13 +381,16 @@ export class EntriesClient implements EntriesAPI {
 
   // ---- reads -------------------------------------------------------------
 
-  async #snapshot(collection: string): Promise<{
+  async #snapshot(
+    collection: string,
+    options: { recheck?: boolean } = {},
+  ): Promise<{
     readonly tree: TreeRead
     readonly sources: readonly EntrySource[]
     readonly services: RelationServices
   }> {
     this.#collectionFor(collection)
-    const tree = await this.#repo.tree()
+    const tree = await this.#repo.tree({ recheck: options.recheck === true })
     const sources = collectSources(this.#config, tree).filter(
       (source) => source.collectionName === collection,
     )
@@ -420,19 +426,40 @@ export class EntriesClient implements EntriesAPI {
   }
 
   async #read(source: EntrySource, services: RelationServices): Promise<Entry> {
+    const cached = this.#cache.getEntry(source.path, source.blobSha)
+    if (cached !== undefined) return this.#revalidate(cached, services)
+
     let bytes: Uint8Array
     try {
       bytes = await this.#repo.readFile(source.path, source.blobSha)
     } catch (error) {
       throw toCMSError(error)
     }
-    return this.#build(source, decodeUtf8(bytes), source.blobSha, services)
+    const built = await this.#build(source, decodeUtf8(bytes), source.blobSha, services)
+    this.#cache.putEntry(built)
+    return built.entry
+  }
+
+  /**
+   * Relation issues depend on every other entry, so a cache hit recomputes
+   * them (cheap: no bytes, no parse) while keeping the parsed value.
+   */
+  async #revalidate(cached: CachedEntry, services: RelationServices): Promise<Entry> {
+    const relationIssues = await collectRelationIssues({
+      fields: cached.entry.fields,
+      value: cached.entry.value,
+      services,
+    })
+    if (relationIssues.length === 0) return cached.entry
+    return { ...cached.entry, issues: mergeIssues(cached.localIssues, relationIssues) }
   }
 
   /** Reads bytes that were just written (no tree lookup, no stale sha). */
   async #readFresh(source: EntrySource, rawText: string, sha: string): Promise<Entry> {
     const tree = await this.#repo.tree()
-    return this.#build(source, rawText, sha, this.#services(tree))
+    const built = await this.#build(source, rawText, sha, this.#services(tree))
+    this.#cache.putEntry(built)
+    return built.entry
   }
 
   async #currentEntry(
@@ -458,7 +485,7 @@ export class EntriesClient implements EntriesAPI {
     rawText: string,
     sha: string,
     services: RelationServices,
-  ): Promise<Entry> {
+  ): Promise<CachedEntry> {
     const parsed = parseUntrustedJson(rawText)
     let raw: Record<string, unknown> = {}
     const preIssues: ParseIssue[] = []
@@ -488,16 +515,17 @@ export class EntriesClient implements EntriesAPI {
       media: source.media,
     })
 
-    let issues: readonly ParseIssue[] = [...preIssues, ...parsedEntry.issues]
+    // One parse, two issue layers: local issues are cacheable with the bytes,
+    // relation issues are recomputed against whatever tree the caller holds.
+    const localIssues: readonly ParseIssue[] = [...preIssues, ...parsedEntry.issues]
+    let issues = localIssues
     if (preIssues.length === 0) {
-      const validation = await validateEntryForSave({
+      const relationIssues = await collectRelationIssues({
         fields: source.fields,
-        raw,
-        filePath: source.path,
-        media: source.media,
+        value: parsedEntry.value,
         services,
       })
-      if (!validation.ok) issues = mergeIssues(issues, validation.issues)
+      if (relationIssues.length > 0) issues = mergeIssues(localIssues, relationIssues)
     }
 
     const titleValue =
@@ -506,17 +534,20 @@ export class EntriesClient implements EntriesAPI {
       typeof titleValue === "string" && titleValue.length > 0 ? titleValue : source.fallbackTitle
 
     return {
-      collection: source.collectionName,
-      slug: source.slug,
-      path: source.path,
-      sha,
-      title,
-      value: parsedEntry.value,
-      issues,
-      raw: rawText,
-      untouched: parsedEntry.untouched,
-      fields: source.fields,
-      media: source.media,
+      localIssues,
+      entry: {
+        collection: source.collectionName,
+        slug: source.slug,
+        path: source.path,
+        sha,
+        title,
+        value: parsedEntry.value,
+        issues,
+        raw: rawText,
+        untouched: parsedEntry.untouched,
+        fields: source.fields,
+        media: source.media,
+      },
     }
   }
 

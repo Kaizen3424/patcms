@@ -44,6 +44,9 @@ Contents API commits one file at a time and would produce partial publishes.
 
 - File bodies and previews come from the **git blob API**. `raw.githubusercontent.com` is banned: it
   would leave the token-scoped API surface and violate the origin allowlist.
+- The high-level client addresses bodies by blob sha and caches them (LRU-bounded); the save path
+  never trusts that cache. Reads may reuse a head confirmed within `readReuseMs` (30 s default);
+  writes re-check the ref and re-bind their tree before judging a conflict.
 - Conditional reads use ETags, and a `304` is a valid result. But **challenge reads in the save path
   never send conditional headers** — a cached answer must not decide a conflict.
 - Recursive tree reads can truncate. Callers must detect it and fall back to sub-tree reads; a

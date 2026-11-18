@@ -36,6 +36,17 @@ export interface CreateCMSOptions {
   readonly drafts?: DraftStore
   /** Custom transport (tests, proxies). Defaults to `globalThis.fetch`. */
   readonly fetch?: FetchLike
+  /**
+   * How long a read may reuse the last head it confirmed, in milliseconds.
+   * Defaults to 30 s; `0` re-checks the head on every call. Writes always
+   * re-check, so this only delays *foreign* changes on screen.
+   */
+  readonly readReuseMs?: number
+  /** Parallel entry reads per listing. Defaults to 5 (GitHub burst posture). */
+  readonly readConcurrency?: number
+  /** Soft caps for the in-memory blob cache. */
+  readonly maxBlobBytes?: number
+  readonly maxBlobEntries?: number
   /** Called after a 401 write wiped the session. */
   readonly onAuthExpired?: () => void
 }
@@ -44,7 +55,10 @@ export function createCMS(options: CreateCMSOptions): CMS {
   const config = isAdminConfig(options.config) ? options.config : toAdminConfig(options.config)
   const repository = options.repository
   const fetch = resolveFetch(options.fetch)
-  const cache = new ClientCache()
+  const cache = new ClientCache({
+    ...(options.maxBlobBytes === undefined ? {} : { maxBlobBytes: options.maxBlobBytes }),
+    ...(options.maxBlobEntries === undefined ? {} : { maxBlobEntries: options.maxBlobEntries }),
+  })
   const bus = new EventBus<CMSEventMap>()
 
   const auth = new AuthController({
@@ -72,8 +86,16 @@ export function createCMS(options: CreateCMSOptions): CMS {
     options.onAuthExpired?.()
   }
 
-  const repo = new RepoReader(backend, repository.branch, cache, requireToken)
-  const entriesClient = new EntriesClient({ config, repo, cache, onAuthExpired })
+  const repo = new RepoReader(backend, repository.branch, cache, requireToken, {
+    ...(options.readReuseMs === undefined ? {} : { readReuseMs: options.readReuseMs }),
+  })
+  const entriesClient = new EntriesClient({
+    config,
+    repo,
+    cache,
+    ...(options.readConcurrency === undefined ? {} : { readConcurrency: options.readConcurrency }),
+    onAuthExpired,
+  })
   const mediaClient = new MediaClient({
     config,
     repo,
@@ -101,8 +123,9 @@ export function createCMS(options: CreateCMSOptions): CMS {
       on: (event, handler) => bus.on(event, handler),
     },
     async refresh(): Promise<void> {
-      cache.clear()
-      if (auth.isSignedIn) await repo.tree()
+      // Re-check the head now; unchanged entries and blobs stay cached.
+      if (!auth.isSignedIn) return
+      await repo.tree({ recheck: true })
     },
     clearCache(): void {
       cache.clear()

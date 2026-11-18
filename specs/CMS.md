@@ -7,8 +7,8 @@ belongs in a deep-dive, not here.
 > **One spec layer, one plan.** This `specs/` tree is the durable description of how the shipped code
 > behaves. Each deep-dive ends with the decisions and testable claims for its own subsystem, so the
 > `ADR-xxxx` and `INV-xxxx` identifiers cited throughout the source resolve here (§8). Work that is
-> still in flight lives in `plans/`; there is exactly one active plan at a time. Code beats every
-> document; when they disagree, fix the document in the same change (see `AGENTS.md`).
+> still in flight lives in `plans/` when a plan is active; never more than one at a time. Code beats
+> every document; when they disagree, fix the document in the same change (see `AGENTS.md`).
 
 ---
 
@@ -135,8 +135,11 @@ statuses, rate limit, and repo/branch-protection reads.
   (`packages/core/src/config/types.ts`), validated by a strict closed schema
   (`packages/core/src/config/schema.ts`). Zod schemas stay host-side; consumers receive
   descriptors only.
-- **Derived read model.** `entries.list()` builds from ONE tree snapshot per load
-  (`packages/core/src/client/repo.ts`, `cache.ts`) — no database, no second cache.
+- **Derived read model.** `entries.list()` builds from ONE tree snapshot per head
+  (`packages/core/src/client/repo.ts`, `cache.ts`) — no database, no second cache. Reads may reuse
+  a head confirmed within `readReuseMs` (default 30 s, `0` disables) and cache bodies by blob sha
+  (LRU-bounded); `refresh()` re-checks only the ref. Every write path forces a fresh head before it
+  decides anything, so the window can delay a foreign change on screen but never hide it from a save.
 
 | Collection kind | Entry identity | Content |
 |---|---|---|
@@ -234,7 +237,8 @@ exactly once, in the deep-dive that owns that subsystem:
 | ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
 | ADR-0007 · INV-M01–M03 · INV-T04 | `media-architecture.md` |
 | INV-N05 | `test-harness-architecture.md` |
-| ADR-0010 · INV-C01–C04 | `plans/headless-sdk.md` |
+| ADR-0010 | `README.md` § Releases · `.github/workflows/release.yml` |
+| INV-C01 | `playground/src/config/__tests__/inv-c01-parity.test.ts` |
 
 An id missing from this table means the spec is wrong: add the definition to the owning deep-dive and
 index it here in the same change.
@@ -283,5 +287,6 @@ Never commit a token. `.gitignore` keeps `.env*` out.
 | `media-architecture.md` | uploads, previews, references, trash/restore, budgets |
 | `test-harness-architecture.md` | playground, fixtures, test doubles, CI guard scripts |
 
-The current delivery plan is `plans/headless-sdk.md`. It owns release policy (ADR-0010) and the
-yve cutover checklist (INV-C01–C04), which are not claims about code inside `packages/`.
+There is no active delivery plan at the moment (`plans/` was dropped after 0.1.0). Release policy
+(ADR-0010) is enforced by `.github/workflows/release.yml` and `scripts/ci-workflow-guard.mjs`;
+INV-C01 is the parity test indexed in §8, and INV-C02–C04 retired with the plan.

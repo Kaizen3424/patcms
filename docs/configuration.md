@@ -31,7 +31,7 @@ import { defineConfig } from "patcms"
 
 export const config = defineConfig({
   site: { name: "Travel Blog", url: "https://example.com" },
-  deploy: { contexts: ["Cloudflare Pages"] },
+  deploy: { contexts: ["Cloudflare Pages"], propagationMs: 30_000 },
   media: { folder: "public/images", publicFolder: "/images" },
   collections: [
     /* collections, files collections, and dividers */
@@ -42,7 +42,7 @@ export const config = defineConfig({
 | Option | Type | Notes |
 |---|---|---|
 | `site` | `{ name?, url? }` | Cosmetic; surfaced to your UI via `cms.config.site` |
-| `deploy` | `{ contexts? }` | Commit-status fallback for deploy status. Absent/empty = statuses are ignored, check-runs only (see [deploy-status.md](./deploy-status.md)) |
+| `deploy` | `{ contexts?, propagationMs? }` | `contexts`: commit-status fallback for deploy status (absent/empty = check-runs only). `propagationMs`: expected commit → live delay for the "may take a moment" notice (default `DEFAULT_DEPLOY_PROPAGATION_MS` = 30 000) |
 | `media` | `{ folder, publicFolder }` | The **root** media mapping: repo folder ⇄ public URL path |
 | `collections` | array | `defineCollection()`, `defineFiles()`, and `collectionDivider()` results |
 

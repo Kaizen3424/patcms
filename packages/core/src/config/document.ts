@@ -385,7 +385,14 @@ function validateViewGroup(
 }
 
 function validateDeploy(deploy: DeployConfig): DeployConfig {
-  if (deploy.contexts === undefined) return {}
+  if (deploy.propagationMs !== undefined) {
+    if (!Number.isInteger(deploy.propagationMs) || deploy.propagationMs < 0) {
+      throw new Error("deploy.propagationMs must be a non-negative integer (milliseconds)")
+    }
+  }
+  if (deploy.contexts === undefined) {
+    return deploy.propagationMs === undefined ? {} : { propagationMs: deploy.propagationMs }
+  }
   const seen = new Set<string>()
   for (const context of deploy.contexts) {
     if (context.trim().length === 0) {
@@ -394,7 +401,10 @@ function validateDeploy(deploy: DeployConfig): DeployConfig {
     if (seen.has(context)) throw new Error(`deploy.contexts: duplicate context ${context}`)
     seen.add(context)
   }
-  return { contexts: [...deploy.contexts] }
+  return {
+    contexts: [...deploy.contexts],
+    ...(deploy.propagationMs === undefined ? {} : { propagationMs: deploy.propagationMs }),
+  }
 }
 
 function validateMedia(media: MediaFolders, context: string): MediaFolders {
