@@ -30,6 +30,16 @@ function quote(part) {
   return /[\s"]/.test(part) ? `"${part.replaceAll('"', '\\"')}"` : part
 }
 
+/**
+ * @param {string} cmd @param {string[]} args
+ * @returns {import("node:child_process").SpawnSyncReturns<string>}
+ */
+function capture(cmd, args) {
+  return process.platform === "win32"
+    ? spawnSync([cmd, ...args].map(quote).join(" "), { encoding: "utf8", shell: true })
+    : spawnSync(cmd, args, { encoding: "utf8" })
+}
+
 /** @param {string} cmd @param {string[]} args */
 function run(cmd, args) {
   // On Windows both pnpm and npm are .cmd shims, so they need a shell.
@@ -47,30 +57,47 @@ function fail(message) {
   process.exit(1)
 }
 
+const { name, version } = JSON.parse(readFileSync(MANIFEST, "utf8"))
+
+// Every push to main runs this step. Publish only a version the registry does
+// not have yet, and write no summary when there is nothing to release — the
+// tag step treats a missing summary as "this run made no release".
+const known = capture("npm", ["view", `${name}@${version}`, "version"])
+const alreadyPublished = known.status === 0 && known.stdout.trim().length > 0
+if (!dryRun && alreadyPublished) {
+  console.log(`[publish] ${name}@${version} is already on the registry — nothing to do`)
+  process.exit(0)
+}
+
 const out = mkdtempSync(join(tmpdir(), "patcms-publish-"))
 try {
   run("pnpm", ["--filter", PACKAGE, "pack", "--pack-destination", out])
-  const tarball = readdirSync(out).find((name) => name.endsWith(".tgz"))
+  const tarball = readdirSync(out).find((entry) => entry.endsWith(".tgz"))
   if (tarball === undefined) fail("pnpm pack produced no tarball")
 
-  const args = [
-    "publish",
-    join(out, tarball),
-    "--access",
-    "public",
-    ...(dryRun ? ["--dry-run"] : []),
-  ]
-  run("npm", args)
-
-  const { version } = JSON.parse(readFileSync(MANIFEST, "utf8"))
-  if (dryRun) {
-    console.log(`[publish] dry run OK — ${PACKAGE}@${version} was not published`)
+  if (dryRun && alreadyPublished) {
+    // npm refuses to dry-run over a published version; the pack above is the
+    // part worth exercising locally.
+    console.log(`[publish] dry run OK — ${name}@${version} is already published; tarball packed`)
   } else {
-    writeFileSync(
-      SUMMARY,
-      `${JSON.stringify({ publishedPackages: [{ name: PACKAGE, version }] }, null, 2)}\n`,
-    )
-    console.log(`[publish] published ${PACKAGE}@${version}`)
+    const args = [
+      "publish",
+      join(out, tarball),
+      "--access",
+      "public",
+      ...(dryRun ? ["--dry-run"] : []),
+    ]
+    run("npm", args)
+
+    if (dryRun) {
+      console.log(`[publish] dry run OK — ${name}@${version} was not published`)
+    } else {
+      writeFileSync(
+        SUMMARY,
+        `${JSON.stringify({ publishedPackages: [{ name, version }] }, null, 2)}\n`,
+      )
+      console.log(`[publish] published ${name}@${version}`)
+    }
   }
 } finally {
   rmSync(out, { recursive: true, force: true })
