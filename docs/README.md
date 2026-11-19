@@ -5,7 +5,7 @@ repository; the client talks directly to `api.github.com` with a fine-grained pe
 token. No database, no server, no bundled UI — `createCMS()` is the backend, you build the admin.
 
 This folder is the usage documentation. The architecture and its invariants live in `specs/`
-(start at `specs/CMS.md`); a complete working admin that exercises every feature lives in
+(start at `specs/README.md`); a complete working admin that exercises every feature lives in
 `playground/src/panel/` and is the reference implementation.
 
 ## Start here

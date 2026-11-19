@@ -171,4 +171,4 @@ warn at roughly 800 MB or 2 500 files; the 90 MiB single-upload cap is enforced 
 ## Where to next
 
 - [building-an-admin.md](./building-an-admin.md) — the media screen and image widget in the panel
-- `specs/media-architecture.md` — why the bijection and the trash ladder are shaped this way
+- `specs/media.md` — why the bijection and the trash ladder are shaped this way

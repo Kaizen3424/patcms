@@ -1,6 +1,6 @@
 # Test harness
 
-> Parent: [`specs/CMS.md`](CMS.md)
+> Parent: [`specs/README.md`](README.md)
 
 The harness is not a mock layer bolted on for tests — it is the reference implementation of the
 backend contract. That inverts the usual rule: when a test and the fake disagree, the fake is usually
@@ -10,11 +10,14 @@ right.
 
 `FakeGithubServer` (`packages/core/src/__tests__/support/fake-github-server.ts`) implements the same
 `GitBackend` semantics as the real transport: refs, trees, blobs, commits, FF-only CAS, request log.
-It passes `CORE_CONTRACT_SUITE`, exactly like `GithubBackend`.
+It passes `CORE_CONTRACT_SUITE`, exactly like `GithubBackend` — machine-enforced by the harness
+driver in `backend/__tests__/contract-suite.test.ts`.
 
 The whole cluster is **test-only**: it lives under `src/__tests__/support/`, and no public entry
 (`patcms`, `patcms/advanced`, `patcms/web`) may re-export it. `scripts/check-tarball.mjs` and the
-repo-bans scan both guard this.
+repo-bans scan both guard this. The playground reaches the reference model through a workspace-only
+`patcms/test-support` export in `packages/core/package.json`; `publishConfig.exports` omits that
+subpath, so the published tarball still exposes only the three entries.
 
 | Layer | File | Responsibility |
 |---|---|---|
@@ -23,7 +26,7 @@ repo-bans scan both guard this.
 | Fixture backend | `packages/core/src/__tests__/support/reference-fixture-backend.ts` | Zero-network `GitBackend` over fixture trees (contract-suite exemplar) |
 | Contract suite | `packages/core/src/__tests__/support/contract-suite.ts` | The admission gate every backend must pass |
 | HTTP transport | `playground/src/fake-github/handlers.ts` | MSW routes, ETag/304, auth and rate guards |
-| Playground fake | `playground/src/fake-github/server.ts` | Dev-only copy of the reference model (the published package ships no fake) |
+| Playground fake | `playground/src/fake-github/server.ts` | Dev-only re-export of the reference model via the workspace-only `patcms/test-support` subpath — no hand-synced copy, and the published package still ships no fake |
 | Fixture store | `playground/src/fake-github/fixture-repo.ts` | In-memory repo built from the fixture mirror |
 | Chaos seams | `playground/src/fake-github/handlers.ts` | Truncated trees, token expiry, blob failure, rate limits |
 
@@ -88,6 +91,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 | You want | Command |
 |---|---|
 | Explore the panel against the fake repo | `pnpm -C playground dev` |
+| Explore the panel against a REAL repo | `PATCMS_ALLOW_REAL_GITHUB=1 pnpm -C playground dev` + `?owner=…&repo=…&branch=…` (a red banner confirms the live target) |
 | Run one unit file | `pnpm --filter patcms test -- <file>` |
 | Verify fixture bytes | `pnpm fixtures:check` |
 | Verify the published tarball | `pnpm run pack:check` |
@@ -97,7 +101,8 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 | Trap | Why it bites |
 |---|---|
 | Asserting on IndexedDB or network after a reload | The fake repo rebuilds from fixtures and no page global survives — assert through the server object in unit tests |
-| Adding git behaviour to an MSW handler | The contract suite stops covering it; semantics belong in `FakeGithubServer` |
+| Adding git behaviour to a handler instead of the reference model | The contract suite stops covering it; semantics belong in `FakeGithubServer` |
+| Editing `playground/src/fake-github/server.ts` as if it were a copy | It is a re-export; the model lives in core test-support |
 | Assuming the harness exists in production | It is installed only by the playground build |
 | Editing fixture bytes by hand | `fixtures:check` fails on the manifest; regenerate instead |
 | Importing a test double from a public entry | `advanced.ts` must never re-export `src/__tests__/support/*`; the bans scan and `pack:check` fail the build |
@@ -116,7 +121,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 
 The harness owns claims about the *shipped artifact* rather than about a subsystem. The contract
 suite that makes `FakeGithubServer` the reference model is ADR-0001, defined in
-`backend-and-auth-architecture.md`; this file only explains how it is driven.
+`backend-and-auth.md`; this file only explains how it is driven.
 
 | ID | Claim | Enforcing test |
 |---|---|---|

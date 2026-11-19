@@ -1,6 +1,6 @@
 # Publish and recovery
 
-> Parent: [`specs/CMS.md`](../CMS.md)
+> Parent: [`specs/README.md`](README.md)
 
 The save path is the part of this repo you cannot infer from a quick read. It is deliberately
 over-built because its failure modes — lost work, double commits, silent overwrites — are the
@@ -165,11 +165,11 @@ Two sources, strict precedence:
 | INV-P13 | The cross-tab lease is TTL plus heartbeat with a storage-event fallback, and its payload never carries content or credentials | `packages/core/src/pipeline/__tests__/inv-save-lease.test.ts` |
 | INV-P17 | After an auto-merge the next save diffs against the reconciled tree, so it cannot revert a partner's disjoint edits | `packages/core/src/pipeline/__tests__/save-controller.test.ts` |
 | INV-P18 | A restore lands the historical blob sha as a new commit, returns `noop`/`conflict`/`VALIDATION` without writing when the rules say so, and never forces the ref | `packages/core/src/client/__tests__/history.test.ts` |
+| INV-D01 | Check-runs are primary, statuses only through `contexts[]`, and only an all-success sha is Live; an absent result inside the 120 s grace is unavailable, never failed | `packages/core/src/status/__tests__/inv-status-truth.test.ts` |
+| INV-D02 | Generated and editable commit messages reject the four skip tokens before any network call | `packages/core/src/pipeline/__tests__/inv-skip-token.test.ts` |
+| INV-D03 | Head advancement annotates "superseded by {sha}" and stops the watcher; a late run never repaints newer state | `packages/core/src/status/__tests__/inv-supersede.test.ts` |
 
 > INV-P15 and INV-P16 were retired with `packages/admin` (P2 parity, 2026-11-01): the save sweep and
 > the freeze model were reference-admin UX, not SDK behaviour. The surviving contract — conflicts are
 > values the host resolves, and a resolved save publishes exactly the chosen bytes — is owned by
 > ADR-0004 and the client tests.
-| INV-D01 | Check-runs are primary, statuses only through `contexts[]`, and only an all-success sha is Live; an absent result inside the 120 s grace is unavailable, never failed | `packages/core/src/status/__tests__/inv-status-truth.test.ts` |
-| INV-D02 | Generated and editable commit messages reject the four skip tokens before any network call | `packages/core/src/pipeline/__tests__/inv-skip-token.test.ts` |
-| INV-D03 | Head advancement annotates "superseded by {sha}" and stops the watcher; a late run never repaints newer state | `packages/core/src/status/__tests__/inv-supersede.test.ts` |

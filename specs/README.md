@@ -1,16 +1,31 @@
 # patcms
 
-**Start here.** One pass over this file is enough to work anywhere in the repo. Then open the single
-deep-dive for the area you are touching (§11). If something needs more than a screen to explain, it
+**Start here.** This folder is the durable description of how the shipped code behaves: one anchor
+for orientation, one deep-dive per subsystem. Read the map below first, then open the single
+deep-dive for the area you are touching. If something needs more than a screen to explain, it
 belongs in a deep-dive, not here.
 
-> **One spec layer, one plan.** This `specs/` tree is the durable description of how the shipped code
-> behaves. Each deep-dive ends with the decisions and testable claims for its own subsystem, so the
-> `ADR-xxxx` and `INV-xxxx` identifiers cited throughout the source resolve here (§8). Work that is
-> still in flight lives in `plans/` when a plan is active; never more than one at a time. Code beats
-> every document; when they disagree, fix the document in the same change (see `AGENTS.md`).
+> **One spec layer, one plan.** Each deep-dive ends with the decisions and testable claims for its
+> own subsystem, so the `ADR-xxxx` and `INV-xxxx` identifiers cited throughout the source resolve
+> here (§8). Work that is still in flight lives in `plans/` when a plan is active; never more than
+> one at a time. Code beats every document; when they disagree, fix the document in the same change
+> (see `AGENTS.md`).
 
 ---
+
+## Where to look
+
+| File | Read it when you touch |
+|---|---|
+| [`content-model.md`](content-model.md) | config, fields, parsing, serialisation, editor widgets |
+| [`saving-content.md`](saving-content.md) | saves, history and restore, conflicts, drafts, boot recovery, leases, deploy status |
+| [`backend-and-auth.md`](backend-and-auth.md) | the transport, auth/token lifecycle, rate limits, or a new backend |
+| [`media.md`](media.md) | uploads, previews, references, trash/restore, budgets |
+| [`testing.md`](testing.md) | playground, fixtures, test doubles, CI guard scripts |
+| [`npm-release.md`](npm-release.md) | npm publishing, the trusted publisher, version PRs, tags and GitHub Releases |
+
+Deep-dives end with their subsystem's "Decisions and claims" — the owning tables for every
+`ADR-xxxx` and `INV-xxxx` (indexed in §8). Release work starts at `npm-release.md`.
 
 ## 1. What this is
 
@@ -52,7 +67,7 @@ Consequences worth internalising:
 | Build | `tsup` (core JS) + `tsc -b` (core d.ts → `dist-types`; `tsup` has `dts: false` — packing without a typecheck ships types pointing at nothing), `vite` (playground) |
 | Tests | Vitest, plus `fast-check` property tests in core |
 | Lint / format | Biome with `--error-on-warnings` |
-| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes — runbook in `workflows/release.md` |
+| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes — runbook in `npm-release.md` |
 | CI actions | SHA-pinned, job-level `contents: read`, no `pull_request_target`; the release job alone may hold `contents: write` + `id-token: write` (enforced by `scripts/ci-workflow-guard.mjs`) |
 
 | Purpose | Command |
@@ -99,11 +114,10 @@ The published package has three entries, split by runtime safety:
 | `packages/core/src/auth` | `PatProvider`, probe vocabulary, token-store seam |
 | `packages/core/src/safety` | Untrusted JSON, path safety, slug derive/slugify, masked logger, encoding |
 | `packages/core/src/web` | `patcms/web` — IDB draft store, shared IDB opener, token stores |
-| `packages/core/src/__tests__/support` | Test-only doubles: `FakeGithubServer`, fetch harness, fixture backend, contract suite, lease carriers |
+| `packages/core/src/__tests__/support` | Test-only doubles: `FakeGithubServer`, fetch harness, fixture backend, contract suite, lease carriers (workspace-only `patcms/test-support` subpath; stripped at publish time) |
 | `playground` | MSW FakeGithub harness, fixture repo, yve config, and `src/panel` — the example panel |
 | `scripts` | CI guard, tarball check, audit filter, fixture sync |
-| `specs` | This orientation layer: the anchor plus five subsystem deep-dives |
-| `plans` | The single active delivery plan (`headless-sdk.md`) |
+| `specs` | This orientation layer: the anchor plus six subsystem deep-dives — see the map at the top |
 
 **Node-safety rule:** `patcms` and `patcms/advanced` must not touch `window`, `document`, `Worker`,
 or IndexedDB. Browser code lives in `patcms/web` and is imported only by hosts.
@@ -145,54 +159,24 @@ statuses, rate limit, and repo/branch-protection reads.
   Every write path forces a fresh head before it decides anything, so the window can delay a foreign
   change on screen but never hide it from a save.
 
-| Collection kind | Entry identity | Content |
-|---|---|---|
-| `folder` | slug derived from the filename | one JSON file per entry under `folder` |
-| `files` | `files[].name` | named single documents |
-| `divider` | none | nothing — a navigation separator |
-
-| Field type | Value | Notes |
-|---|---|---|
-| `string` | string | optional `format: email/url`, length/pattern constraints |
-| `text` | string | long form |
-| `number` | number | min/max/step |
-| `boolean` | boolean | |
-| `select` | string or string[] | single or multi |
-| `datetime` | ISO string | |
-| `list` | array | item schema plus min/max |
-| `object` | object | nested field set |
-| `image` | public path string | validated against the media bijection |
-| `relation` | slug or slugs | checked against the entry index |
-| `hidden` | unknown | preserved, never shown |
-| `slug` | string | **virtual** — derived from the filename, never persisted |
-| `divider` | — | decoration declaration only, not a value |
-
-- **Round-trip law.** Untouched documents return their original bytes; `serialize(parse(raw)) === raw`
-  is enforced. Unmodeled keys survive saves as `untouched` JSON-pointer values.
-- **Defaults are metadata.** `parseEntry` never injects a default; only new-entry folding
-  (`foldFieldDefaults`, `createBlankEntryValue`) materialises them. A required list — or a list that
-  already has items — is padded to its `min`; an optional list with no value stays absent.
-
-> Field types appear in `fields/types.ts` (`FieldTypeName`), `fields/factories.ts`, the config schema,
-> the widget registry, and this table. **Change all five together.**
+Collections come in three kinds — `folder` (one JSON file per entry under `folder`), `files` (named
+single documents), and `divider` (a navigation separator, no data) — and fields come in twelve
+value types plus one decoration. **The full field table, the collection table, the parse/save split,
+and the untouched-preservation rules live in [`content-model.md`](content-model.md)** — the single
+source of truth for all of them.
 
 ## 6. Auth contract
 
-| Property | Value |
-|---|---|
-| Credential | One GitHub **fine-grained PAT** |
-| Scopes | `Contents: read+write`, `Checks: read`, optional `Administration: read` |
-| Lifetime in memory | From a successful capability probe until sign-out or an auth failure |
-| Persistence | Opt-in via `tokenStore`; `patcms/web` ships IndexedDB (`patcms` / `auth`) and sessionStorage stores; default is memory-only |
-| Transport | `Authorization` header only — never a URL, log line, or UI state |
-| Roles | None. GitHub repo/branch permission *is* the authorization model |
+One GitHub **fine-grained PAT** is the only credential — no roles, no accounts; GitHub repo/branch
+permission *is* the authorization model. The token travels in the `Authorization` header only,
+lives in memory by default, and is persisted only behind an explicit "remember" opt-in via
+`tokenStore` (`patcms/web` ships IndexedDB and sessionStorage stores). **The full lifecycle — probe,
+bootstrap, wipe-on-failure, expiry mid-work, token storage — lives in
+[`backend-and-auth.md`](backend-and-auth.md).**
 
 - `createCMS({ token })` seeds the client offline; no network call happens until an entry or media
-  operation runs. `auth.signIn(token)` runs `probeGithubCapabilities`
-  (`packages/core/src/backend/github/probe.ts`) first — rate limit, repo read, branch-protection
-  admin, check-runs read (advisory) — and throws `CMSError` when the token cannot write.
-- Bootstrap restores the token, re-probes, and **wipes it on failure** before the host shows a login
-  surface (`PatProvider`, `packages/core/src/auth/pat-provider.ts`).
+  operation runs. `auth.signIn(token)` runs the capability probe first and throws `CMSError` when
+  the token cannot write.
 - An auth failure mid-work marks the session expired (`AuthController.markExpired`) and fires
   `onAuthExpired`; the next save fails with `AUTH_REQUIRED` until the host re-signs-in.
 
@@ -204,10 +188,10 @@ statuses, rate limit, and repo/branch-protection reads.
    `entries.save(entry, value)` → fresh ref/tree → one commit → ref update → confirm the ref carries
    the commit → draft deleted. A batch (`entries.saveMany` / `createMany` / `deleteMany`) is the same
    transaction for N files: one fresh tree, every base sha checked, and **any** stale row writes
-   nothing and returns conflicts as values. See `workflows/publish-and-recovery.md`.
+   nothing and returns conflicts as values. See `saving-content.md`.
    `entries.history` / `atRevision` / `restore` read that same commit log: a restore re-commits an
    old file's **exact bytes** (never a force, never a rewrite) and binds to `entry.sha` exactly like
-   a save. See `workflows/publish-and-recovery.md`.
+   a save. See `saving-content.md`.
 3. **Conflict.** Someone pushed first → CAS fails → the client re-reads fresh head and returns
    `{ status: "conflict", current, local }` as a **value**. The host decides what to show; there is
    no default merge. `rebase()` in `patcms/advanced` is available for hosts that want field-level
@@ -241,12 +225,12 @@ exactly once, in the deep-dive that owns that subsystem:
 
 | IDs | Defined in |
 |---|---|
-| ADR-0003 · ADR-0006 · ADR-0009 · INV-S01–S06 · INV-T01–T03 | `content-model-architecture.md` |
-| ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-N06 · INV-P01–P03 · INV-P06 · INV-P14 | `backend-and-auth-architecture.md` |
-| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17–P18 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
-| ADR-0007 · INV-M01–M03 · INV-T04 | `media-architecture.md` |
-| INV-N05 | `test-harness-architecture.md` |
-| ADR-0010 | `workflows/release.md` |
+| ADR-0003 · ADR-0006 · ADR-0009 · INV-S01–S06 · INV-T01–T03 | [`content-model.md`](content-model.md) |
+| ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-N06 · INV-P01–P03 · INV-P06 · INV-P14 | [`backend-and-auth.md`](backend-and-auth.md) |
+| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17–P18 · INV-D01–D03 | [`saving-content.md`](saving-content.md) |
+| ADR-0007 · INV-M01–M03 · INV-T04 | [`media.md`](media.md) |
+| INV-N05 | [`testing.md`](testing.md) |
+| ADR-0010 | [`npm-release.md`](npm-release.md) |
 | INV-C01 | `playground/src/config/__tests__/inv-c01-parity.test.ts` |
 
 An id missing from this table means the spec is wrong: add the definition to the owning deep-dive and
@@ -259,7 +243,7 @@ configuration is passed to `createCMS()` / `mountPanel` (`playground/src/panel`)
 
 | Name | Used by | Meaning |
 |---|---|---|
-| `PATCMS_ALLOW_REAL_GITHUB` | `playground/src/fake-github/env-guard.ts` | Must be exactly `"1"` to aim the harness at a real repo; anything else refuses |
+| `PATCMS_ALLOW_REAL_GITHUB` | `playground/src/main.ts` (via `fake-github/env-guard.ts`) | Must be exactly `"1"` to aim the playground at a real repo (`?owner=…&repo=…&branch=…`); anything else keeps the MSW fake |
 | `YVE_REPO` | `scripts/sync-yve-fixtures.mjs` | Path to the yve source checkout (default `../yve_gallery_decap`) |
 
 Never commit a token. `.gitignore` keeps `.env*` out.
@@ -281,23 +265,3 @@ Never commit a token. `.gitignore` keeps `.env*` out.
 - **New runtime dependency:** its own reviewable change, with an allowlist entry and a stated reason
   if it has install scripts.
 
-> Media limits live in `packages/core/src/media/budget.ts` (volume) and the client guards in
-> `packages/core/src/client/media.ts` (empty file, size cap, SVG refusal). **Change all together**
-> with this document. The reference admin's per-file header sniff and EXIF re-encode pipeline died
-> with `packages/admin`; an SDK-only host does not get them.
-
-## 11. Deep dives
-
-| File | Read it when you touch |
-|---|---|
-| `workflows/publish-and-recovery.md` | saves, history and restore, conflicts, drafts, boot recovery, leases, deploy status |
-| `backend-and-auth-architecture.md` | the transport, auth/token lifecycle, rate limits, or a new backend |
-| `content-model-architecture.md` | config, fields, parsing, serialisation, editor widgets |
-| `media-architecture.md` | uploads, previews, references, trash/restore, budgets |
-| `test-harness-architecture.md` | playground, fixtures, test doubles, CI guard scripts |
-| `workflows/release.md` | npm publishing, the trusted publisher, version PRs, tags and GitHub Releases |
-
-There is no active delivery plan at the moment (`plans/` was dropped after 0.1.0). Release policy
-(ADR-0010) is owned by `workflows/release.md` and enforced by `.github/workflows/release.yml` plus
-`scripts/ci-workflow-guard.mjs`; INV-C01 is the parity test indexed in §8, and INV-C02–C04 retired
-with the plan.

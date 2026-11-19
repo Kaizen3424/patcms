@@ -1,6 +1,6 @@
 # Backend and auth
 
-> Parent: [`specs/CMS.md`](CMS.md)
+> Parent: [`specs/README.md`](README.md)
 
 Everything the app knows about the outside world goes through one interface. Adding a backend means
 implementing that interface and passing the contract suite — not editing the pipeline.
@@ -77,6 +77,10 @@ transport never writes user-facing text.
   real writes.
 
 ## Auth lifecycle
+
+The credential is one GitHub **fine-grained PAT**. Its scopes: `Contents: read+write`, `Checks: read`,
+and optional `Administration: read` (branch-protection preflight); consumer-facing setup lives in
+`docs/authentication.md`. A token in a URL or query string is a standing veto.
 
 `PatProvider` (`packages/core/src/auth/pat-provider.ts`) is the whole state machine:
 

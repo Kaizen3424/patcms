@@ -111,7 +111,7 @@ published.** Both are legitimate:
 - **Copy it** (as `cms_test` did): fastest path to a working admin; you own the code from then on.
 - **Rebuild**: use the panel as the reference for each screen; the SDK contract
   (conflict-as-value, untouched preservation, draft law) is what your UI must honour — the specs in
-  `specs/workflows/publish-and-recovery.md` define those contracts precisely.
+  `specs/saving-content.md` define those contracts precisely.
 
 Either way, keep the import discipline: `patcms`, `patcms/web`, your framework — and nothing from
 the package's internals. There are no internals to import; everything public is in the three

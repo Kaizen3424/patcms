@@ -156,12 +156,13 @@ internal invariants live in the specs:
 | Read | For |
 |---|---|
 | [`docs/README.md`](docs/README.md) | Usage documentation index: quickstart, every feature, pitfalls |
-| [`specs/CMS.md`](specs/CMS.md) | The whole system in one pass: stack, commands, surface, data model, auth, flows, vetoes |
-| [`specs/workflows/publish-and-recovery.md`](specs/workflows/publish-and-recovery.md) | The save machine, conflicts, drafts, boot recovery, deploy status |
-| [`specs/backend-and-auth-architecture.md`](specs/backend-and-auth-architecture.md) | The transport, token lifecycle, rate limits, adding a backend |
-| [`specs/content-model-architecture.md`](specs/content-model-architecture.md) | Config, fields, parse/save, untouched preservation |
-| [`specs/media-architecture.md`](specs/media-architecture.md) | Bijection, upload guards, references, trash, budgets |
-| [`specs/test-harness-architecture.md`](specs/test-harness-architecture.md) | FakeGithub, fixtures, test doubles, CI guards |
+| [`specs/README.md`](specs/README.md) | Start here: the whole system in one pass, with a map to every deep-dive |
+| [`specs/content-model.md`](specs/content-model.md) | Config, fields, parse/save, untouched preservation |
+| [`specs/saving-content.md`](specs/saving-content.md) | The save machine, conflicts, drafts, boot recovery, deploy status |
+| [`specs/backend-and-auth.md`](specs/backend-and-auth.md) | The transport, token lifecycle, rate limits, adding a backend |
+| [`specs/media.md`](specs/media.md) | Bijection, upload guards, references, trash, budgets |
+| [`specs/testing.md`](specs/testing.md) | FakeGithub, fixtures, test doubles, CI guards |
+| [`specs/npm-release.md`](specs/npm-release.md) | npm publishing, trusted publisher, version PRs, tags and GitHub Releases |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Branching, commits, how to add a widget or backend |
 
 Each spec ends with the decisions and testable claims for its subsystem, so an `ADR-xxxx` or

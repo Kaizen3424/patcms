@@ -139,4 +139,4 @@ in the sidebar) and avoid polling loops. When GitHub says the quota is exhausted
 ## Where to next
 
 - [web-stores.md](./web-stores.md) — the IndexedDB token stores
-- `specs/backend-and-auth-architecture.md` — the probe contract and rate policy in depth
+- `specs/backend-and-auth.md` — the probe contract and rate policy in depth

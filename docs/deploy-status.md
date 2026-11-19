@@ -119,4 +119,4 @@ probe reports `checksRead` so you can hide the feature instead of showing `unava
 ## Where to next
 
 - [advanced.md](./advanced.md) — constructing a `GithubBackend` for the watcher
-- `specs/workflows/publish-and-recovery.md` — the full truth matrix and its invariants
+- `specs/saving-content.md` — the full truth matrix and its invariants

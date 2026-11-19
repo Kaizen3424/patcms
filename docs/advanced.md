@@ -173,4 +173,4 @@ advanced when you need a different transaction shape, a custom queue, or the raw
 ## Where to next
 
 - [testing.md](./testing.md) — the backend seam is what makes fake-GitHub testing possible
-- `specs/workflows/publish-and-recovery.md` — the save machine and adjudication in depth
+- `specs/saving-content.md` — the save machine and adjudication in depth

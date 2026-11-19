@@ -1,7 +1,7 @@
 name: release
 
 # ADR-0010 release law: npm trusted publishing over OIDC — no NPM_TOKEN exists
-# anywhere. Runbook: specs/workflows/release.md. This exact filename is registered
+# anywhere. Runbook: specs/npm-release.md. This exact filename is registered
 # as the trusted publisher on npmjs.com (repository Kaizen3424/patcms), so
 # renaming this file must move both sides together. The release job is the only
 # job allowed to elevate to `contents: write` + `id-token: write`;

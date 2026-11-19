@@ -1,6 +1,6 @@
 # Content model
 
-> Parent: [`specs/CMS.md`](CMS.md)
+> Parent: [`specs/README.md`](README.md)
 
 Config is TypeScript plus zod on the host, content is JSON in the repo, and the client only ever
 exposes JSON-safe descriptors. Three different shapes, one direction of travel.
@@ -20,14 +20,31 @@ and should fail loudly at mount.
 
 ## Field factories
 
-Twelve value types plus one decoration. Each factory returns a zod schema carrying metadata via
-`.meta({patcms})`; `required: false` wraps it with `.optional()`.
+Each factory returns a zod schema carrying metadata via `.meta({patcms})`; `required: false` wraps it
+with `.optional()`.
 
-- `fields.string`, `text`, `number`, `boolean`, `select`, `datetime`, `list`, `object`, `image`,
-  `relation`, `hidden`, `slug` (`packages/core/src/fields/factories.ts`).
-- `slug` declares the **virtual** key derived from the filename.
-- `divider` is a `decoration`, not a value: it groups fields in the editor and has no JSON
-  representation.
+| Field type | Value | Notes |
+|---|---|---|
+| `string` | string | optional `format: email/url`, length/pattern constraints |
+| `text` | string | long form |
+| `number` | number | min/max/step |
+| `boolean` | boolean | |
+| `select` | string or string[] | single or multi |
+| `datetime` | ISO string | |
+| `list` | array | item schema plus min/max |
+| `object` | object | nested field set |
+| `image` | public path string | validated against the media bijection |
+| `relation` | slug or slugs | checked against the entry index |
+| `hidden` | unknown | preserved, never shown |
+| `slug` | string | **virtual** — derived from the filename, never persisted |
+| `divider` | — | decoration declaration only, not a value |
+
+All twelve value factories plus the `divider` decoration live in
+`packages/core/src/fields/factories.ts`. `slug` declares the **virtual** key derived from the
+filename; `divider` groups fields in the editor and has no JSON representation.
+
+> Field types appear in `fields/types.ts` (`FieldTypeName`), `fields/factories.ts`, the config
+> schema, the widget registry, and this table. **Change all five together.**
 
 **Default values are metadata only.** `parseEntry` never injects them. They materialise in exactly one
 place — the new-entry fold (`foldFieldDefaults` / `createBlankEntryValue` in

@@ -1,6 +1,6 @@
 # Media
 
-> Parent: [`specs/CMS.md`](CMS.md)
+> Parent: [`specs/README.md`](README.md)
 
 Media is the only binary content in the repo, and the only place where a wrong path silently breaks
 the live site. Two rules carry most of the design: the public⇄repo mapping is bijective and validated,
@@ -79,6 +79,10 @@ network.
 | Single upload | > 90 MiB | hard block |
 
 Warnings are advisory and never block a save.
+
+> Media limits are duplicated by design: volume thresholds in `packages/core/src/media/budget.ts`
+> and the client guards in `packages/core/src/client/media.ts` (empty file, size cap, SVG refusal).
+> **Change all together** with this table.
 
 ## Failure modes worth knowing
 

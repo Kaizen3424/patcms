@@ -1,10 +1,10 @@
 # Release and publish
 
-> Parent: [`specs/CMS.md`](../CMS.md)
+> Parent: [`specs/README.md`](README.md)
 
 Publishing `patcms` is a trust boundary: a version on npm cannot be replaced, and the package must
 ship from a tag that carries its changelog. This file is the runbook for that path. It is about the
-**package release**, not a host's content deploy (that is `publish-and-recovery.md`).
+**package release**, not a host's content deploy (that is `saving-content.md`).
 
 The law is ADR-0010: changesets, npm trusted publishing over OIDC, **no npm token anywhere**.
 `.github/workflows/release.yml` is the only workflow that publishes, and the only job allowed the

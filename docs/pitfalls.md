@@ -90,4 +90,4 @@ changesets before upgrading.
 ## Where to next
 
 - [errors.md](./errors.md) — the full code catalogue behind several of these
-- `specs/CMS.md` §8 — the veto list in its canonical form
+- `specs/README.md` §8 — the veto list in its canonical form

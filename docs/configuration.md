@@ -284,4 +284,4 @@ have exactly one child, media paths are valid, deploy contexts are non-blank and
 
 - [media.md](./media.md) — the `media` option, per-collection overrides, and the path bijection
 - [reading-content.md](./reading-content.md) — what `entries.list` returns and how issues surface
-- `specs/content-model-architecture.md` — why parse is lenient and save is strict
+- `specs/content-model.md` — why parse is lenient and save is strict

@@ -81,5 +81,5 @@ not controlling the page — so a leaked real request fails loudly instead of si
 
 ## Where to next
 
-- `specs/test-harness-architecture.md` — how the fake is built and what the suites cover
+- `specs/testing.md` — how the fake is built and what the suites cover
 - [pitfalls.md](./pitfalls.md) — the failure modes worth chaos-testing
