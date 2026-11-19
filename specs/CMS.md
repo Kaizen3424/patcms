@@ -52,7 +52,7 @@ Consequences worth internalising:
 | Build | `tsup` (core JS) + `tsc -b` (core d.ts → `dist-types`; `tsup` has `dts: false` — packing without a typecheck ships types pointing at nothing), `vite` (playground) |
 | Tests | Vitest, plus `fast-check` property tests in core |
 | Lint / format | Biome with `--error-on-warnings` |
-| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes |
+| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes. `scripts/publish-package.mjs` packs with pnpm (it rewrites `catalog:`) and publishes the tarball with the npm CLI — only npm performs the OIDC exchange, so `pnpm publish` fails `ENEEDAUTH` even with a valid trusted publisher |
 | CI actions | SHA-pinned, job-level `contents: read`, no `pull_request_target`; the release job alone may hold `contents: write` + `id-token: write` (enforced by `scripts/ci-workflow-guard.mjs`) |
 
 | Purpose | Command |
