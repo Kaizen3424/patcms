@@ -37,6 +37,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # Trusted publishing is an npm-CLI flow (OIDC token exchange). The npm
+      # bundled with Node 22 predates it; pnpm's own publish never asks for the
+      # identity token, which is why the first release run failed ENEEDAUTH.
+      - name: Upgrade npm for trusted publishing (OIDC)
+        run: npm install -g npm@^11.15.0
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
       - name: Typecheck (tsc -b emits dist-types — the published types point there)
@@ -51,11 +56,12 @@ jobs:
           # Through pnpm: the changesets action does not put node_modules/.bin on
           # PATH, so a bare `changeset` is not found (first remote run failed here).
           version-script: pnpm changeset version
-          # pnpm, not `changeset publish`: pnpm rewrites the `catalog:` protocol
-          # into real versions at pack time (npm would ship it literally), and
-          # pnpm -r publish publishes only versions missing from the registry.
-          # --report-summary feeds the release step below.
-          publish-script: pnpm -r publish --no-git-checks --report-summary
+          # pnpm packs the tarball (rewriting the `catalog:` protocol into real
+          # versions, which npm cannot do), then npm publishes it: only the npm
+          # CLI performs the OIDC exchange trusted publishing needs. The script
+          # writes the same publish summary `pnpm -r publish --report-summary`
+          # would, which feeds the release step below.
+          publish-script: node scripts/publish-package.mjs
           push-git-tags: false # the step below tags v<version> instead
           create-github-releases: false # the step below releases with changeset notes
       - name: Tag the release and create the GitHub Release (changeset notes)
