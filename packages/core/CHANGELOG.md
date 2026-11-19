@@ -1,5 +1,14 @@
 # patcms
 
+## 0.2.0
+
+### Minor Changes
+
+- 8c5f020: Adds all-or-nothing bulk writes: `entries.saveMany`, `entries.createMany`, and `entries.deleteMany` commit a whole batch once, check every base sha before writing, and return stale rows as conflicts with their current state. `saveMany` also accepts `list()` stubs, so a table can save edited rows without a per-row `get()`. One `entries:bulk` event fires per call.
+- 10f4d24: Adds entry history and restore: `entries.history` pages the commits that touched one file (a `listPaths` stub is enough, so deleted entries keep their log), `entries.atRevision` reads a past version without writing, and `entries.restore` writes that version's exact bytes as a new commit — a deleted file is re-created, a file changed since you loaded it is a `conflict`, a file that already holds those bytes is a `noop`, and a version that no longer validates is refused with `CMSError("VALIDATION")`. History is never rewritten and the ref is never forced. One `entries:restore` event fires per call. The GitHub backend gains `listCommits` for path-filtered log paging.
+- a2a4f26: Reads now reuse a head confirmed within 30 s (`readReuseMs`, default 30 000; `0` disables) and cache entry bodies by blob sha, so a repeat listing, an entry open right after a listing, and a re-open after `refresh()` download nothing. `refresh()` re-checks the ref only and keeps unchanged bodies. Parallel body reads are capped at 5 (`readConcurrency`), and the in-memory blob cache is LRU-bounded (`maxBlobBytes`, `maxBlobEntries`). Every write path still re-checks the head first, so the window can delay a foreign change on screen but never hide it from a save. Adds `deploy.propagationMs` and `DEFAULT_DEPLOY_PROPAGATION_MS` for the post-save "may take a moment" notice.
+- 5c89dac: Adds an optional on-device content cache: `createCMS({ contentStore })`, with the IndexedDB adapter `createIdbContentStore()` from `patcms/web`. Entry text is keyed by path + blob SHA, so a warm open skips every unchanged document (183 → 3 requests for 180 entries). The store is bounded, pruned against the current tree, and wiped on sign-out and `clearCache()` — not on `destroy()`. `clearCache()` is now async.
+
 ## 0.1.0
 
 ### Minor Changes

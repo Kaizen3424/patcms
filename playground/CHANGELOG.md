@@ -1,5 +1,15 @@
 # playground
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies [8c5f020]
+- Updated dependencies [10f4d24]
+- Updated dependencies [a2a4f26]
+- Updated dependencies [5c89dac]
+  - patcms@0.2.0
+
 ## 0.0.2
 
 ### Patch Changes
