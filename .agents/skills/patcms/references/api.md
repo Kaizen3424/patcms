@@ -49,6 +49,9 @@ status is `"ok" | "missing" | "forbidden" | "error"`. `rateLimit`: `{ limit, rem
 | `create` | `(collection, value, options?: { slug?, message? }) => Promise<SaveResult>` | Folder collections only (`UNSUPPORTED` otherwise or when `create: false`) |
 | `save` | `(entry, value, options?: { message? }) => Promise<SaveResult>` | One commit, fast-forward-only; auto-retries once when a foreign commit touched only other files |
 | `delete` | `(entry, options?: { message? }) => Promise<DeleteResult>` | Honours `delete: false` |
+| `saveMany` | `(items: { entry, value }[], options?: { message? }) => Promise<SaveManyResult>` | **One commit, all-or-nothing.** Every base sha is checked first; one stale row writes nothing. Accepts `get()` entries *or* `list()` stubs (stubs are hydrated from cache) |
+| `createMany` | `(items: { collection, value, slug? }[], options?: { message? }) => Promise<CreateManyResult>` | Import; one commit. A taken slug is a conflict, duplicate slugs are `VALIDATION` |
+| `deleteMany` | `(entries: EntryStub[], options?: { message? }) => Promise<DeleteManyResult>` | One commit; one changed file writes nothing. A file already deleted by someone else is skipped |
 | `validate` | `(entry, value) => Promise<ValidationResult>` | `{ ok: true } \| { ok: false, issues }` |
 | `path` | `(collection, slug) => string` | Pure; normalizes slug, `safePath`-checked |
 | `slugFromValue` | `(collection, value) => string` | identifierField → `slugify`, fallback `"entry"`; `UNSUPPORTED` on files collections |
@@ -71,7 +74,22 @@ import type { DeleteResult, Entry, EntryStub, EntrySummary, SaveResult, Validati
 
 // DeleteResult:
 //   { status: "deleted"; commitSha: string } | { status: "noop" } | { status: "conflict"; current: Entry }
+
+// SaveManyResult (createMany returns the same shape):
+//   { status: "saved";    commitSha: string; entries: Entry[] }   // input order
+//   { status: "noop";     entries: Entry[] }                      // nothing changed
+//   { status: "conflict"; conflicts: BulkConflict[] }             // zero writes
+// BulkConflict: { path, collection, slug, current?: Entry, local?: EntryValue }
+//   current absent  → the file was deleted by someone else
+//   local absent    → deleteMany only
+
+// DeleteManyResult:
+//   { status: "deleted"; commitSha: string } | { status: "noop" } | { status: "conflict"; conflicts: BulkConflict[] }
 ```
+
+Bulk validation throws `CMSError` (`VALIDATION`) before any write, naming every offending file
+in the message and carrying the merged `issues`. The batch is also rejected when it names the
+same path twice. Commit message: `chore(cms): save N file(s)` where N is every file in the commit.
 
 ## `cms.media`
 
@@ -112,6 +130,7 @@ the draft for you.
 | `save:success` | `{ entry, result }` — saved **or** noop |
 | `save:conflict` | `{ entry, current }` |
 | `save:error` | `{ entry, error: CMSError }` |
+| `entries:bulk` | `{ operation: "save" \| "create" \| "delete", status: "saved" \| "noop" \| "conflict" \| "deleted", paths, commitSha? }` — once per bulk call |
 | `media:upload` | `{ file }` |
 | `media:delete` | `{ path }` — only on actual deletion, not `referenced` |
 

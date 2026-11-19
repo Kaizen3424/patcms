@@ -91,6 +91,57 @@ if (gone.status === "conflict") console.log(gone.current) // changed on branch; 
 Validation failures from `create` arrive as a thrown `CMSError` with `issues` — catch with
 `isCMSError` and render `error.issues`.
 
+## Bulk editing
+
+A batch is **one commit, all-or-nothing**: every row is bound to a fresh head first, and if a single
+base sha is stale nothing is written. Stale rows come back as values carrying their current state,
+so there is no half-saved table.
+
+```ts
+import type { CMS } from "patcms"
+
+declare const cms: CMS // constructed as in getting-started.md
+
+// A table of edited rows: list() stubs are enough. The SDK hydrates each one
+// from the cache, so this needs no per-row get().
+const rows = await cms.entries.list("products")
+const result = await cms.entries.saveMany(
+  rows.map((entry) => ({ entry, value: { ...entry.value, price: Number(entry.value.price) + 5 } })),
+)
+
+if (result.status === "conflict") {
+  // Zero writes. Every stale row names its current state.
+  for (const conflict of result.conflicts) console.log(conflict.path, conflict.current)
+}
+```
+
+```ts
+import type { CMS } from "patcms"
+
+declare const cms: CMS // constructed as in getting-started.md
+
+// Import: slugs are derived per row (or given explicitly). A taken slug is a
+// conflict; the whole import writes nothing.
+const imported = await cms.entries.createMany([
+  { collection: "products", value: { title: "Iris No. 7", price: 240 } },
+  { collection: "products", value: { title: "Iris No. 8", price: 260 }, slug: "iris-no-8" },
+])
+if (imported.status === "conflict") console.log(imported.conflicts)
+
+// Bulk delete: a file already deleted by someone else is simply skipped.
+const all = await cms.entries.listPaths("products")
+const removed = await cms.entries.deleteMany(all.filter((entry) => entry.slug.startsWith("old-")))
+if (removed.status === "conflict") console.log(removed.conflicts)
+```
+
+- Validation runs for the whole batch **before** any write and throws a `CMSError` (`VALIDATION`):
+  the message names every offending file and `issues` carries the merged field errors.
+- A batch that names the same file twice is rejected before the network.
+- `saveMany` accepts full `get()` entries or `list()` stubs; unchanged rows cost no write.
+- The commit subject counts every file in the commit (`chore(cms): save 12 file(s)`); the automatic
+  one-retry-on-unrelated-change rule from a single save applies to the whole batch.
+- One `entries:bulk` event fires when a bulk call returns; a thrown validation error emits nothing.
+
 ## Slugs and paths
 
 ```ts
@@ -138,6 +189,7 @@ off()
 | `save:success` | `{ entry, result }` | saved **or** noop |
 | `save:conflict` | `{ entry, current }` | save or create returned a conflict |
 | `save:error` | `{ entry, error }` | save threw (`CMSError`) |
+| `entries:bulk` | `{ operation, status, paths, commitSha? }` | once per `saveMany`/`createMany`/`deleteMany` |
 | `media:upload` | `{ file }` | upload succeeded |
 | `media:delete` | `{ path }` | delete actually deleted (not on `referenced`) |
 

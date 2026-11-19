@@ -23,7 +23,15 @@ import { CMSError, toCMSError } from "./errors"
 import { EventBus } from "./events"
 import { MediaClient } from "./media"
 import { RepoReader } from "./repo"
-import type { CMS, CMSEventMap, EntriesAPI, MediaAPI, RepositoryTarget } from "./types"
+import type {
+  CMS,
+  CMSEventMap,
+  DeleteManyResult,
+  EntriesAPI,
+  MediaAPI,
+  RepositoryTarget,
+  SaveManyResult,
+} from "./types"
 
 export interface CreateCMSOptions {
   /** Output of `defineConfig(...)`, or an already-projected `AdminConfig`. */
@@ -190,10 +198,70 @@ function withEntryEvents(inner: EntriesAPI, bus: EventBus<CMSEventMap>): Entries
       }
     },
     delete: (entry, options) => inner.delete(entry, options),
+    saveMany: async (items, options) => {
+      const result = await inner.saveMany(items, options)
+      emitBulk(
+        bus,
+        "save",
+        items.map((item) => item.entry.path),
+        result,
+      )
+      return result
+    },
+    createMany: async (items, options) => {
+      const result = await inner.createMany(items, options)
+      emitBulk(bus, "create", [], result)
+      return result
+    },
+    deleteMany: async (entries, options) => {
+      const result = await inner.deleteMany(entries, options)
+      emitBulk(
+        bus,
+        "delete",
+        entries.map((entry) => entry.path),
+        result,
+      )
+      return result
+    },
     validate: (entry, value) => inner.validate(entry, value),
     path: (collection, slug) => inner.path(collection, slug),
     slugFromValue: (collection, value) => inner.slugFromValue(collection, value),
   }
+}
+
+function emitBulk(
+  bus: EventBus<CMSEventMap>,
+  operation: "save" | "create" | "delete",
+  fallbackPaths: readonly string[],
+  result: SaveManyResult | DeleteManyResult,
+): void {
+  if (result.status === "conflict") {
+    bus.emit("entries:bulk", {
+      operation,
+      status: "conflict",
+      paths: result.conflicts.map((conflict) => conflict.path),
+    })
+    return
+  }
+  if (result.status === "deleted") {
+    bus.emit("entries:bulk", {
+      operation,
+      status: "deleted",
+      commitSha: result.commitSha,
+      paths: fallbackPaths,
+    })
+    return
+  }
+  if (result.status === "noop" && !("entries" in result)) {
+    bus.emit("entries:bulk", { operation, status: "noop", paths: fallbackPaths })
+    return
+  }
+  bus.emit("entries:bulk", {
+    operation,
+    status: result.status,
+    ...(result.status === "saved" ? { commitSha: result.commitSha } : {}),
+    paths: result.entries.length > 0 ? result.entries.map((entry) => entry.path) : fallbackPaths,
+  })
 }
 
 function withMediaEvents(inner: MediaAPI, bus: EventBus<CMSEventMap>): MediaAPI {

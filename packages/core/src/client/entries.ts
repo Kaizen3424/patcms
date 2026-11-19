@@ -42,7 +42,11 @@ import { contentStoreKey } from "./content-store"
 import { CMSError, toCMSError } from "./errors"
 import type { RepoReader } from "./repo"
 import type {
+  BulkConflict,
+  CreateManyItem,
+  CreateManyResult,
   CreateOptions,
+  DeleteManyResult,
   DeleteOptions,
   DeleteResult,
   EntriesAPI,
@@ -51,6 +55,8 @@ import type {
   EntrySummary,
   EntryValue,
   ListOptions,
+  SaveManyItem,
+  SaveManyResult,
   SaveOptions,
   SaveResult,
   ValidationResult,
@@ -333,6 +339,270 @@ export class EntriesClient implements EntriesAPI {
     throw this.#verdictError(verdict)
   }
 
+  /**
+   * Bulk save — ONE commit for the whole batch, all-or-nothing.
+   *
+   * The batch binds to a fresh head before anything else: every row's base sha
+   * must still be the branch's sha. If one row is stale (or gone), nothing is
+   * written and every stale row returns as a conflict with its current state.
+   * A CAS loss caused only by unrelated paths is retried once, exactly like a
+   * single save.
+   */
+  async saveMany(
+    items: readonly SaveManyItem[],
+    options: SaveOptions = {},
+  ): Promise<SaveManyResult> {
+    if (items.length === 0) return { status: "noop", entries: [] }
+    assertUniquePaths(items.map((item) => item.entry.path))
+
+    let retried = false
+    while (true) {
+      const tree = await this.#repo.tree({ recheck: true })
+      const services = this.#services(tree)
+
+      const stale = items.filter((item) => {
+        const tuple = findTreeEntry(tree, item.entry.path)
+        return tuple === undefined || tuple.sha !== item.entry.sha
+      })
+      if (stale.length > 0) {
+        return {
+          status: "conflict",
+          conflicts: await this.#conflictStates(this.#saveConflictRows(stale), tree, services),
+        }
+      }
+
+      // A list stub is hydrated here (content-addressed, so a body the listing
+      // already cached costs nothing); a full `get()` entry is used as is.
+      const rows = await mapConcurrent(items, this.#readConcurrency, async (item) => {
+        const source = this.#sourceOf(item.entry)
+        const base = isFullEntry(item.entry) ? item.entry : await this.#read(source, services)
+        return { item, value: item.value, source, base }
+      })
+      const prepared = await this.#validateRows(rows, services)
+
+      const known = new Map<string, { readonly raw: string; readonly sha: string }>()
+      const writes: Array<{ readonly path: string; readonly bytes: Uint8Array }> = []
+      for (const row of prepared) {
+        const composed = this.#compose(row.base, row.validated, row.base.untouched)
+        const bytes = encodeUtf8(composed.raw)
+        known.set(row.item.entry.path, { raw: composed.raw, sha: await gitBlobSha(bytes) })
+        if (composed.raw !== row.base.raw) {
+          writes.push({ path: row.item.entry.path, bytes })
+        }
+      }
+      if (writes.length === 0) {
+        return { status: "noop", entries: prepared.map((row) => row.base) }
+      }
+
+      const verdict = await this.#repo.save(
+        { updates: writes },
+        options.message,
+        this.#afterWriteFailure,
+      )
+
+      if (verdict.kind === "published" || verdict.kind === "noop") {
+        const entries = await this.#settleMany(
+          prepared.map((row) => ({ source: row.source })),
+          known,
+        )
+        return verdict.kind === "published"
+          ? { status: "saved", commitSha: verdict.commitSha, entries }
+          : { status: "noop", entries }
+      }
+
+      if (verdict.kind === "conflict") {
+        const moved = items.filter((item) => verdict.details.changed.has(item.entry.path))
+        if (moved.length === 0 && !retried) {
+          retried = true
+          continue
+        }
+        const fresh = await this.#repo.tree()
+        return {
+          status: "conflict",
+          conflicts: await this.#conflictStates(
+            this.#saveConflictRows(moved.length > 0 ? moved : items),
+            fresh,
+            this.#services(fresh),
+          ),
+        }
+      }
+
+      throw this.#verdictError(verdict)
+    }
+  }
+
+  /**
+   * Bulk create (import) — ONE commit, all-or-nothing. A slug that already
+   * exists is a conflict carrying the current entry; duplicate slugs inside the
+   * batch are a validation error.
+   */
+  async createMany(
+    items: readonly CreateManyItem[],
+    options: SaveOptions = {},
+  ): Promise<CreateManyResult> {
+    if (items.length === 0) return { status: "noop", entries: [] }
+
+    const plans = items.map((item) => {
+      const descriptor = this.#folderCollection(item.collection)
+      if (descriptor.create === false) {
+        throw new CMSError(
+          "UNSUPPORTED",
+          `collection "${item.collection}" does not allow new entries`,
+        )
+      }
+      const slug = normalizeSlug(item.slug ?? this.slugFromValue(item.collection, item.value))
+      const path = assertInsideFolder(`${descriptor.folder}/${slug}.json`, descriptor.folder)
+      return {
+        item,
+        descriptor,
+        value: item.value,
+        local: item.value,
+        collection: descriptor.name,
+        slug,
+        path,
+        source: this.#sourceFor(descriptor, path, slug, slug, {
+          path,
+          sha: "",
+          mode: "100644",
+          type: "blob",
+        }),
+      }
+    })
+    assertUniquePaths(plans.map((plan) => plan.path))
+
+    let retried = false
+    while (true) {
+      const tree = await this.#repo.tree({ recheck: true })
+      const services = this.#services(tree)
+
+      const taken = plans.filter((plan) => findTreeEntry(tree, plan.path) !== undefined)
+      if (taken.length > 0) {
+        return { status: "conflict", conflicts: await this.#conflictStates(taken, tree, services) }
+      }
+
+      const prepared = await this.#validateRows(plans, services)
+      const known = new Map<string, { readonly raw: string; readonly sha: string }>()
+      const writes: Array<{ readonly path: string; readonly bytes: Uint8Array }> = []
+      for (const row of prepared) {
+        const composed = composeEntryDocument({
+          fields: row.descriptor.fields,
+          value: row.validated,
+          untouched: {},
+          document: emptyDocument(),
+        })
+        const bytes = encodeUtf8(composed.raw)
+        known.set(row.path, { raw: composed.raw, sha: await gitBlobSha(bytes) })
+        writes.push({ path: row.path, bytes })
+      }
+
+      const verdict = await this.#repo.save(
+        { adds: writes },
+        options.message,
+        this.#afterWriteFailure,
+      )
+
+      if (verdict.kind === "published" || verdict.kind === "noop") {
+        const entries = await this.#settleMany(
+          prepared.map((row) => ({ source: row.source })),
+          known,
+        )
+        return verdict.kind === "published"
+          ? { status: "saved", commitSha: verdict.commitSha, entries }
+          : { status: "noop", entries }
+      }
+
+      if (verdict.kind === "conflict") {
+        const moved = plans.filter((plan) => verdict.details.changed.has(plan.path))
+        if (moved.length === 0 && !retried) {
+          retried = true
+          continue
+        }
+        const fresh = await this.#repo.tree()
+        return {
+          status: "conflict",
+          conflicts: await this.#conflictStates(
+            moved.length > 0 ? moved : plans,
+            fresh,
+            this.#services(fresh),
+          ),
+        }
+      }
+
+      throw this.#verdictError(verdict)
+    }
+  }
+
+  /**
+   * Bulk delete — ONE commit, all-or-nothing. A file that changed since it was
+   * loaded blocks the batch; a file already deleted by someone else is simply
+   * left out (the goal for that row is already true).
+   */
+  async deleteMany(
+    entries: readonly EntryStub[],
+    options: DeleteOptions = {},
+  ): Promise<DeleteManyResult> {
+    if (entries.length === 0) return { status: "noop" }
+    assertUniquePaths(entries.map((entry) => entry.path))
+    for (const entry of entries) {
+      const descriptor = this.#collectionFor(entry.collection)
+      if (descriptor.kind === "folder" && descriptor.delete === false) {
+        throw new CMSError("UNSUPPORTED", `collection "${entry.collection}" does not allow deletes`)
+      }
+    }
+
+    let retried = false
+    while (true) {
+      const tree = await this.#repo.tree({ recheck: true })
+      const services = this.#services(tree)
+
+      const stale = entries.filter((entry) => {
+        const tuple = findTreeEntry(tree, entry.path)
+        return tuple !== undefined && tuple.sha !== entry.sha
+      })
+      if (stale.length > 0) {
+        return {
+          status: "conflict",
+          conflicts: await this.#conflictStates(this.#deleteConflictRows(stale), tree, services),
+        }
+      }
+
+      const present = entries.filter((entry) => findTreeEntry(tree, entry.path) !== undefined)
+      if (present.length === 0) return { status: "noop" }
+
+      const verdict = await this.#repo.save(
+        { deletes: present.map((entry) => entry.path) },
+        options.message,
+        this.#afterWriteFailure,
+      )
+      if (verdict.kind === "published") {
+        for (const entry of present) this.#cache.dropEntry(entry.path)
+        return { status: "deleted", commitSha: verdict.commitSha }
+      }
+      if (verdict.kind === "noop") {
+        for (const entry of present) this.#cache.dropEntry(entry.path)
+        return { status: "noop" }
+      }
+      if (verdict.kind === "conflict") {
+        // Re-checking every row is cheaper than guessing: a file already
+        // deleted by someone else drops out of the batch on the second pass.
+        if (!retried) {
+          retried = true
+          continue
+        }
+        const fresh = await this.#repo.tree()
+        return {
+          status: "conflict",
+          conflicts: await this.#conflictStates(
+            this.#deleteConflictRows(entries),
+            fresh,
+            this.#services(fresh),
+          ),
+        }
+      }
+      throw this.#verdictError(verdict)
+    }
+  }
+
   async validate(entry: Entry, value: EntryValue): Promise<ValidationResult> {
     const { services } = await this.#snapshot(entry.collection)
     const validation = await validateEntryForSave({
@@ -423,7 +693,7 @@ export class EntriesClient implements EntriesAPI {
     return { source, services }
   }
 
-  #sourceOf(entry: Entry): EntrySource {
+  #sourceOf(entry: Entry | EntryStub): EntrySource {
     const descriptor = this.#collectionFor(entry.collection)
     const tuple: TreeEntryTuple = {
       path: entry.path,
@@ -558,6 +828,129 @@ export class EntriesClient implements EntriesAPI {
         ? this.#sourceFor(descriptor, path, slug, fallbackTitle, tuple)
         : this.#filesSourceFor(descriptor, path, slug, fallbackTitle, tuple)
     return this.#read(source, this.#services(tree))
+  }
+
+  /**
+   * Validates every row against the SAME tree before any byte is composed. A
+   * failure names every offending file and writes nothing.
+   */
+  async #validateRows<T extends { readonly source: EntrySource; readonly value: EntryValue }>(
+    rows: readonly T[],
+    services: RelationServices,
+  ): Promise<Array<T & { readonly validated: Readonly<Record<string, unknown>> }>> {
+    const validated: Array<T & { readonly validated: Readonly<Record<string, unknown>> }> = []
+    const invalid: string[] = []
+    const issues: ParseIssue[] = []
+    for (const row of rows) {
+      const result = await validateEntryForSave({
+        fields: row.source.fields,
+        raw: row.value,
+        filePath: row.source.path,
+        media: row.source.media,
+        services,
+      })
+      if (result.ok) {
+        validated.push({ ...row, validated: result.value })
+        continue
+      }
+      invalid.push(row.source.path)
+      issues.push(...result.issues)
+    }
+    if (invalid.length > 0) throw validationFailure(invalid, rows.length, issues)
+    return validated
+  }
+
+  /** Current branch state for each row — the value half of a conflict result. */
+  async #conflictStates(
+    rows: readonly {
+      readonly path: string
+      readonly collection: string
+      readonly slug: string
+      readonly source: EntrySource
+      readonly local?: EntryValue
+    }[],
+    tree: TreeRead,
+    services: RelationServices,
+  ): Promise<BulkConflict[]> {
+    return mapConcurrent(rows, this.#readConcurrency, async (row) => {
+      const common = {
+        path: row.path,
+        collection: row.collection,
+        slug: row.slug,
+        ...(row.local === undefined ? {} : { local: row.local }),
+      }
+      const tuple = findTreeEntry(tree, row.path)
+      if (tuple === undefined) return common
+      const current = await this.#read({ ...row.source, blobSha: tuple.sha }, services)
+      return { ...common, current }
+    })
+  }
+
+  /**
+   * Post-write state from ONE fresh tree read: rows we wrote are built from the
+   * bytes we sent (no download), while a row someone re-edited in the meantime
+   * is read fresh so no stale sha reaches the host's next save.
+   */
+  async #settleMany(
+    rows: readonly { readonly source: EntrySource }[],
+    known: ReadonlyMap<string, { readonly raw: string; readonly sha: string }>,
+  ): Promise<Entry[]> {
+    const tree = await this.#repo.tree()
+    const services = this.#services(tree)
+    const settled: Entry[] = []
+    for (const row of rows) {
+      const path = row.source.path
+      const mine = known.get(path)
+      const tuple = findTreeEntry(tree, path)
+      if (mine !== undefined && (tuple === undefined || tuple.sha === mine.sha)) {
+        const built = await this.#build(
+          { ...row.source, blobSha: mine.sha },
+          mine.raw,
+          mine.sha,
+          services,
+        )
+        this.#cache.putEntry(built)
+        await this.#remember({ path, sha: mine.sha }, mine.raw)
+        settled.push(built.entry)
+        continue
+      }
+      if (tuple !== undefined) {
+        settled.push(await this.#read({ ...row.source, blobSha: tuple.sha }, services))
+        continue
+      }
+      throw new CMSError("UNKNOWN", `"${path}" vanished after the commit`)
+    }
+    return settled
+  }
+
+  #saveConflictRows(items: readonly SaveManyItem[]): Array<{
+    readonly path: string
+    readonly collection: string
+    readonly slug: string
+    readonly source: EntrySource
+    readonly local: EntryValue
+  }> {
+    return items.map((item) => ({
+      path: item.entry.path,
+      collection: item.entry.collection,
+      slug: item.entry.slug,
+      source: this.#sourceOf(item.entry),
+      local: item.value,
+    }))
+  }
+
+  #deleteConflictRows(entries: readonly EntryStub[]): Array<{
+    readonly path: string
+    readonly collection: string
+    readonly slug: string
+    readonly source: EntrySource
+  }> {
+    return entries.map((entry) => ({
+      path: entry.path,
+      collection: entry.collection,
+      slug: entry.slug,
+      source: this.#sourceOf(entry),
+    }))
   }
 
   async #build(
@@ -847,6 +1240,40 @@ function mergeIssues(left: readonly ParseIssue[], right: readonly ParseIssue[]):
     merged.push(issue)
   }
   return merged
+}
+
+function assertUniquePaths(paths: readonly string[]): void {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+  for (const path of paths) {
+    if (seen.has(path)) duplicates.add(path)
+    seen.add(path)
+  }
+  if (duplicates.size === 0) return
+  throw new CMSError(
+    "VALIDATION",
+    `the batch names the same file twice: ${[...duplicates].join(", ")}`,
+  )
+}
+
+/** One failure for the whole batch, naming every offending file. */
+function validationFailure(
+  paths: readonly string[],
+  total: number,
+  issues: readonly ParseIssue[],
+): CMSError {
+  const shown = paths.slice(0, 5)
+  const more = paths.length > shown.length ? ` (+${paths.length - shown.length} more)` : ""
+  return new CMSError(
+    "VALIDATION",
+    `${paths.length} of ${total} entries have validation errors: ${shown.join(", ")}${more}`,
+    { issues },
+  )
+}
+
+/** `get()` returns this; `list()` returns a summary without raw/fields. */
+function isFullEntry(entry: Entry | EntryStub): entry is Entry {
+  return "raw" in entry && "untouched" in entry && "fields" in entry
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -62,6 +62,51 @@ export type DeleteResult =
   | { readonly status: "noop" }
   | { readonly status: "conflict"; readonly current: Entry }
 
+/** One row of a bulk save: an entry (or list stub) and the value to write. */
+export interface SaveManyItem {
+  /**
+   * `get()`'s full entry, or the stub from `list()`/`listPaths()`. A stub is
+   * hydrated by the SDK before composing, so bulk editing never needs N `get`s.
+   */
+  readonly entry: Entry | EntryStub
+  readonly value: EntryValue
+}
+
+/** One row of a bulk create (import). */
+export interface CreateManyItem {
+  readonly collection: string
+  readonly value: EntryValue
+  /** Explicit filename slug. Defaults to the identifier field, slugified. */
+  readonly slug?: string
+}
+
+/**
+ * One row a bulk call refused to write. Nothing was committed: a bulk call is
+ * all-or-nothing, so a single row here means the whole batch is untouched.
+ */
+export interface BulkConflict {
+  readonly path: string
+  readonly collection: string
+  readonly slug: string
+  /** The file as it is on the branch now; absent when someone deleted it. */
+  readonly current?: Entry
+  /** The value the call tried to write (save and create only). */
+  readonly local?: EntryValue
+}
+
+export type SaveManyResult =
+  | { readonly status: "saved"; readonly commitSha: string; readonly entries: readonly Entry[] }
+  | { readonly status: "noop"; readonly entries: readonly Entry[] }
+  | { readonly status: "conflict"; readonly conflicts: readonly BulkConflict[] }
+
+/** A bulk create returns the same shape as a bulk save. */
+export type CreateManyResult = SaveManyResult
+
+export type DeleteManyResult =
+  | { readonly status: "deleted"; readonly commitSha: string }
+  | { readonly status: "noop" }
+  | { readonly status: "conflict"; readonly conflicts: readonly BulkConflict[] }
+
 export type ValidationResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly issues: readonly ParseIssue[] }
@@ -113,6 +158,16 @@ export interface EntriesAPI {
   create(collection: string, value: EntryValue, options?: CreateOptions): Promise<SaveResult>
   save(entry: Entry, value: EntryValue, options?: SaveOptions): Promise<SaveResult>
   delete(entry: Entry, options?: DeleteOptions): Promise<DeleteResult>
+  /**
+   * Saves many entries as ONE commit. Every base sha is checked first: one
+   * stale row means nothing is written and each stale row comes back as a
+   * conflict carrying its current state.
+   */
+  saveMany(items: readonly SaveManyItem[], options?: SaveOptions): Promise<SaveManyResult>
+  /** Creates many entries (import) as ONE commit; a taken path writes nothing. */
+  createMany(items: readonly CreateManyItem[], options?: SaveOptions): Promise<CreateManyResult>
+  /** Deletes many entries as ONE commit; one changed file writes nothing. */
+  deleteMany(entries: readonly EntryStub[], options?: DeleteOptions): Promise<DeleteManyResult>
   validate(entry: Entry, value: EntryValue): Promise<ValidationResult>
   /** Repo path for an entry, without a network call. */
   path(collection: string, slug: string): string
@@ -203,6 +258,16 @@ export interface CMSEventMap {
   "save:success": { readonly entry: Entry; readonly result: SaveResult }
   "save:conflict": { readonly entry: Entry; readonly current: Entry }
   "save:error": { readonly entry: Entry; readonly error: CMSError }
+  /**
+   * One commit for a whole batch. Fired once per completed `saveMany` /
+   * `createMany` / `deleteMany` call; per-row detail is the return value.
+   */
+  "entries:bulk": {
+    readonly operation: "save" | "create" | "delete"
+    readonly status: "saved" | "noop" | "conflict" | "deleted"
+    readonly paths: readonly string[]
+    readonly commitSha?: string
+  }
   "media:upload": { readonly file: MediaFile }
   "media:delete": { readonly path: string }
 }

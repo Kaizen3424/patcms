@@ -8,8 +8,8 @@ handling in a host.
 
 | Situation | You get |
 |---|---|
-| Save/create hit a real conflict | **Value** `{ status: "conflict", current, local }` — never an exception |
-| Save/create failed validation | **Throw** `CMSError` code `VALIDATION` with `issues` attached |
+| Save/create (or a bulk call) hit a real conflict | **Value** `{ status: "conflict", ... }` — single `current`/`local`, or `conflicts[]` for a batch |
+| Save/create (or a bulk call) failed validation | **Throw** `CMSError` code `VALIDATION` with `issues`; a bulk message names every offending file |
 | `entries.validate` found issues | **Value** `{ ok: false, issues }` |
 | Zero-diff save | **Value** `{ status: "noop" }` |
 | Delete blocked by references | **Value** `{ status: "referenced", references }` |
@@ -44,11 +44,11 @@ try {
 | `AUTH_EXPIRED` | Token lost write access mid-session (401) | writes; session is wiped, drafts kept |
 | `FORBIDDEN` | Token lacks the scope (403), incl. probe refusal | sign-in, writes |
 | `NOT_FOUND` | Entry or media path does not exist | `entries.get`, `media.get` |
-| `CONFLICT` | CAS collision or occupied path | save/create (as value instead), media upload/delete/restore |
+| `CONFLICT` | CAS collision or occupied path | save/create/delete (as a value instead), bulk calls (`conflicts[]`), media upload/delete/restore |
 | `RATE_LIMIT` | GitHub quota exhausted | anything; `retryAt` says when |
 | `NETWORK` | Transport failure | anything |
-| `VALIDATION` | Refused before any network call | save/create (`issues`), media guards |
-| `UNSUPPORTED` | Operation disabled by config or v1 scope | `create`/`delete` on restricted collections |
+| `VALIDATION` | Refused before any network call | save/create/createMany/saveMany (`issues`), media guards |
+| `UNSUPPORTED` | Operation disabled by config or v1 scope | `create`/`createMany`/`delete`/`deleteMany` on restricted collections |
 | `INVALID_CONFIG` | Bad options at construction | `createCMS` |
 | `UNKNOWN` | Anything unclassified | — |
 

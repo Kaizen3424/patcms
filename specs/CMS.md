@@ -202,7 +202,9 @@ statuses, rate limit, and repo/branch-protection reads.
    backs the whole listing; file bodies are fetched lazily by `entries.get`.
 2. **Edit → publish.** `drafts.set(...)` before the first network call → `entries.validate` →
    `entries.save(entry, value)` → fresh ref/tree → one commit → ref update → confirm the ref carries
-   the commit → draft deleted. See `workflows/publish-and-recovery.md`.
+   the commit → draft deleted. A batch (`entries.saveMany` / `createMany` / `deleteMany`) is the same
+   transaction for N files: one fresh tree, every base sha checked, and **any** stale row writes
+   nothing and returns conflicts as values. See `workflows/publish-and-recovery.md`.
 3. **Conflict.** Someone pushed first → CAS fails → the client re-reads fresh head and returns
    `{ status: "conflict", current, local }` as a **value**. The host decides what to show; there is
    no default merge. `rebase()` in `patcms/advanced` is available for hosts that want field-level
