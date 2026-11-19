@@ -14,6 +14,7 @@ implementing that interface and passing the contract suite — not editing the p
 | `getRef(branch)` | Current head |
 | `readTree(branch, commitSha, options?)` | Recursive root tree; callers must reject truncation |
 | `readFile(...)` / `readBlob(sha)` | File bytes; `readFile` supports conditional reads |
+| `listCommits(branch, options?)` | Path-filtered commit log, newest first; `before` is the paging cursor |
 | `listChangedFiles(...)` | Diff between two commits |
 | `commitChanges(branch, changes, options)` | The transactional write |
 | `readCheckRuns(branch, sha)` / `readCommitStatuses(branch, sha)` | Deploy truth |

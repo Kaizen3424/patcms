@@ -11,7 +11,7 @@
  * level (`runSave` CAS). A conflict is a value, never an exception.
  */
 import { gitBlobSha } from "../backend/git-sha"
-import type { TreeEntryTuple, TreeRead } from "../backend/types"
+import type { CommitChangeSet, TreeEntryTuple, TreeRead } from "../backend/types"
 import type { BackendWriteError } from "../backend/write-errors"
 import type {
   AdminConfig,
@@ -54,7 +54,11 @@ import type {
   EntryStub,
   EntrySummary,
   EntryValue,
+  HistoryOptions,
   ListOptions,
+  RestoreOptions,
+  RestoreResult,
+  Revision,
   SaveManyItem,
   SaveManyResult,
   SaveOptions,
@@ -90,6 +94,10 @@ export interface EntriesClientOptions {
 
 /** Reads stay well under GitHub's burst thresholds. */
 const DEFAULT_READ_CONCURRENCY = 5
+
+/** History paging bounds (GitHub caps `per_page` at 100). */
+const DEFAULT_HISTORY_LIMIT = 20
+const MAX_HISTORY_LIMIT = 100
 
 export class EntriesClient implements EntriesAPI {
   readonly #config: AdminConfig
@@ -337,6 +345,141 @@ export class EntriesClient implements EntriesAPI {
       return { status: "conflict", current: fresh }
     }
     throw this.#verdictError(verdict)
+  }
+
+  // ---- history ------------------------------------------------------------
+
+  /**
+   * Commits that touched this entry, newest first. A `listPaths` stub is
+   * enough — the path is all GitHub's path filter needs, so a deleted entry's
+   * history stays reachable.
+   */
+  async history(entry: Entry | EntryStub, options: HistoryOptions = {}): Promise<Revision[]> {
+    const source = this.#sourceOf(entry)
+    const limit = historyLimit(options.limit)
+    const before = options.before
+    const commits = await this.#repo.listCommits({
+      path: source.path,
+      limit: before === undefined ? limit : Math.min(limit + 1, MAX_HISTORY_LIMIT),
+      ...(before === undefined ? {} : { before }),
+    })
+    // GitHub's `sha` parameter is inclusive: drop the cursor row so paging
+    // never repeats a revision.
+    const rows =
+      before === undefined ? commits : commits.filter((commit) => commit.commitSha !== before)
+    return rows.slice(0, limit).map((commit) => ({
+      commitSha: commit.commitSha,
+      message: commit.message,
+      ...(commit.authoredAt === undefined ? {} : { authoredAt: commit.authoredAt }),
+      ...(commit.authorName === undefined ? {} : { authorName: commit.authorName }),
+    }))
+  }
+
+  /** The entry as it was at `commitSha`. Nothing is written or cached as head. */
+  async atRevision(entry: Entry | EntryStub, commitSha: string): Promise<Entry> {
+    const source = this.#sourceOf(entry)
+    const revision = await this.#revision(source, commitSha)
+    return this.#read({ ...source, blobSha: revision.tuple.sha }, this.#services(revision.tree))
+  }
+
+  /**
+   * Writes a historical version's exact bytes as a NEW commit. The file is
+   * optimistic at the entry's sha first (a changed file is a conflict), and a
+   * deleted file is re-created. The historical value must validate now.
+   */
+  async restore(
+    entry: Entry | EntryStub,
+    commitSha: string,
+    options: RestoreOptions = {},
+  ): Promise<RestoreResult> {
+    const source = this.#sourceOf(entry)
+    const revision = await this.#revision(source, commitSha)
+    let retried = false
+
+    while (true) {
+      const tree = await this.#repo.tree({ recheck: true })
+      const services = this.#services(tree)
+      const current = findTreeEntry(tree, source.path)
+
+      if (current !== undefined && current.sha === revision.tuple.sha) {
+        return {
+          status: "noop",
+          entry: await this.#read({ ...source, blobSha: current.sha }, services),
+        }
+      }
+      if (current !== undefined && current.sha !== entry.sha) {
+        return {
+          status: "conflict",
+          current: await this.#read({ ...source, blobSha: current.sha }, services),
+        }
+      }
+
+      // The historical value must still pass today's gate; `atRevision` plus a
+      // manual save is the escape hatch when config changed since the commit.
+      const historical = await this.#build(
+        { ...source, blobSha: revision.tuple.sha },
+        revision.raw,
+        revision.tuple.sha,
+        services,
+      )
+      const validation = await validateEntryForSave({
+        fields: source.fields,
+        raw: historical.entry.value,
+        filePath: source.path,
+        media: source.media,
+        services,
+      })
+      if (!validation.ok) {
+        throw new CMSError(
+          "VALIDATION",
+          `revision ${commitSha.slice(0, 7)} of "${source.path}" no longer passes validation`,
+          { issues: validation.issues },
+        )
+      }
+
+      const changes: CommitChangeSet =
+        current === undefined
+          ? { adds: [{ path: source.path, bytes: revision.bytes }] }
+          : { updates: [{ path: source.path, bytes: revision.bytes }] }
+      const verdict = await this.#repo.save(changes, options.message, this.#afterWriteFailure)
+
+      if (verdict.kind === "published" || verdict.kind === "noop") {
+        const saved = await this.#readFresh(
+          { ...source, blobSha: revision.tuple.sha },
+          revision.raw,
+          revision.tuple.sha,
+        )
+        return verdict.kind === "published"
+          ? { status: "restored", commitSha: verdict.commitSha, entry: saved }
+          : { status: "noop", entry: saved }
+      }
+
+      if (verdict.kind === "conflict") {
+        const freshTree = await this.#repo.tree({ recheck: true })
+        const fresh = findTreeEntry(freshTree, source.path)
+        if (fresh !== undefined && fresh.sha === revision.tuple.sha) {
+          return {
+            status: "noop",
+            entry: await this.#read({ ...source, blobSha: fresh.sha }, this.#services(freshTree)),
+          }
+        }
+        if (fresh !== undefined && fresh.sha !== entry.sha) {
+          return {
+            status: "conflict",
+            current: await this.#read({ ...source, blobSha: fresh.sha }, this.#services(freshTree)),
+          }
+        }
+        // Either the file was deleted (a restore re-creates it) or the branch
+        // moved somewhere else. Both are retried once; never forced.
+        if (!retried) {
+          retried = true
+          continue
+        }
+        throw new CMSError("CONFLICT", `"${source.path}" kept moving; retry the restore`)
+      }
+
+      throw this.#verdictError(verdict)
+    }
   }
 
   /**
@@ -661,6 +804,25 @@ export class EntriesClient implements EntriesAPI {
   }
 
   // ---- reads -------------------------------------------------------------
+
+  /** Bytes and tree of one file at one commit — exact bytes, never reprinted. */
+  async #revision(
+    source: EntrySource,
+    commitSha: string,
+  ): Promise<{
+    readonly tree: TreeRead
+    readonly tuple: TreeEntryTuple
+    readonly bytes: Uint8Array
+    readonly raw: string
+  }> {
+    const tree = await this.#repo.treeAt(commitSha)
+    const tuple = findTreeEntry(tree, source.path)
+    if (tuple === undefined || tuple.type !== "blob") {
+      throw new CMSError("NOT_FOUND", `"${source.path}" does not exist at revision ${commitSha}`)
+    }
+    const bytes = await this.#repo.readBlob(tuple.sha)
+    return { tree, tuple, bytes, raw: decodeUtf8(bytes) }
+  }
 
   async #snapshot(
     collection: string,
@@ -1198,6 +1360,11 @@ function collectSources(config: AdminConfig, tree: TreeRead): EntrySource[] {
 
 function findTreeEntry(tree: TreeRead, path: string): TreeEntryTuple | undefined {
   return tree.entries.find((entry) => entry.path === path)
+}
+
+function historyLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit)) return DEFAULT_HISTORY_LIMIT
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_HISTORY_LIMIT)
 }
 
 function normalizeSlug(slug: string): string {

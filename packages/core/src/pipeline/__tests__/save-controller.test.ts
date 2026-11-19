@@ -390,6 +390,7 @@ describe("P2.5 coordinator — degraded adjudication yields honest conflicts", (
         moving.commitChanges(changes, baseHeadSha, branch, options),
       readCheckRuns: (branch, sha) => moving.readCheckRuns(branch, sha),
       readCommitStatuses: (branch, sha) => moving.readCommitStatuses(branch, sha),
+      listCommits: (branch, options) => moving.listCommits(branch, options),
     }
     const coordinator = createSaveCoordinator({
       backend,
@@ -750,5 +751,6 @@ function dummyBackend(): GitBackend {
     commitChanges: async () => ({ commitSha: "c", treeSha: "t" }),
     readCheckRuns: async () => ({ kind: "ok", totalCount: 0, runs: [] }),
     readCommitStatuses: async () => ({ kind: "ok", statuses: [] }),
+    listCommits: async () => [],
   }
 }

@@ -550,6 +550,83 @@
     {
       "request": {
         "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/git/ref/heads/contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": {
+          "ref": "refs/heads/contract-fixture",
+          "object": {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "type": "commit"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/commits?per_page=1&sha=contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": [
+          {
+            "sha": "6f0e045fb126757691c23c8bf2e80f3cf7017d60",
+            "commit": {
+              "message": "seed (fixture)",
+              "author": {
+                "name": "fixture-author",
+                "date": "2026-01-01T00:01:00Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/test-owner/test-repo/commits?per_page=20&path=no%2Fsuch%2Fcontract-path.json&sha=contract-fixture",
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer [token]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "x-ratelimit-limit": "5000",
+          "x-ratelimit-remaining": "4999",
+          "x-ratelimit-reset": "0"
+        },
+        "body": []
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
         "url": "https://api.github.com/repos/test-owner/test-repo/commits/6f0e045fb126757691c23c8bf2e80f3cf7017d60/check-runs?per_page=100",
         "headers": {
           "accept": "application/vnd.github+json",

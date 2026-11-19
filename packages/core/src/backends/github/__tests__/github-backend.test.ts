@@ -143,6 +143,63 @@ describe("GithubBackend read transport (ADR-0005 P1 addendum)", () => {
     expect(cached).toEqual({ kind: "not-modified", etag: '"tree-v1"' })
   })
 
+  it("reads a path-filtered commit log and drops rows without a valid sha", async () => {
+    const PARENT = "b".repeat(40)
+    const { fetch, calls } = recordsFetch((url) => {
+      if (url.includes("/commits?")) {
+        return response([
+          {
+            sha: HEAD,
+            commit: {
+              message: "edit",
+              author: { name: "Ada", date: "2026-01-02T03:04:05Z" },
+            },
+          },
+          { sha: PARENT, commit: { message: "seed" } },
+          { sha: "not-a-sha", commit: { message: "dropped" } },
+        ])
+      }
+      throw new Error(`unexpected ${url}`)
+    })
+
+    const log = await backend(fetch).listCommits("main", {
+      path: "src/content/site.json",
+      limit: 5,
+    })
+
+    expect(log).toEqual([
+      {
+        commitSha: HEAD,
+        message: "edit",
+        authorName: "Ada",
+        authoredAt: "2026-01-02T03:04:05Z",
+      },
+      { commitSha: PARENT, message: "seed" },
+    ])
+    const url = calls[0]?.url ?? ""
+    expect(url).toContain(`${BASE}/repos/${OWNER}/${REPO}/commits?`)
+    expect(url).toContain("per_page=5")
+    expect(url).toContain("path=src%2Fcontent%2Fsite.json")
+    expect(url).toContain("sha=main")
+    // The branch log moves; GitHub's 60 s HTTP cache must not answer it.
+    expect(calls[0]?.init?.cache).toBe("no-store")
+  })
+
+  it("treats a before-sha page as cacheable and clamps the page size", async () => {
+    const { fetch, calls } = recordsFetch(() => response([]))
+    await backend(fetch).listCommits("main", { before: HEAD, limit: 500 })
+
+    const url = calls[0]?.url ?? ""
+    expect(url).toContain("per_page=100")
+    expect(url).toContain(`sha=${HEAD}`)
+    expect(calls[0]?.init?.cache).toBeUndefined()
+  })
+
+  it("refuses a malformed commit-log response", async () => {
+    const { fetch } = recordsFetch(() => response({ message: "not a list" }))
+    await expect(backend(fetch).listCommits("main")).rejects.toMatchObject({ code: "UNKNOWN" })
+  })
+
   it("falls back to walking subtrees when the recursive tree is truncated", async () => {
     const srcTree = "4".repeat(40)
     const contentTree = "5".repeat(40)

@@ -16,6 +16,8 @@ import {
 import type {
   CheckRunsRead,
   CommitChangeSet,
+  CommitLogEntry,
+  CommitLogOptions,
   CommitOptions,
   CommitResult,
   CommitStatusesRead,
@@ -58,6 +60,12 @@ export interface FixtureRepoSpec {
   readonly files?: ReadonlyMap<string, FixtureFile>
 }
 
+interface FixtureCommit {
+  readonly treeSha: string
+  readonly parents: readonly string[]
+  readonly message: string
+}
+
 /** Convenience builder for text fixtures (UTF-8 bytes, explicit blob sha). */
 export function textFixtureFile(text: string, sha: string, etag?: string): FixtureFile {
   return { bytes: encodeUtf8(text), sha, ...(etag === undefined ? {} : { etag }) }
@@ -66,11 +74,17 @@ export function textFixtureFile(text: string, sha: string, etag?: string): Fixtu
 export class FixtureBackend implements GitBackend {
   readonly #branchHeads = new Map<string, string>()
   readonly #snapshots = new Map<string, ReadonlyMap<string, FixtureFile>>()
+  readonly #commits = new Map<string, FixtureCommit>()
   readonly #spec: FixtureRepoSpec
 
   constructor(spec: FixtureRepoSpec) {
     this.#spec = spec
     if (spec.files !== undefined) this.#snapshots.set(spec.headSha, spec.files)
+    this.#commits.set(spec.headSha, {
+      treeSha: spec.treeSha ?? spec.headSha,
+      parents: [],
+      message: "seed (fixture)",
+    })
   }
 
   /** Test hook for future ref-state plumbing (P1/P2). */
@@ -221,17 +235,48 @@ export class FixtureBackend implements GitBackend {
       .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([path, file]) => ({ path, mode: "100644", type: "blob", sha: file.sha }))
     const treeSha = await gitTreeSha(entries)
+    const message = options.message ?? defaultFixtureCommitMessage(changes)
     const commitSha = await gitCommitShaCanonical({
       treeSha,
       parentShas: [current],
-      message: options.message ?? defaultFixtureCommitMessage(changes),
+      message,
     })
     if (!this.#snapshots.has(commitSha)) {
       this.#snapshots.set(commitSha, next)
       this.#branchHeads.set(branch, commitSha)
     }
+    if (!this.#commits.has(commitSha)) {
+      this.#commits.set(commitSha, { treeSha, parents: [current], message })
+    }
     // Idempotent retry: equal content resolves to the same commit sha (INV-P03).
     return { commitSha, treeSha }
+  }
+
+  /** Commit log: first-parent walk, newest first, optional path filter. */
+  async listCommits(
+    branch: string,
+    options: CommitLogOptions = {},
+  ): Promise<readonly CommitLogEntry[]> {
+    const head = (await this.getRef(branch)).object.sha
+    const limit = fixtureCommitLimit(options.limit)
+    const log: CommitLogEntry[] = []
+    let cursor: string | undefined = options.before ?? head
+    while (cursor !== undefined && log.length < limit) {
+      const record = this.#commits.get(cursor)
+      if (record === undefined) break
+      if (options.path === undefined || this.#pathTouched(cursor, record, options.path)) {
+        log.push({ commitSha: cursor, message: record.message })
+      }
+      cursor = record.parents[0]
+    }
+    return log
+  }
+
+  #pathTouched(sha: string, record: FixtureCommit, path: string): boolean {
+    const parent = record.parents[0]
+    const mine = this.#snapshots.get(sha)?.get(path)?.sha
+    const theirs = parent === undefined ? undefined : this.#snapshots.get(parent)?.get(path)?.sha
+    return mine !== theirs
   }
 }
 
@@ -245,4 +290,9 @@ function defaultFixtureCommitMessage(changes: CommitChangeSet): string {
   const count =
     (changes.adds?.length ?? 0) + (changes.updates?.length ?? 0) + (changes.deletes?.length ?? 0)
   return `chore(cms): save ${count} file(s)`
+}
+
+function fixtureCommitLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit)) return 20
+  return Math.min(Math.max(Math.trunc(limit), 1), 100)
 }

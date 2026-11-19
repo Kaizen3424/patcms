@@ -205,6 +205,9 @@ statuses, rate limit, and repo/branch-protection reads.
    the commit → draft deleted. A batch (`entries.saveMany` / `createMany` / `deleteMany`) is the same
    transaction for N files: one fresh tree, every base sha checked, and **any** stale row writes
    nothing and returns conflicts as values. See `workflows/publish-and-recovery.md`.
+   `entries.history` / `atRevision` / `restore` read that same commit log: a restore re-commits an
+   old file's **exact bytes** (never a force, never a rewrite) and binds to `entry.sha` exactly like
+   a save. See `workflows/publish-and-recovery.md`.
 3. **Conflict.** Someone pushed first → CAS fails → the client re-reads fresh head and returns
    `{ status: "conflict", current, local }` as a **value**. The host decides what to show; there is
    no default merge. `rebase()` in `patcms/advanced` is available for hosts that want field-level
@@ -240,7 +243,7 @@ exactly once, in the deep-dive that owns that subsystem:
 |---|---|
 | ADR-0003 · ADR-0006 · ADR-0009 · INV-S01–S06 · INV-T01–T03 | `content-model-architecture.md` |
 | ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-N06 · INV-P01–P03 · INV-P06 · INV-P14 | `backend-and-auth-architecture.md` |
-| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
+| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17–P18 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
 | ADR-0007 · INV-M01–M03 · INV-T04 | `media-architecture.md` |
 | INV-N05 | `test-harness-architecture.md` |
 | ADR-0010 | `README.md` § Releases · `.github/workflows/release.yml` |
@@ -287,7 +290,7 @@ Never commit a token. `.gitignore` keeps `.env*` out.
 
 | File | Read it when you touch |
 |---|---|
-| `workflows/publish-and-recovery.md` | saves, conflicts, drafts, boot recovery, leases, deploy status |
+| `workflows/publish-and-recovery.md` | saves, history and restore, conflicts, drafts, boot recovery, leases, deploy status |
 | `backend-and-auth-architecture.md` | the transport, auth/token lifecycle, rate limits, or a new backend |
 | `content-model-architecture.md` | config, fields, parsing, serialisation, editor widgets |
 | `media-architecture.md` | uploads, previews, references, trash/restore, budgets |

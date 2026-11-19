@@ -11,6 +11,8 @@ import type {
   CheckRunSummary,
   CheckRunsRead,
   CommitChangeSet,
+  CommitLogEntry,
+  CommitLogOptions,
   CommitOptions,
   CommitResult,
   CommitStatusesRead,
@@ -278,6 +280,39 @@ export class GithubBackend implements GitBackend {
       throw new BackendReadError("UNKNOWN", "GitHub commit-status response was malformed")
     }
     return { kind: "ok", statuses: parseCommitStatuses(rawStatuses) }
+  }
+
+  /**
+   * Commit log via the REST commits route — the only GitHub read that filters
+   * by path. A branch-named read stays out of the HTTP cache (the head moves);
+   * a `before` sha names an immutable suffix, so that one may be cached.
+   */
+  async listCommits(
+    branch: string,
+    options: CommitLogOptions = {},
+  ): Promise<readonly CommitLogEntry[]> {
+    requireBranch(branch)
+    const limit = commitLogLimit(options.limit)
+    const params = new URLSearchParams({ per_page: String(limit) })
+    if (options.path !== undefined && options.path.length > 0) params.set("path", options.path)
+    params.set("sha", options.before ?? branch)
+    const response = await this.#request(
+      `${this.#repoUrl()}/commits?${params.toString()}`,
+      undefined,
+      MAX_TREE_BYTES,
+      limit * 8,
+      options.before === undefined ? "no-store" : undefined,
+    )
+    if (response.kind === "not-modified") {
+      throw new BackendReadError(
+        "UNKNOWN",
+        "GitHub commit-log read returned 304 without a conditional request",
+      )
+    }
+    if (!Array.isArray(response.value)) {
+      throw new BackendReadError("UNKNOWN", "GitHub commit-log response was malformed")
+    }
+    return parseCommitLog(response.value, limit)
   }
 
   async commitChanges(
@@ -641,6 +676,36 @@ function parseCheckRuns(list: readonly JsonValue[]): CheckRunSummary[] {
     })
   })
   return runs
+}
+
+const COMMIT_LOG_DEFAULT_LIMIT = 20
+const COMMIT_LOG_MAX_LIMIT = 100
+
+function commitLogLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit)) return COMMIT_LOG_DEFAULT_LIMIT
+  return Math.min(Math.max(Math.trunc(limit), 1), COMMIT_LOG_MAX_LIMIT)
+}
+
+/** Lenient read: a row without a sha/message is dropped, never invented. */
+function parseCommitLog(list: readonly JsonValue[], limit: number): CommitLogEntry[] {
+  const entries: CommitLogEntry[] = []
+  for (const item of list) {
+    if (entries.length >= limit) break
+    const record = asRecord(item)
+    const commit = asRecord(record?.commit)
+    const sha = getString(record, "sha")
+    if (commit === undefined || sha === undefined || !/^[0-9a-f]{40}$/.test(sha)) continue
+    const author = asRecord(commit.author)
+    const authoredAt = getString(author, "date")
+    const authorName = getString(author, "name")
+    entries.push({
+      commitSha: sha,
+      message: getString(commit, "message") ?? "",
+      ...(authoredAt === undefined ? {} : { authoredAt }),
+      ...(authorName === undefined ? {} : { authorName }),
+    })
+  }
+  return entries
 }
 
 function parseCommitStatuses(list: readonly JsonValue[]): CommitStatusSummary[] {

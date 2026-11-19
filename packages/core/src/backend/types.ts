@@ -78,6 +78,24 @@ export interface CommitResult {
   readonly treeSha: string
 }
 
+/** One row of a repository's commit log (ADR-0005 §reads). */
+export interface CommitLogEntry {
+  readonly commitSha: string
+  readonly message: string
+  /** ISO-8601 author date; absent when the transport cannot supply one. */
+  readonly authoredAt?: string
+  readonly authorName?: string
+}
+
+export interface CommitLogOptions {
+  /** Only commits that changed this repo-relative path. */
+  readonly path?: string
+  /** Maximum entries to return (1–100). */
+  readonly limit?: number
+  /** Cursor: list the history reachable from this commit (inclusive). */
+  readonly before?: string
+}
+
 /** Deploy-status reads (ADR-0008 P2.8 appendix; ADR-0005 P2.8 addendum). */
 export type CheckRunStatus =
   | "queued"
@@ -175,4 +193,6 @@ export interface GitBackend {
   readCheckRuns(branch: string, sha: string): Promise<CheckRunsRead>
   /** Commit-statuses fallback (gated by `capabilities.commitStatus`). */
   readCommitStatuses(branch: string, sha: string): Promise<CommitStatusesRead>
+  /** Commit log for `branch`, newest first; `path` narrows it to one file. */
+  listCommits(branch: string, options?: CommitLogOptions): Promise<readonly CommitLogEntry[]>
 }

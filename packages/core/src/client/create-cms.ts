@@ -223,6 +223,18 @@ function withEntryEvents(inner: EntriesAPI, bus: EventBus<CMSEventMap>): Entries
       )
       return result
     },
+    history: (entry, options) => inner.history(entry, options),
+    atRevision: (entry, commitSha) => inner.atRevision(entry, commitSha),
+    restore: async (entry, commitSha, options) => {
+      const result = await inner.restore(entry, commitSha, options)
+      bus.emit("entries:restore", {
+        path: entry.path,
+        revision: commitSha,
+        status: result.status,
+        ...(result.status === "restored" ? { commitSha: result.commitSha } : {}),
+      })
+      return result
+    },
     validate: (entry, value) => inner.validate(entry, value),
     path: (collection, slug) => inner.path(collection, slug),
     slugFromValue: (collection, value) => inner.slugFromValue(collection, value),

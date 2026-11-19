@@ -22,6 +22,7 @@ This folder is the usage documentation. The architecture and its invariants live
 |---|---|
 | [reading-content.md](./reading-content.md) | Listing and loading entries; how the snapshot cache behaves |
 | [writing-content.md](./writing-content.md) | Saving, creating, deleting; commit messages; the `noop` case |
+| [history.md](./history.md) | Reading an entry's commit log; previewing and restoring an earlier version |
 | [conflicts-and-drafts.md](./conflicts-and-drafts.md) | Someone else pushed first; autosave drafts; stale-draft detection |
 | [media.md](./media.md) | Uploading images, the public⇄repo path bijection, trash and restore |
 | [deploy-status.md](./deploy-status.md) | Showing "is it live yet" from check-runs and commit statuses |

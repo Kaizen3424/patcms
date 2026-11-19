@@ -113,7 +113,7 @@ export function createHarness(
 
   const fetch: FetchLike = async (url, init) => {
     const method = (init?.method ?? "GET").toUpperCase()
-    const path = inlineUrlPath(url, prefix)
+    const { path, query } = splitUrl(url, prefix)
     let body: unknown
     if (typeof init?.body === "string") {
       body = JSON.parse(init.body)
@@ -141,13 +141,14 @@ export function createHarness(
       if (drop.remaining <= 0) continue
       if (drop.drop.method.toUpperCase() !== method || !drop.drop.pathPattern.test(path)) continue
       drop.remaining -= 1
-      await server.handle({ method, path, body } satisfies FakeRequest)
+      await server.handle({ method, path, query, body } satisfies FakeRequest)
       // The remote state advanced; the response never arrived.
       throw new Error("response lost (dropAck chaos)")
     }
     const response = await server.handle({
       method,
       path,
+      query,
       body,
       headers: safeRequestHeaders(init?.headers),
     } satisfies FakeRequest)
@@ -170,10 +171,22 @@ export const BASE_CONTENT: readonly [string, string][] = [
   ["src/content/products/iris.json", '{\n  "title": "iris"\n}\n'],
 ]
 
-function inlineUrlPath(url: string, prefix: string): string {
-  const withoutQuery = url.split("?")[0] ?? url
-  if (withoutQuery.startsWith(prefix)) return withoutQuery.slice(prefix.length)
-  return withoutQuery
+function splitUrl(
+  url: string,
+  prefix: string,
+): { readonly path: string; readonly query: Readonly<Record<string, string>> } {
+  const [rawPath = url, rawQuery = ""] = url.split("?")
+  const withoutHash = rawPath.split("#")[0] ?? rawPath
+  const path = withoutHash.startsWith(prefix) ? withoutHash.slice(prefix.length) : withoutHash
+  const query: Record<string, string> = {}
+  for (const pair of rawQuery.split("&")) {
+    if (pair.length === 0) continue
+    const separator = pair.indexOf("=")
+    const rawKey = separator === -1 ? pair : pair.slice(0, separator)
+    const rawValue = separator === -1 ? "" : pair.slice(separator + 1)
+    query[decodeURIComponent(rawKey)] = decodeURIComponent(rawValue)
+  }
+  return { path, query }
 }
 
 /**

@@ -103,6 +103,7 @@ export const SHAPE_CHECK: ContractCheck = {
       "commitChanges",
       "readCheckRuns",
       "readCommitStatuses",
+      "listCommits",
     ] as const
     for (const method of requiredMethods) {
       if (typeof backend[method] !== "function") {
@@ -217,6 +218,27 @@ export const EMPTY_DIFF_CHECK: ContractCheck = {
     const ref = await backend.getRef(branch)
     const diff = await backend.listChangedFiles(branch, ref.object.sha, ref.object.sha)
     if (diff.size !== 0) throw new Error("identical commits produced a non-empty tree diff")
+  },
+}
+
+/**
+ * Commit log: the head is the newest row, `limit` is honoured, and a path
+ * filter never invents history for a file that was never committed.
+ */
+export const COMMIT_LOG_CHECK: ContractCheck = {
+  name: "backend-reads/commit-log",
+  async run({ backend, branch }) {
+    const head = (await backend.getRef(branch)).object.sha
+    const newest = await backend.listCommits(branch, { limit: 1 })
+    if (newest.length === 0) throw new Error("listCommits returned no commits for the head")
+    if (newest[0]?.commitSha !== head) {
+      throw new Error("listCommits must return the head commit first (newest-first)")
+    }
+    if (newest.length > 1) throw new Error("listCommits did not honour limit: 1")
+    const untouched = await backend.listCommits(branch, { path: "no/such/contract-path.json" })
+    if (untouched.length !== 0) {
+      throw new Error("listCommits invented commits for a path that never existed")
+    }
   },
 }
 
@@ -346,6 +368,7 @@ export const CORE_CONTRACT_SUITE = defineContractSuite([
   BLOB_READ_CHECK,
   ETAG_CHECK,
   EMPTY_DIFF_CHECK,
+  COMMIT_LOG_CHECK,
   STATUS_READ_CHECK,
   WRITE_COMMIT_CHECK,
   WRITE_CAS_CHECK,

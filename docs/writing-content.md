@@ -142,6 +142,13 @@ if (removed.status === "conflict") console.log(removed.conflicts)
   one-retry-on-unrelated-change rule from a single save applies to the whole batch.
 - One `entries:bulk` event fires when a bulk call returns; a thrown validation error emits nothing.
 
+## History and restore
+
+Every save is a commit. `entries.history(entry)` lists the commits that touched one file (a
+`listPaths` stub is enough, so deleted entries keep their history), `entries.atRevision` previews a
+version read-only, and `entries.restore` writes that version's exact bytes as a **new** commit.
+See [history.md](./history.md) for the result types, the validation gate, and the conflict rules.
+
 ## Slugs and paths
 
 ```ts
@@ -190,10 +197,12 @@ off()
 | `save:conflict` | `{ entry, current }` | save or create returned a conflict |
 | `save:error` | `{ entry, error }` | save threw (`CMSError`) |
 | `entries:bulk` | `{ operation, status, paths, commitSha? }` | once per `saveMany`/`createMany`/`deleteMany` |
+| `entries:restore` | `{ path, revision, status, commitSha? }` | once per `restore` (including `noop`/`conflict`) |
 | `media:upload` | `{ file }` | upload succeeded |
 | `media:delete` | `{ path }` | delete actually deleted (not on `referenced`) |
 
 ## Where to next
 
+- [history.md](./history.md) — restore an earlier version; read a file's commit log
 - [conflicts-and-drafts.md](./conflicts-and-drafts.md) — the conflict value and draft autosave
 - [advanced.md](./advanced.md) — `runSave`/`createSaveCoordinator` when you need queueing or leases

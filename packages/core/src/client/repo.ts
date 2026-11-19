@@ -9,7 +9,13 @@
  * than by path.
  */
 import { assertNotTruncated } from "../backend/guards"
-import type { CommitChangeSet, GitBackend, TreeRead } from "../backend/types"
+import type {
+  CommitChangeSet,
+  CommitLogEntry,
+  CommitLogOptions,
+  GitBackend,
+  TreeRead,
+} from "../backend/types"
 import type { BackendWriteError } from "../backend/write-errors"
 import { runSave, type SaveVerdict } from "../pipeline/save-driver"
 import type { ClientCache } from "./cache"
@@ -112,6 +118,28 @@ export class RepoReader {
     } finally {
       if (this.#blobInFlight.get(sha) === request) this.#blobInFlight.delete(sha)
     }
+  }
+
+  /**
+   * Commit log for the branch, newest first. Historical data is not cached:
+   * a branch's log moves, and a `before`-paged slice is rare enough to fetch.
+   */
+  async listCommits(options: CommitLogOptions = {}): Promise<readonly CommitLogEntry[]> {
+    this.#requireToken()
+    try {
+      return await this.#backend.listCommits(this.#branch, options)
+    } catch (error) {
+      throw toCMSError(error)
+    }
+  }
+
+  /**
+   * The tree as it stood at a commit. Shares the in-flight map but never the
+   * head cache: a historical tree must not be mistaken for the current one.
+   */
+  async treeAt(commitSha: string): Promise<TreeRead> {
+    this.#requireToken()
+    return this.#readTree(commitSha)
   }
 
   async save(

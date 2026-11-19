@@ -55,6 +55,24 @@ reference admin was one such consumer; the example panel needs neither and uses 
 6. Confirm by **content**, not by response code, that the remote now holds what we wrote. A 200 from
    the ref update is not proof; the observed head is.
 
+## History and restore
+
+`entries.history` pages the path-filtered commit log; `atRevision` reads one historical tree + blob;
+`restore` reuses the same save driver with the historical **bytes**.
+
+- History binds to a path, not to a live file: a `listPaths` stub is enough, so a deleted entry's log
+  stays reachable. GitHub's `sha` paging param is inclusive, so the client asks for `limit + 1` and
+  drops the cursor row — a page never repeats.
+- `atRevision` never touches the head cache: a historical tree goes through the in-flight map only, and
+  blob reads stay content-addressed (a sha is immutable, so the normal blob cache is safe).
+- `restore` is a normal CAS write, never a force: `noop` when the current blob sha already equals the
+  historical one, `conflict` when the file changed since the entry/stub was loaded, an add when the
+  file is gone. Unrelated-path CAS losses retry once, like `save`.
+- A historical value must pass today's `validateEntryForSave` gate; failure is `CMSError("VALIDATION")`
+  with zero writes. The escape hatch is `atRevision` + a deliberate `save` by the host.
+- Success is confirmed by content like any write; the event is `entries:restore` with the **new**
+  commit sha. History itself is never rewritten, so a restore shows up as a new revision.
+
 ## Draft law
 
 - Key: `${repo}/${collection}/${slug}`. Staged media lives under `${key}/media/${n}`.
@@ -146,6 +164,7 @@ Two sources, strict precedence:
 | INV-P12 | Killing the tab mid-commit leaves a draft that boot replays as discard, offer, or conflict; the draft is deleted only after ref verification | `packages/core/src/pipeline/__tests__/boot-replay.test.ts` |
 | INV-P13 | The cross-tab lease is TTL plus heartbeat with a storage-event fallback, and its payload never carries content or credentials | `packages/core/src/pipeline/__tests__/inv-save-lease.test.ts` |
 | INV-P17 | After an auto-merge the next save diffs against the reconciled tree, so it cannot revert a partner's disjoint edits | `packages/core/src/pipeline/__tests__/save-controller.test.ts` |
+| INV-P18 | A restore lands the historical blob sha as a new commit, returns `noop`/`conflict`/`VALIDATION` without writing when the rules say so, and never forces the ref | `packages/core/src/client/__tests__/history.test.ts` |
 
 > INV-P15 and INV-P16 were retired with `packages/admin` (P2 parity, 2026-11-01): the save sweep and
 > the freeze model were reference-admin UX, not SDK behaviour. The surviving contract — conflicts are

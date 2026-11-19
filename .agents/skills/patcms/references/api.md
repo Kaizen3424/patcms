@@ -52,6 +52,9 @@ status is `"ok" | "missing" | "forbidden" | "error"`. `rateLimit`: `{ limit, rem
 | `saveMany` | `(items: { entry, value }[], options?: { message? }) => Promise<SaveManyResult>` | **One commit, all-or-nothing.** Every base sha is checked first; one stale row writes nothing. Accepts `get()` entries *or* `list()` stubs (stubs are hydrated from cache) |
 | `createMany` | `(items: { collection, value, slug? }[], options?: { message? }) => Promise<CreateManyResult>` | Import; one commit. A taken slug is a conflict, duplicate slugs are `VALIDATION` |
 | `deleteMany` | `(entries: EntryStub[], options?: { message? }) => Promise<DeleteManyResult>` | One commit; one changed file writes nothing. A file already deleted by someone else is skipped |
+| `history` | `(entry \| stub, options?: { limit?, before? }) => Promise<Revision[]>` | One request per page. Newest first; `limit` 1–100 (default 20). A `listPaths` stub is enough, so a deleted entry's history stays reachable |
+| `atRevision` | `(entry \| stub, commitSha) => Promise<Entry>` | Read-only historical entry; `sha` is the historical blob sha (not a save base). Throws `NOT_FOUND` when absent at that commit |
+| `restore` | `(entry \| stub, commitSha, options?: { message? }) => Promise<RestoreResult>` | Writes the historical **exact bytes** as a NEW commit; never rewrites history. Re-creates a deleted file. Binds to `entry.sha`: changed file → `conflict`. Refuses a value that fails today's validation (`VALIDATION`) |
 | `validate` | `(entry, value) => Promise<ValidationResult>` | `{ ok: true } \| { ok: false, issues }` |
 | `path` | `(collection, slug) => string` | Pure; normalizes slug, `safePath`-checked |
 | `slugFromValue` | `(collection, value) => string` | identifierField → `slugify`, fallback `"entry"`; `UNSUPPORTED` on files collections |
@@ -85,6 +88,13 @@ import type { DeleteResult, Entry, EntryStub, EntrySummary, SaveResult, Validati
 
 // DeleteManyResult:
 //   { status: "deleted"; commitSha: string } | { status: "noop" } | { status: "conflict"; conflicts: BulkConflict[] }
+
+// Revision: { commitSha, message, authoredAt?, authorName? }   // newest first
+
+// RestoreResult:
+//   { status: "restored"; commitSha: string; entry: Entry }  // a NEW commit
+//   { status: "noop";     entry: Entry }                     // already those bytes
+//   { status: "conflict"; current: Entry }                   // file changed since load
 ```
 
 Bulk validation throws `CMSError` (`VALIDATION`) before any write, naming every offending file
@@ -131,6 +141,7 @@ the draft for you.
 | `save:conflict` | `{ entry, current }` |
 | `save:error` | `{ entry, error: CMSError }` |
 | `entries:bulk` | `{ operation: "save" \| "create" \| "delete", status: "saved" \| "noop" \| "conflict" \| "deleted", paths, commitSha? }` — once per bulk call |
+| `entries:restore` | `{ path, revision, status: "restored" \| "noop" \| "conflict", commitSha? }` — once per `restore` (a thrown validation error emits nothing) |
 | `media:upload` | `{ file }` |
 | `media:delete` | `{ path }` — only on actual deletion, not `referenced` |
 

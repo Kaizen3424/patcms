@@ -422,5 +422,6 @@ function stubBackend(
     },
     readCheckRuns: async () => ({ kind: "ok", totalCount: 0, runs: [] }),
     readCommitStatuses: async () => ({ kind: "ok", statuses: [] }),
+    listCommits: async () => [],
   }
 }

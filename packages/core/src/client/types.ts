@@ -62,6 +62,33 @@ export type DeleteResult =
   | { readonly status: "noop" }
   | { readonly status: "conflict"; readonly current: Entry }
 
+/** One commit that touched an entry, newest first. */
+export interface Revision {
+  readonly commitSha: string
+  readonly message: string
+  /** ISO-8601 author date; absent when the transport cannot supply one. */
+  readonly authoredAt?: string
+  readonly authorName?: string
+}
+
+export interface HistoryOptions {
+  /** Maximum revisions to return (1–100). Defaults to 20. */
+  readonly limit?: number
+  /** Cursor: the last `commitSha` of the previous page. */
+  readonly before?: string
+}
+
+export type RestoreOptions = SaveOptions
+
+/**
+ * A restore writes the historical bytes as a NEW commit — history is never
+ * rewritten. `noop` means the entry already has those exact bytes.
+ */
+export type RestoreResult =
+  | { readonly status: "restored"; readonly commitSha: string; readonly entry: Entry }
+  | { readonly status: "noop"; readonly entry: Entry }
+  | { readonly status: "conflict"; readonly current: Entry }
+
 /** One row of a bulk save: an entry (or list stub) and the value to write. */
 export interface SaveManyItem {
   /**
@@ -168,6 +195,23 @@ export interface EntriesAPI {
   createMany(items: readonly CreateManyItem[], options?: SaveOptions): Promise<CreateManyResult>
   /** Deletes many entries as ONE commit; one changed file writes nothing. */
   deleteMany(entries: readonly EntryStub[], options?: DeleteOptions): Promise<DeleteManyResult>
+  /**
+   * Commits that touched this entry, newest first. Works from a `listPaths`
+   * stub, so a deleted entry's history stays reachable.
+   */
+  history(entry: Entry | EntryStub, options?: HistoryOptions): Promise<Revision[]>
+  /** The entry as it was at `commitSha` (read-only; nothing is written). */
+  atRevision(entry: Entry | EntryStub, commitSha: string): Promise<Entry>
+  /**
+   * Writes a historical version's exact bytes as a NEW commit. Refuses when
+   * that version no longer validates; `status: "conflict"` means the file
+   * changed since the entry/stub was loaded.
+   */
+  restore(
+    entry: Entry | EntryStub,
+    commitSha: string,
+    options?: RestoreOptions,
+  ): Promise<RestoreResult>
   validate(entry: Entry, value: EntryValue): Promise<ValidationResult>
   /** Repo path for an entry, without a network call. */
   path(collection: string, slug: string): string
@@ -266,6 +310,16 @@ export interface CMSEventMap {
     readonly operation: "save" | "create" | "delete"
     readonly status: "saved" | "noop" | "conflict" | "deleted"
     readonly paths: readonly string[]
+    readonly commitSha?: string
+  }
+  /**
+   * A restore attempt: rewritten history is never the result — `restored`
+   * names the NEW commit that carries the old bytes.
+   */
+  "entries:restore": {
+    readonly path: string
+    readonly revision: string
+    readonly status: "restored" | "noop" | "conflict"
     readonly commitSha?: string
   }
   "media:upload": { readonly file: MediaFile }

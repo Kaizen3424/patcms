@@ -57,6 +57,8 @@ export interface FakeRequest {
   readonly method: string
   /** Repo-relative path (no `/repos/{owner}/{repo}` prefix), queryless. */
   readonly path: string
+  /** Parsed query string (values are already decoded). */
+  readonly query?: Readonly<Record<string, string>>
   /** Lower-cased header lookup (optional — GETs need If-None-Match never here). */
   readonly headers?: Readonly<Record<string, string>>
   /** Parsed JSON body when present; adapter owns parsing (that IS transport). */
@@ -83,6 +85,8 @@ interface CommitRecord {
   readonly treeSha: string
   readonly parentShas: readonly string[]
   readonly message: string
+  readonly authorName: string
+  readonly authoredAt: string
 }
 
 const RATE_HEADERS = {
@@ -117,7 +121,13 @@ export class FakeGithubServer {
         size: file.bytes.byteLength,
       }))
     this.#trees.set(spec.treeSha, seeded)
-    this.#commits.set(spec.headSha, { treeSha: spec.treeSha, parentShas: [], message: "seed" })
+    this.#commits.set(spec.headSha, {
+      treeSha: spec.treeSha,
+      parentShas: [],
+      message: "seed",
+      authorName: "fixture-author",
+      authoredAt: fixtureTimestamp(1),
+    })
   }
 
   /** Current head (40-hex) for a branch, or undefined when unknown. */
@@ -289,6 +299,11 @@ export class FakeGithubServer {
       }
     }
 
+    // REST commit log (path filter + sha cursor) — the history read.
+    if (request.path === "/commits") {
+      return this.#listCommits(request.query ?? {})
+    }
+
     // Deploy-status reads (ADR-0008 P2.8): branch name OR 40-hex sha.
     const checkRunsMatch = /^\/commits\/(.+)\/check-runs$/.exec(request.path)
     if (checkRunsMatch !== null) {
@@ -366,6 +381,51 @@ export class FakeGithubServer {
     const branchHead = this.#branches.get(ref)
     if (branchHead !== undefined) return branchHead
     return /^[0-9a-f]{40}$/.test(ref) ? ref : undefined
+  }
+
+  /**
+   * REST commits route: first-parent walk, newest first, optional path filter.
+   * A path "changed" when its blob sha differs from the first parent's tree —
+   * the same predicate GitHub uses (renames aside).
+   */
+  #listCommits(query: Readonly<Record<string, string>>): FakeResponse {
+    const ref = query.sha
+    const start =
+      ref === undefined ? this.#branches.get(this.#spec.defaultBranch) : this.#resolveCommitRef(ref)
+    if (start === undefined) return notFoundResponse()
+    const perPage = toBoundedInt(query.per_page, 30, 1, 100)
+    const path = query.path
+    const list: unknown[] = []
+    let cursor: string | undefined = start
+    while (cursor !== undefined && list.length < perPage) {
+      const record = this.#commits.get(cursor)
+      if (record === undefined) break
+      if (path === undefined || this.#pathTouched(record, path)) {
+        list.push({
+          sha: cursor,
+          commit: {
+            message: record.message,
+            author: { name: record.authorName, date: record.authoredAt },
+          },
+        })
+      }
+      cursor = record.parentShas[0]
+    }
+    return { status: 200, json: list, headers: RATE_HEADERS }
+  }
+
+  #pathTouched(record: CommitRecord, path: string): boolean {
+    const parent = record.parentShas[0]
+    const parentRecord = parent === undefined ? undefined : this.#commits.get(parent)
+    const mine = this.#treeBlobSha(record.treeSha, path)
+    const theirs =
+      parentRecord === undefined ? undefined : this.#treeBlobSha(parentRecord.treeSha, path)
+    return mine !== theirs
+  }
+
+  #treeBlobSha(treeSha: string, path: string): string | undefined {
+    const entry = this.#trees.get(treeSha)?.find((candidate) => candidate.path === path)
+    return entry?.type === "blob" ? entry.sha : undefined
   }
 
   /** Bytes seeded from the fixture spec (blob reads beyond created blobs). */
@@ -475,7 +535,13 @@ export class FakeGithubServer {
     }
     const sha = await gitCommitShaCanonical({ treeSha, parentShas, message })
     if (!this.#commits.has(sha)) {
-      this.#commits.set(sha, { treeSha, parentShas, message })
+      this.#commits.set(sha, {
+        treeSha,
+        parentShas,
+        message,
+        authorName: "fixture-author",
+        authoredAt: fixtureTimestamp(this.#commits.size + 1),
+      })
     }
     return {
       status: 201,
@@ -557,6 +623,20 @@ function decodeBranchSegment(encoded: string): string {
     .split("/")
     .map((segment) => decodeURIComponent(segment))
     .join("/")
+}
+
+/** Deterministic ISO author date, one minute per commit (history ordering). */
+function fixtureTimestamp(ordinal: number): string {
+  const hours = String(Math.floor(ordinal / 60)).padStart(2, "0")
+  const minutes = String(ordinal % 60).padStart(2, "0")
+  return `2026-01-01T${hours}:${minutes}:00Z`
+}
+
+function toBoundedInt(raw: string | undefined, fallback: number, min: number, max: number): number {
+  if (raw === undefined) return fallback
+  const value = Number.parseInt(raw, 10)
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(Math.max(value, min), max)
 }
 
 function tryDecodeBase64(content: string): Uint8Array | undefined {
