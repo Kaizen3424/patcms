@@ -16,12 +16,13 @@ Signatures and result shapes for the published surface. Everything here is from 
 | `readReuseMs` | `number` | `30_000` | How long a read may reuse the last head it confirmed. `0` = re-check on every call. Writes always re-check |
 | `readConcurrency` | `number` | `5` | Parallel body reads per listing (GitHub burst posture) |
 | `maxBlobBytes` / `maxBlobEntries` | `number` | 64 MiB / 256 | LRU caps for the in-memory blob cache |
+| `contentStore` | `ContentStore` | none | On-device copy of entry text keyed by path + blob SHA; `patcms/web` provides `createIdbContentStore()`. Cold opens then download only changed bodies. Wiped by `clearCache()` and sign-out, not by `destroy()` |
 | `onAuthExpired` | `() => void` | — | Called after a 401 write wiped the session |
 
 Construction is offline. The `CMS` object: `config`, `repository`, `auth`, `entries`, `media`,
 `drafts`, `events`, plus `refresh()` (re-check the head only — unchanged entries and blobs stay
-cached; drafts survive), `clearCache()` (drops everything), `destroy()` (drops cache and listeners;
-does **not** sign out).
+cached; drafts survive), `clearCache()` (async: drops memory **and** on-device content),
+`destroy()` (drops memory cache and listeners; does **not** sign out or wipe the device copy).
 
 ## `cms.auth`
 
@@ -145,6 +146,8 @@ never UI text).
 |---|---|
 | `createIdbDraftStore(options?)` | IndexedDB `DraftStore`; options `{ dbName?, storeName? }` |
 | `clearIdbDraftStore(options?)` | Wipe drafts |
+| `createIdbContentStore(options?)` | IndexedDB `ContentStore` for raw entry text; options `{ dbName?, storeName?, maxBytes?, maxEntries? }` |
+| `clearIdbContentStore(options?)` | Wipe the on-device content copy |
 | `createIdbTokenStore(options?)` | IndexedDB `TokenStore`; options `{ dbName?, storeName?, key? }` |
 | `createSessionTokenStore(key?)` | `sessionStorage`-backed `TokenStore` (tab lifetime) |
 | `openPatcmsDatabase` / `createSharedStore` / `closePatcmsDatabases` / `PATCMS_IDB_STORES` | Shared-database plumbing |

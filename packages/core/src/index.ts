@@ -29,6 +29,8 @@ export type {
   CMSErrorCode,
   CMSErrorOptions,
   CMSEventMap,
+  ContentStore,
+  ContentStoreKey,
   CreateCMSOptions,
   CreateOptions,
   DeleteOptions,
@@ -56,7 +58,7 @@ export type {
   UploadOptions,
   ValidationResult,
 } from "./client"
-export { CMSError, createCMS, isCMSError, toCMSError } from "./client"
+export { CMSError, contentStoreKey, createCMS, isCMSError, toCMSError } from "./client"
 // ---- config DSL ----------------------------------------------------------
 export type {
   AdminConfig,

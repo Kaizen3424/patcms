@@ -37,6 +37,8 @@ import type { JsonDocument } from "../serialization/document"
 import { parseJsonDocument } from "../serialization/document"
 import { composeEntryDocument } from "../serialization/entry-document"
 import type { CachedEntry, ClientCache } from "./cache"
+import type { ContentStore, ContentStoreKey } from "./content-store"
+import { contentStoreKey } from "./content-store"
 import { CMSError, toCMSError } from "./errors"
 import type { RepoReader } from "./repo"
 import type {
@@ -74,6 +76,8 @@ export interface EntriesClientOptions {
   readonly cache: ClientCache
   /** Parallel entry reads (GitHub secondary-limit posture; INV-N01). */
   readonly readConcurrency?: number
+  /** On-device copy of entry text, keyed by path + blob SHA. Off by default. */
+  readonly content?: ContentStore
   /** Called when GitHub rejects the token mid-write; the client signs out. */
   readonly onAuthExpired: () => void
 }
@@ -86,20 +90,26 @@ export class EntriesClient implements EntriesAPI {
   readonly #repo: RepoReader
   readonly #cache: ClientCache
   readonly #readConcurrency: number
+  readonly #content: ContentStore | undefined
   readonly #onAuthExpired: () => void
+  /** Tree sha whose reachable records were last offered to `prune`. */
+  #prunedTreeSha: string | undefined
 
   constructor(options: EntriesClientOptions) {
     this.#config = options.config
     this.#repo = options.repo
     this.#cache = options.cache
     this.#readConcurrency = options.readConcurrency ?? DEFAULT_READ_CONCURRENCY
+    this.#content = options.content
     this.#onAuthExpired = options.onAuthExpired
   }
 
   async list(collection: string, options: ListOptions = {}): Promise<EntrySummary[]> {
-    const { sources, services } = await this.#snapshot(collection)
+    const { tree, sources, services } = await this.#snapshot(collection)
+    this.#pruneContent(tree)
+    const prefetched = await this.#prefetch(sources)
     const entries = await mapConcurrent(sources, this.#readConcurrency, (source) =>
-      this.#read(source, services),
+      this.#read(source, services, prefetched),
     )
     const direction = options.direction ?? "asc"
     const sortField = options.sort
@@ -341,11 +351,12 @@ export class EntriesClient implements EntriesAPI {
    */
   async searchable(): Promise<readonly SearchableEntry[]> {
     const tree = await this.#repo.tree({ recheck: true })
+    this.#pruneContent(tree)
     const services = this.#services(tree)
-    const entries = await mapConcurrent(
-      collectSources(this.#config, tree),
-      this.#readConcurrency,
-      (source) => this.#read(source, services),
+    const sources = collectSources(this.#config, tree)
+    const prefetched = await this.#prefetch(sources)
+    const entries = await mapConcurrent(sources, this.#readConcurrency, (source) =>
+      this.#read(source, services, prefetched),
     )
     return entries.map((entry) => ({
       collection: entry.collection,
@@ -425,9 +436,21 @@ export class EntriesClient implements EntriesAPI {
       : this.#filesSourceFor(descriptor, entry.path, entry.slug, entry.title, tuple)
   }
 
-  async #read(source: EntrySource, services: RelationServices): Promise<Entry> {
+  async #read(
+    source: EntrySource,
+    services: RelationServices,
+    prefetched?: ReadonlyMap<string, string>,
+  ): Promise<Entry> {
     const cached = this.#cache.getEntry(source.path, source.blobSha)
     if (cached !== undefined) return this.#revalidate(cached, services)
+
+    const key: ContentStoreKey = { path: source.path, sha: source.blobSha }
+    const stored = prefetched?.get(contentStoreKey(key)) ?? (await this.#readStored(key))
+    if (stored !== undefined) {
+      const built = await this.#build(source, stored, source.blobSha, services)
+      this.#cache.putEntry(built)
+      return built.entry
+    }
 
     let bytes: Uint8Array
     try {
@@ -435,9 +458,65 @@ export class EntriesClient implements EntriesAPI {
     } catch (error) {
       throw toCMSError(error)
     }
-    const built = await this.#build(source, decodeUtf8(bytes), source.blobSha, services)
+    const text = decodeUtf8(bytes)
+    const built = await this.#build(source, text, source.blobSha, services)
     this.#cache.putEntry(built)
+    await this.#remember(key, text)
     return built.entry
+  }
+
+  /** A device-store miss and a broken device store are the same thing here. */
+  async #readStored(key: ContentStoreKey): Promise<string | undefined> {
+    if (this.#content === undefined) return undefined
+    try {
+      return await this.#content.get(key)
+    } catch {
+      return undefined
+    }
+  }
+
+  /** One bulk read for the paths a listing is about to parse. */
+  async #prefetch(
+    sources: readonly EntrySource[],
+  ): Promise<ReadonlyMap<string, string> | undefined> {
+    const store = this.#content
+    if (store?.getMany === undefined) return undefined
+    const missing: ContentStoreKey[] = []
+    for (const source of sources) {
+      if (this.#cache.getEntry(source.path, source.blobSha) === undefined) {
+        missing.push({ path: source.path, sha: source.blobSha })
+      }
+    }
+    if (missing.length === 0) return undefined
+    try {
+      return await store.getMany(missing)
+    } catch {
+      return undefined
+    }
+  }
+
+  /** Best-effort: a blocked or full device store must never break a read. */
+  async #remember(key: ContentStoreKey, text: string): Promise<void> {
+    if (this.#content === undefined) return
+    try {
+      await this.#content.put(key, text)
+    } catch {
+      // Ignored on purpose: the network read already succeeded.
+    }
+  }
+
+  /**
+   * Offers the current tree's reachable records to the store. Runs once per
+   * tree sha, so a listing does not re-walk the device store on every call.
+   */
+  #pruneContent(tree: TreeRead): void {
+    if (this.#content === undefined || tree.sha === this.#prunedTreeSha) return
+    this.#prunedTreeSha = tree.sha
+    const live = collectSources(this.#config, tree).map((source) => ({
+      path: source.path,
+      sha: source.blobSha,
+    }))
+    void this.#content.prune(live).catch(() => undefined)
   }
 
   /**
@@ -459,6 +538,7 @@ export class EntriesClient implements EntriesAPI {
     const tree = await this.#repo.tree()
     const built = await this.#build(source, rawText, sha, this.#services(tree))
     this.#cache.putEntry(built)
+    await this.#remember({ path: source.path, sha }, rawText)
     return built.entry
   }
 

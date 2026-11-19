@@ -16,6 +16,7 @@ import type { DraftStore } from "../drafts"
 import { createMemoryDraftStore } from "../drafts/memory-store"
 import { AuthController, defaultTokenStore } from "./auth"
 import { ClientCache } from "./cache"
+import type { ContentStore } from "./content-store"
 import { DraftsClient } from "./drafts"
 import { EntriesClient } from "./entries"
 import { CMSError, toCMSError } from "./errors"
@@ -47,6 +48,12 @@ export interface CreateCMSOptions {
   /** Soft caps for the in-memory blob cache. */
   readonly maxBlobBytes?: number
   readonly maxBlobEntries?: number
+  /**
+   * On-device copy of entry text, keyed by path + blob SHA. `patcms/web` ships
+   * `createIdbContentStore()`; absent means every cold start re-downloads.
+   * Cleared automatically on sign-out.
+   */
+  readonly contentStore?: ContentStore
   /** Called after a 401 write wiped the session. */
   readonly onAuthExpired?: () => void
 }
@@ -94,6 +101,7 @@ export function createCMS(options: CreateCMSOptions): CMS {
     repo,
     cache,
     ...(options.readConcurrency === undefined ? {} : { readConcurrency: options.readConcurrency }),
+    ...(options.contentStore === undefined ? {} : { content: options.contentStore }),
     onAuthExpired,
   })
   const mediaClient = new MediaClient({
@@ -109,6 +117,13 @@ export function createCMS(options: CreateCMSOptions): CMS {
   })
 
   auth.onChange((status) => {
+    // Content is client data: signing out drops the on-device copy with the
+    // memory cache. `destroy()` deliberately leaves it (a closed tab is not a
+    // sign-out) so the next open stays warm.
+    if (status === "signedOut") {
+      cache.clear()
+      void options.contentStore?.clear().catch(() => undefined)
+    }
     bus.emit("auth:change", { status })
   })
 
@@ -127,8 +142,9 @@ export function createCMS(options: CreateCMSOptions): CMS {
       if (!auth.isSignedIn) return
       await repo.tree({ recheck: true })
     },
-    clearCache(): void {
+    async clearCache(): Promise<void> {
       cache.clear()
+      await options.contentStore?.clear()
     },
     destroy(): void {
       cache.clear()

@@ -138,8 +138,12 @@ statuses, rate limit, and repo/branch-protection reads.
 - **Derived read model.** `entries.list()` builds from ONE tree snapshot per head
   (`packages/core/src/client/repo.ts`, `cache.ts`) — no database, no second cache. Reads may reuse
   a head confirmed within `readReuseMs` (default 30 s, `0` disables) and cache bodies by blob sha
-  (LRU-bounded); `refresh()` re-checks only the ref. Every write path forces a fresh head before it
-  decides anything, so the window can delay a foreign change on screen but never hide it from a save.
+  (LRU-bounded); `refresh()` re-checks only the ref. An optional `ContentStore`
+  (`packages/core/src/client/content-store.ts`, `packages/core/src/web/idb-content-store.ts`) keeps
+  raw text on the device by path + blob sha, so a cold open downloads only moved bodies; without it
+  every cold start downloads everything. Sign-out and `clearCache()` wipe it, `destroy()` does not.
+  Every write path forces a fresh head before it decides anything, so the window can delay a foreign
+  change on screen but never hide it from a save.
 
 | Collection kind | Entry identity | Content |
 |---|---|---|

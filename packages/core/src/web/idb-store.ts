@@ -17,7 +17,7 @@ import type { UseStore } from "idb-keyval"
  * The object stores the default `patcms` database owns. A new store is added
  * HERE in the same change that starts using it (ADR-0004 note).
  */
-export const PATCMS_IDB_STORES = ["auth", "drafts"] as const
+export const PATCMS_IDB_STORES = ["auth", "drafts", "content"] as const
 
 interface DbState {
   /** Every store an adapter has asked this database to carry so far. */

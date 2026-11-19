@@ -221,8 +221,8 @@ export interface CMS {
   readonly events: EventsAPI
   /** Re-checks the repository head; unchanged entries and blobs stay cached. */
   refresh(): Promise<void>
-  /** Drops every cached entry, blob, and the tree snapshot. */
-  clearCache(): void
-  /** Drops cache and listeners. Does not sign out. */
+  /** Drops cached entries, blobs, the tree snapshot, and the on-device copy. */
+  clearCache(): Promise<void>
+  /** Drops memory cache and listeners. Does not sign out or wipe the device copy. */
   destroy(): void
 }

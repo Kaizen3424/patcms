@@ -17,6 +17,10 @@
 - **`refresh()` re-checks the head; `clearCache()` starts over.** `cms.refresh()` makes one ref
   request and keeps every unchanged body; `cms.clearCache()` drops entries, blobs, and the tree.
   Drafts survive both.
+- **Optional on-device copy.** Pass `contentStore: createIdbContentStore()` from `patcms/web` and raw
+  entry text survives page loads, keyed by path + blob sha. A cold open then downloads only the
+  documents whose bytes moved — 3 requests instead of 183 for 180 unchanged entries. `clearCache()`
+  and sign-out wipe it; closing the tab does not. See [web-stores.md](./web-stores.md).
 - **Bounded fan-out.** A collection lists with at most 5 parallel body reads (GitHub secondary-rate
   posture). Override with `createCMS({ readConcurrency })`.
 

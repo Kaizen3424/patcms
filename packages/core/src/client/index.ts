@@ -1,4 +1,6 @@
 /** Public client surface — everything reachable from `patcms`. */
+export type { ContentStore, ContentStoreKey } from "./content-store"
+export { contentStoreKey } from "./content-store"
 export { type CreateCMSOptions, createCMS } from "./create-cms"
 export type { CMSErrorCode, CMSErrorOptions } from "./errors"
 export { CMSError, isCMSError, toCMSError } from "./errors"

@@ -6,7 +6,12 @@
  * A host that keeps drafts in memory (the default) does not need this entry at
  * all; the main package never imports it.
  */
+
+export type { ContentStore, ContentStoreKey } from "../client/content-store"
+export { contentStoreKey } from "../client/content-store"
 export type { SaveDraftPayload } from "../drafts"
+export type { IdbContentStoreOptions } from "./idb-content-store"
+export { clearIdbContentStore, createIdbContentStore } from "./idb-content-store"
 export type { IdbDraftStoreOptions } from "./idb-draft-store"
 export { clearIdbDraftStore, createIdbDraftStore } from "./idb-draft-store"
 export {
