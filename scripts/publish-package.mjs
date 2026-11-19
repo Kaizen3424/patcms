@@ -12,8 +12,8 @@
  *
  * Writes `pnpm-publish-summary.json` in the shape `pnpm -r publish
  * --report-summary` writes, so `scripts/create-github-release.mjs` tags the
- * version that was actually published. `--dry-run` packs and runs npm's dry
- * run, writing nothing.
+ * version that was actually published. `--dry-run` packs and, unless the
+ * version is already live, runs npm's dry run; it writes nothing.
  */
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"

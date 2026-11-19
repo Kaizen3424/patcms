@@ -52,7 +52,7 @@ Consequences worth internalising:
 | Build | `tsup` (core JS) + `tsc -b` (core d.ts → `dist-types`; `tsup` has `dts: false` — packing without a typecheck ships types pointing at nothing), `vite` (playground) |
 | Tests | Vitest, plus `fast-check` property tests in core |
 | Lint / format | Biome with `--error-on-warnings` |
-| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes. `scripts/publish-package.mjs` packs with pnpm (it rewrites `catalog:`) and publishes the tarball with the npm CLI — only npm performs the OIDC exchange, so `pnpm publish` fails `ENEEDAUTH` even with a valid trusted publisher |
+| Release | changesets; `.github/workflows/release.yml` publishes via npm trusted publishing (OIDC, no `NPM_TOKEN`), tags `v<version>`, and creates the GitHub Release from the changeset notes — runbook in `workflows/release.md` |
 | CI actions | SHA-pinned, job-level `contents: read`, no `pull_request_target`; the release job alone may hold `contents: write` + `id-token: write` (enforced by `scripts/ci-workflow-guard.mjs`) |
 
 | Purpose | Command |
@@ -246,7 +246,7 @@ exactly once, in the deep-dive that owns that subsystem:
 | ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17–P18 · INV-D01–D03 | `workflows/publish-and-recovery.md` |
 | ADR-0007 · INV-M01–M03 · INV-T04 | `media-architecture.md` |
 | INV-N05 | `test-harness-architecture.md` |
-| ADR-0010 | `README.md` § Releases · `.github/workflows/release.yml` |
+| ADR-0010 | `workflows/release.md` |
 | INV-C01 | `playground/src/config/__tests__/inv-c01-parity.test.ts` |
 
 An id missing from this table means the spec is wrong: add the definition to the owning deep-dive and
@@ -295,7 +295,9 @@ Never commit a token. `.gitignore` keeps `.env*` out.
 | `content-model-architecture.md` | config, fields, parsing, serialisation, editor widgets |
 | `media-architecture.md` | uploads, previews, references, trash/restore, budgets |
 | `test-harness-architecture.md` | playground, fixtures, test doubles, CI guard scripts |
+| `workflows/release.md` | npm publishing, the trusted publisher, version PRs, tags and GitHub Releases |
 
 There is no active delivery plan at the moment (`plans/` was dropped after 0.1.0). Release policy
-(ADR-0010) is enforced by `.github/workflows/release.yml` and `scripts/ci-workflow-guard.mjs`;
-INV-C01 is the parity test indexed in §8, and INV-C02–C04 retired with the plan.
+(ADR-0010) is owned by `workflows/release.md` and enforced by `.github/workflows/release.yml` plus
+`scripts/ci-workflow-guard.mjs`; INV-C01 is the parity test indexed in §8, and INV-C02–C04 retired
+with the plan.

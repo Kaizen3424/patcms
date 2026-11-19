@@ -21,5 +21,5 @@
 
 ## Toolchain
 
-- Node 22 pinned for CI/tooling (`.nvmrc` = `22`); local runtimes may use any Node satisfying `engines` (≥22.12) — owner decision recorded as ADR-0010 (see `README.md` § Releases).
+- Node 22 pinned for CI/tooling (`.nvmrc` = `22`); local runtimes may use any Node satisfying `engines` (≥22.12). The pin, the release policy, and the supply-chain rules are ADR-0010 (see `specs/workflows/release.md`).
 - pnpm pinned via the root `packageManager` field (corepack).

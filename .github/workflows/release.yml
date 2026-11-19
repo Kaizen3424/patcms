@@ -1,11 +1,11 @@
 name: release
 
 # ADR-0010 release law: npm trusted publishing over OIDC — no NPM_TOKEN exists
-# anywhere. This exact filename is registered as the trusted publisher on
-# npmjs.com (repository Kaizen3424/patcms), so renaming this file must move
-# both sides together. The release job is the only job allowed to elevate to
-# `contents: write` + `id-token: write`; scripts/ci-workflow-guard.mjs enforces
-# that shape.
+# anywhere. Runbook: specs/workflows/release.md. This exact filename is registered
+# as the trusted publisher on npmjs.com (repository Kaizen3424/patcms), so
+# renaming this file must move both sides together. The release job is the only
+# job allowed to elevate to `contents: write` + `id-token: write`;
+# scripts/ci-workflow-guard.mjs enforces that shape.
 on:
   push:
     branches: [main]
@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: write # version-PR branch and the v<version> release tag
       pull-requests: write # the Version Packages PR
-      id-token: write # npm trusted publishing (OIDC) — pnpm exchanges the token
+      id-token: write # npm trusted publishing (OIDC) — the npm CLI exchanges the token
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (full history — changesets reads tags and branches)

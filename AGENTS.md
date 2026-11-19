@@ -15,9 +15,12 @@ exists. This file is the working manual, not a replacement for either.
    flows, vetoes, and the identifier index.
 2. The one deep-dive for the area you are touching (inventory below). Its closing "Decisions and
    claims" section holds the binding rules and the tests that enforce them.
-3. Then the code. For release work, read `README.md` § Releases and `.github/workflows/release.yml`.
+3. Then the code. **Release work starts at `specs/workflows/release.md`** — the trusted publisher
+   fields, the pack/publish split, the failure playbook, and the exact verification commands. The
+   code is `.github/workflows/release.yml`, `scripts/publish-package.mjs`, and
+   `scripts/create-github-release.mjs`.
 
-Do not read all six specs for a one-file change.
+Do not read all seven specs for a one-file change.
 
 ## Code wins
 
@@ -36,6 +39,7 @@ confirming which behaviour is intended.
 | The auth flow, token storage, or probe | anchor §6, `backend-and-auth-architecture.md`, and `docs/authentication.md` |
 | An env var, flag, or fixture parameter | anchor §9 and `test-harness-architecture.md` |
 | Commands, CI jobs, build outputs, deploy config | anchor §2/§10 and this file |
+| A release, publish, npm trusted-publisher, version-PR, tag, or release-workflow change | `workflows/release.md` (ADR-0010 lives there) and anchor §2 |
 | A save, conflict, draft, or recovery rule | `workflows/publish-and-recovery.md` |
 | Media paths, guards, references, trash, budgets | `media-architecture.md` |
 | A decision (`ADR-xxxx`) or testable claim (`INV-xxxx`) | The owning deep-dive's "Decisions and claims" table, then the index in anchor §8 |
@@ -83,6 +87,7 @@ docs/
 specs/
   CMS.md                               anchor: the whole repo in one read
   workflows/publish-and-recovery.md    save machine, drafts, conflicts, boot, deploy status
+  workflows/release.md                 npm publish runbook: trusted publisher, OIDC, tag/release
   backend-and-auth-architecture.md     GitBackend, transaction, CAS, PAT, rate, contract suite
   content-model-architecture.md        config DSL, 12 field types, parse/save, untouched, widgets
   media-architecture.md                bijection, upload guards, references, trash, budget
@@ -101,8 +106,9 @@ has the history. If reality contradicts a spec or a decision row, update the spe
 
 Decision rationale and testable claims are not a separate register: each deep-dive ends with a
 "Decisions and claims" section, and `specs/CMS.md §8` indexes which file owns which id. Release policy
-(ADR-0010) is enforced by `.github/workflows/release.yml` and `scripts/ci-workflow-guard.mjs`. Never
-restate an id's rule in two places — link to the owning section.
+(ADR-0010) is owned by `specs/workflows/release.md`; `.github/workflows/release.yml` and
+`scripts/ci-workflow-guard.mjs` enforce it. Never restate an id's rule in two places — link to the
+owning section.
 
 ## Golden rule
 
