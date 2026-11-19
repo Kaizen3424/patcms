@@ -194,6 +194,8 @@ merging it publishes to npm through OIDC trusted publishing — no npm token is 
 then tags `v<version>` and creates the GitHub Release with the changeset notes. The npm side must
 have the trusted publisher configured for that exact workflow filename (see
 [`.github/workflows/release.yml`](.github/workflows/release.yml)).
+The publish step packs with pnpm (it rewrites the `catalog:` protocol) and publishes the tarball with
+the npm CLI: trusted publishing is an npm-CLI flow, and `pnpm publish` never requests the OIDC token.
 
 ## License
 

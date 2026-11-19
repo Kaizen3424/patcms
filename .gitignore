@@ -39,7 +39,7 @@ Thumbs.db
 # docs snippet typecheck scratch (scripts/check-docs-snippets.mjs)
 playground/.docs-check/
 
-# pnpm -r publish output (release workflow reads it in CI)
+# publish summary written by scripts/publish-package.mjs (release workflow reads it in CI)
 pnpm-publish-summary.json
 
 # agent scratch (never committed)

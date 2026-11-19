@@ -4,7 +4,7 @@
  * the publish commit and create the GitHub Release whose notes are the
  * changeset-generated changelog section for that version.
  *
- * The publish script (`pnpm -r publish --report-summary`) writes
+ * The publish script (`scripts/publish-package.mjs`) writes
  * `pnpm-publish-summary.json` only when something was actually published, so
  * an absent or empty summary means "this run produced the Version Packages
  * PR" — exit 0, do nothing. Git-side only: the npm publish itself went through
