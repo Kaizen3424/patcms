@@ -332,15 +332,101 @@ export class GithubBackend implements GitBackend {
    * Transactional write (ADR-0005): blobs → tree on `base_tree` → commit
    * naming the verified head as parent → FF-only ref update. On an
    * EMPTY repository (`baseHeadSha === ""`, from a typed EMPTY_REPO ref read)
-   * the same save bootstraps it: tree WITHOUT base_tree, root commit WITHOUT
-   * parents, and a ref CREATE via POST /git/refs — the create then acts as the
-   * CAS: a first-wins race surfaces as CAS_CONFLICT, never a force (ADR-0011).
+   * the save bootstraps instead (ADR-0011): the ENTIRE git-data API — blobs,
+   * trees, commits, refs — returns 409 "Git Repository is empty" on a
+   * zero-commit repo, so the first commit goes through the REST contents API,
+   * which is the one write GitHub keeps open there.
    */
   async commitChanges(
     changes: CommitChangeSet,
     baseHeadSha: string,
     branch: string,
     options: CommitOptions = {},
+  ): Promise<CommitResult> {
+    if (baseHeadSha.length === 0) {
+      return this.#bootstrapCommit(changes, branch, options)
+    }
+    return this.#fastForwardCommit(changes, baseHeadSha, branch, options)
+  }
+
+  /**
+   * Empty-repository bootstrap (ADR-0011). GitHub closes every git-data write
+   * on a zero-commit repo, so the root commit is made through the contents
+   * API: PUT /contents/{path} with NO `sha` — GitHub creates the root commit
+   * AND the branch in that single request and is never patched afterwards.
+   * A save that changes exactly ONE file IS this one PUT (one tidy commit per
+   * save also on the first save). A multi-file save seeds its
+   * lexicographically-first add/update through the PUT and then runs the
+   * ordinary fast-forward pipeline on top — exactly TWO commits, the
+   * documented bootstrap exception to one-commit-per-save.
+   */
+  async #bootstrapCommit(
+    changes: CommitChangeSet,
+    branch: string,
+    options: CommitOptions,
+  ): Promise<CommitResult> {
+    const writes = [...(changes.adds ?? []), ...(changes.updates ?? [])]
+    if (writes.length === 0) {
+      // Unreachable through the driver (delete-only against an empty tree is
+      // a zero-diff noop), but never bootstrap "nothing".
+      throw new BackendWriteError(
+        "VALIDATION",
+        "GitHub refused to bootstrap an empty repository with no file additions",
+        { status: 422 },
+      )
+    }
+    const message = options.message ?? defaultCommitMessage(changes)
+    const seed = [...writes].sort(byPath)[0]
+    if (seed === undefined) {
+      throw new BackendWriteError(
+        "VALIDATION",
+        "GitHub refused to bootstrap an empty repository with no file additions",
+        { status: 422 },
+      )
+    }
+    const rooted = await this.#contentsPut(seed.path, seed.bytes, branch, message)
+    // CAS law: the premise of a bootstrap is "the repository has ZERO commits",
+    // so the commit we anchored MUST be a root commit. A parent means the
+    // branch materialised under us — another writer won the race. GitHub's
+    // contents API has no atomic branch-absent guard, so that PUT has already
+    // landed as a child of their head; the save still REFUSES as CAS_CONFLICT
+    // (their tree is content this save never verified — never adopted into the
+    // save's result, never forced back), and the host's next rebind consumes
+    // reality (ADR-0004). A same-path race never lands: the missing-sha 422
+    // fires before any mutation.
+    const parents = await this.#commitParents(rooted.commitSha)
+    if (parents.length > 0) {
+      throw new BackendWriteError(
+        "CAS_CONFLICT",
+        "GitHub bootstrap raced another writer (branch already exists)",
+        { status: 422 },
+      )
+    }
+    if (writes.length === 1) return rooted
+    const subtractSeed = (write: { readonly path: string }): boolean => write.path !== seed.path
+    return this.#fastForwardCommit(
+      {
+        ...(changes.adds === undefined ? {} : { adds: changes.adds.filter(subtractSeed) }),
+        ...(changes.updates === undefined ? {} : { updates: changes.updates.filter(subtractSeed) }),
+        ...(changes.deletes === undefined ? {} : { deletes: changes.deletes }),
+      },
+      rooted.commitSha,
+      branch,
+      options,
+    )
+  }
+
+  /**
+   * Ordinary save on an EXISTING branch head: blobs → tree on `base_tree` →
+   * commit naming the verified head as parent → FF-only ref update (CAS,
+   * explicit force:false — INV-P01). Never force; a moved head refuses as
+   * CAS_CONFLICT per the write classifier.
+   */
+  async #fastForwardCommit(
+    changes: CommitChangeSet,
+    baseHeadSha: string,
+    branch: string,
+    options: CommitOptions,
   ): Promise<CommitResult> {
     const writes = [...(changes.adds ?? []), ...(changes.updates ?? [])]
     // 1. Blobs — content-addressed, pooled (≤5 concurrent, ADR-0005 §writes).
@@ -359,9 +445,6 @@ export class GithubBackend implements GitBackend {
     })
 
     // 2. Tree changes on top of the verified base tree (NEVER client-assembled).
-    //    Bootstrap ("" base — the repo has no commits): NO base_tree — the new
-    //    tree is the ROOT tree.
-    const isBootstrap = baseHeadSha.length === 0
     const treeInput: Array<{ path: string; mode: string; type: string; sha: string | null }> = [
       ...blobShas.map((entry) => ({
         path: entry.write.path,
@@ -372,41 +455,27 @@ export class GithubBackend implements GitBackend {
       ...(changes.deletes ?? []).map((path) => ({ path, mode: "100644", type: "blob", sha: null })),
     ]
     const treePayload = asRecord(
-      await this.#requestWrite(
-        `${this.#repoUrl()}/git/trees`,
-        isBootstrap
-          ? { tree: treeInput }
-          : { base_tree: await this.#resolveTreeSha(baseHeadSha), tree: treeInput },
-      ),
+      await this.#requestWrite(`${this.#repoUrl()}/git/trees`, {
+        base_tree: await this.#resolveTreeSha(baseHeadSha),
+        tree: treeInput,
+      }),
     )
     const treeSha = treePayload?.sha
     if (typeof treeSha !== "string") {
       throw new BackendWriteError("UNKNOWN", "GitHub tree create returned no sha")
     }
 
-    // 3. Commit naming the verified head as parent — a bootstrap has none (ROOT
-    //    commit; the ref create below is what anchors it to a branch).
+    // 3. Commit naming the verified head as parent.
     const commitPayload = asRecord(
       await this.#requestWrite(`${this.#repoUrl()}/git/commits`, {
         message: options.message ?? defaultCommitMessage(changes),
         tree: treeSha,
-        ...(isBootstrap ? {} : { parents: [baseHeadSha] }),
+        parents: [baseHeadSha],
       }),
     )
     const commitSha = commitPayload?.sha
     if (typeof commitSha !== "string") {
       throw new BackendWriteError("UNKNOWN", "GitHub commit create returned no sha")
-    }
-
-    if (isBootstrap) {
-      // 3b. CREATE the branch (POST /git/refs — never PATCH, never force).
-      //     If another writer bootstrapped first, the collision returns as a
-      //     CAS_CONFLICT per the write classifier (ADR-0011).
-      await this.#requestWrite(`${this.#repoUrl()}/git/refs`, {
-        ref: `refs/heads/${branch}`,
-        sha: commitSha,
-      })
-      return { commitSha, treeSha }
     }
 
     // 4. FF-only ref update (CAS): explicit force:false, always (INV-P01).
@@ -438,8 +507,67 @@ export class GithubBackend implements GitBackend {
     return results
   }
 
-  /** Write-side request helper: POST/PATCH, JSON body, classified failures. */
-  async #requestWrite(url: string, payload: unknown, method: "POST" | "PATCH" = "POST") {
+  /**
+   * The ONE GitHub write open on a zero-commit repository (ADR-0011): contents
+   * API without an existing-file `sha` — GitHub creates the root commit AND
+   * the branch in this single request; `force` does not exist on this route
+   * (nothing to force: the committed parent chain, or its absence, is decided
+   * server-side).
+   */
+  async #contentsPut(
+    path: string,
+    bytes: Uint8Array,
+    branch: string,
+    message: string,
+  ): Promise<{ readonly commitSha: string; readonly treeSha: string }> {
+    const payload = asRecord(
+      await this.#requestWrite(
+        `${this.#repoUrl()}/contents/${encodePath(path)}`,
+        {
+          message,
+          content: encodeBase64(bytes),
+          branch,
+        },
+        "PUT",
+      ),
+    )
+    const commit = asRecord(payload?.commit)
+    const commitSha = getString(commit, "sha")
+    const treeSha = getString(asRecord(commit?.tree), "sha")
+    if (commitSha === undefined || treeSha === undefined) {
+      throw new BackendWriteError("UNKNOWN", "GitHub contents put returned no commit")
+    }
+    return { commitSha, treeSha }
+  }
+
+  /**
+   * Parent-chain read for the bootstrap CAS verification (ADR-0011): a seed
+   * commit that already HAS a parent means the branch materialised between the
+   * ref read and the PUT — the CAS premise raced false, the save refuses as a
+   * conflict value (the caller throws CAS_CONFLICT).
+   */
+  async #commitParents(commitSha: string): Promise<readonly string[]> {
+    let response: RequestResult
+    try {
+      response = await this.#request(
+        `${this.#repoUrl()}/git/commits/${encodeURIComponent(commitSha)}`,
+      )
+    } catch (error) {
+      // The seed may already have landed — an unknown outcome, not a truth:
+      // reclassify so the driver's INV-P09 machinery verifies by content.
+      const status = error instanceof BackendReadError ? error.status : undefined
+      throw new BackendWriteError(
+        "UNKNOWN",
+        "GitHub bootstrap verification read failed",
+        status === undefined ? {} : { status },
+      )
+    }
+    if (response.kind === "not-modified") return []
+    return parentShas(response.value)
+  }
+
+  /** Write-side request helper: POST/PATCH/PUT, JSON body, classified failures. */
+  async #requestWrite(url: string, payload: unknown, method: "POST" | "PATCH" | "PUT" = "POST") {
     let response: FetchResponseLike
     try {
       response = await this.#fetch(url, {
@@ -663,6 +791,25 @@ function classifyResponse(response: FetchResponseLike, bodyText: string): Backen
 function requireBranch(branch: string): string {
   if (branch.length === 0) throw new BackendReadError("UNKNOWN", "branch must not be empty")
   return branch
+}
+
+/** Lexicographic path order — the deterministic bootstrap seed selection. */
+function byPath(left: { readonly path: string }, right: { readonly path: string }): number {
+  return left.path < right.path ? -1 : left.path > right.path ? 1 : 0
+}
+
+/** A commit's parent shas from a `GET /git/commits/{sha}` payload (lenient). */
+function parentShas(value: JsonValue): readonly string[] {
+  const list = asRecord(value)?.parents
+  if (!Array.isArray(list)) return []
+  const shas: string[] = []
+  for (const item of list) {
+    // GitHub truth is `{ sha }` objects; accept bare strings too (lenient read:
+    // a row without a sha is dropped, never invented into a false race).
+    const sha = typeof item === "string" ? item : getString(asRecord(item), "sha")
+    if (sha !== undefined && sha.length > 0) shas.push(sha)
+  }
+  return shas
 }
 
 function requireSha(sha: string): string {

@@ -14,9 +14,11 @@ It passes `CORE_CONTRACT_SUITE`, exactly like `GithubBackend` — machine-enforc
 driver in `backend/__tests__/contract-suite.test.ts`.
 
 The empty-repository mode (`spec.empty`, built by `buildEmptyRepoSpec()`) models a freshly created
-repo: every branch-addressed ref read 409s with the "Git Repository is empty" body, the commit log
-409s too, and writes may bootstrap root commit + branch (`POST /git/refs`). Semantics live in the
-model, not the adapters (ADR-0011).
+repo GitHub-truthfully, and emptiness is the LIVE commit state, not just the flag: while no commit
+exists, every git-data route — reads AND writes — 409s with the "Git Repository is empty" body, and
+`PUT /contents/{path}` (no `sha`) is the only open write: it creates the root commit AND the branch,
+after which the git-data API opens up. Never model git-data writes succeeding on an empty repo —
+real GitHub refuses them (ADR-0011).
 
 The whole cluster is **test-only**: it lives under `src/__tests__/support/`, and no public entry
 (`patcms`, `patcms/advanced`, `patcms/web`) may re-export it. `scripts/check-tarball.mjs` and the

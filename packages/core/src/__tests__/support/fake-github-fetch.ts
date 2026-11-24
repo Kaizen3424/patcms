@@ -90,9 +90,11 @@ export async function buildSpecFromBytes(
 }
 
 /**
- * Freshly created repository: zero commits, no branch, no ref. The model then
- * answers every branch read 409 "Git Repository is empty" and the write path
- * bootstraps root commit + branch (ADR-0011 empty-repo posture).
+ * Freshly created repository: zero commits, no branch, no ref. The model is
+ * GitHub-truthful about the empty state: EVERY git-data route (reads and
+ * writes alike) answers 409 "Git Repository is empty"; the ONLY write open is
+ * the REST contents PUT, which creates the root commit + branch — after which
+ * the git-data API opens up (ADR-0011 empty-repo posture).
  */
 export function buildEmptyRepoSpec(defaultBranch = "fixture-branch"): FakeGithubSpec {
   return {

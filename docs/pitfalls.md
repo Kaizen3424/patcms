@@ -23,7 +23,10 @@ non-negotiable — the package's own architecture refuses these, and so should y
 GitHub answers branch reads of a zero-commit repository with **HTTP 409 and a
 "Git Repository is empty" body** — not 404 and not an error you need to handle. patcms treats that
 as "no content": `entries.listPaths` returns `[]`, `entries.get` throws the same `NOT_FOUND` a
-missing entry throws, and the **first save creates the very first commit and the branch**. Do not
+missing entry throws, and the **first save creates the very first commit and the branch**. The same
+409 also guards every low-level git-data write on that repo (blobs, trees, commits, refs are all
+refused there) — patcms classifies it as `EMPTY_REPO` on the write side too, never as a validation
+error, so a save to a fresh repo can never show "content needs attention". Do not
 gate onboarding on "the repo must have a commit"; do not be surprised that the branch appears only
 after the first save. The lookalike to avoid: a branch that is missing on a repository that **has**
 commits is a real error (`NOT_FOUND` naming the branch) — create that branch on GitHub first.

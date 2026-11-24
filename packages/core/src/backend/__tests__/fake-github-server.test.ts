@@ -349,90 +349,94 @@ describe("FakeGithubServer — empty-repository mode (ADR-0011 model truth)", ()
     expect((log.json as { message?: string }).message).toMatch(/git repository is empty/i)
   })
 
-  it("creates a root commit without parents and anchors it with a ref create", async () => {
+  it("closes EVERY git-data write on the empty state with the 409 empty body", async () => {
+    // Live-verified truth (ADR-0011): a zero-commit repo does not merely refuse
+    // ref writes — the ENTIRE git-data API (blobs/trees/commits/refs) answers
+    // 409. Only the REST contents PUT stays open (#putContents below).
     const server = new FakeGithubServer(emptySpec())
-    const blob = await server.handle({
-      method: "POST",
-      path: "/git/blobs",
-      body: { content: encodeBase64(encodeUtf8(SITE)), encoding: "base64" },
-    })
-    const blobSha = ((await body(blob)) as { sha: string }).sha
-    const tree = await server.handle({
-      method: "POST",
-      path: "/git/trees",
-      // NO base_tree: the bootstrap tree IS the root tree.
-      body: {
-        tree: [{ path: "src/content/seed.json", mode: "100644", type: "blob", sha: blobSha }],
+    const writes: readonly { method: string; path: string; body?: unknown }[] = [
+      { method: "POST", path: "/git/blobs", body: { content: "aGk=", encoding: "base64" } },
+      { method: "POST", path: "/git/trees", body: { tree: [] } },
+      { method: "POST", path: "/git/commits", body: { message: "x", tree: "ab".repeat(20) } },
+      {
+        method: "POST",
+        path: "/git/refs",
+        body: { ref: "refs/heads/fixture-branch", sha: "ab".repeat(20) },
       },
-    })
-    const treeSha = ((await body(tree)) as { sha: string }).sha
-    const commit = await server.handle({
-      method: "POST",
-      path: "/git/commits",
-      // NO parents: the bootstrap commit IS the root commit.
-      body: { message: "chore(cms): bootstrap", tree: treeSha },
-    })
-    const commitSha = ((await body(commit)) as { sha: string }).sha
-    const create = await server.handle({
-      method: "POST",
-      path: "/git/refs",
-      body: { ref: "refs/heads/fixture-branch", sha: commitSha },
-    })
-    expect(create.status).toBe(201)
-    expect((await body(create)).ref).toBe("refs/heads/fixture-branch")
-    expect(server.ref("fixture-branch")).toBe(commitSha)
-    // The created branch is now a normal branch: its ref read succeeds.
-    const read = await server.handle({ method: "GET", path: "/git/ref/heads/fixture-branch" })
-    expect(read.status).toBe(200)
-    expect(((await body(read)) as { object: { sha: string } }).object.sha).toBe(commitSha)
+      {
+        method: "PATCH",
+        path: "/git/refs/heads/fixture-branch",
+        body: { sha: "ab".repeat(20), force: false },
+      },
+    ]
+    for (const write of writes) {
+      const response = await server.handle({
+        method: write.method,
+        path: write.path,
+        body: write.body,
+      })
+      expect(response.status).toBe(409)
+      expect((response.json as { message?: string }).message).toMatch(/git repository is empty/i)
+    }
+    expect(server.ref("fixture-branch")).toBeUndefined()
+    expect(server.commitCount()).toBe(0)
   })
 
-  it("refuses a second create of the same ref 422 'Reference already exists'", async () => {
-    const server = new FakeGithubServer(emptySpec())
-    const blob = await server.handle({
-      method: "POST",
-      path: "/git/blobs",
-      body: { content: encodeBase64(encodeUtf8(SITE)), encoding: "base64" },
-    })
-    const blobSha = ((await body(blob)) as { sha: string }).sha
-    const tree = await server.handle({
-      method: "POST",
-      path: "/git/trees",
-      body: {
-        tree: [{ path: "src/content/seed.json", mode: "100644", type: "blob", sha: blobSha }],
-      },
-    })
-    const treeSha = ((await body(tree)) as { sha: string }).sha
-    const commit = await server.handle({
-      method: "POST",
-      path: "/git/commits",
-      body: { message: "chore(cms): bootstrap", tree: treeSha },
-    })
-    const commitSha = ((await body(commit)) as { sha: string }).sha
-    const first = await server.handle({
-      method: "POST",
-      path: "/git/refs",
-      body: { ref: "refs/heads/fixture-branch", sha: commitSha },
-    })
-    expect(first.status).toBe(201)
-    const second = await server.handle({
-      method: "POST",
-      path: "/git/refs",
-      body: { ref: "refs/heads/fixture-branch", sha: commitSha },
-    })
-    expect(second.status).toBe(422)
-    expect((second.json as { message?: string }).message).toMatch(/already exists/i)
-    expect(server.ref("fixture-branch")).toBe(commitSha)
-  })
-
-  it("refuses a ref create naming a commit that does not exist", async () => {
+  it("PUT /contents creates the root commit AND the branch in one request", async () => {
     const server = new FakeGithubServer(emptySpec())
     const response = await server.handle({
-      method: "POST",
-      path: "/git/refs",
-      body: { ref: "refs/heads/fixture-branch", sha: "ab".repeat(20) },
+      method: "PUT",
+      path: "/contents/src/content/seed.json",
+      body: {
+        message: "chore(cms): bootstrap",
+        content: encodeBase64(encodeUtf8(SITE)),
+        branch: "fixture-branch",
+      },
     })
-    expect(response.status).toBe(422)
-    expect(server.ref("fixture-branch")).toBeUndefined()
+    expect(response.status).toBe(201)
+    const payload = (await body(response)) as {
+      content: { sha: string }
+      commit: { sha: string; tree: { sha: string } }
+    }
+    expect(payload.commit.sha).toMatch(/^[0-9a-f]{40}$/)
+    expect(server.ref("fixture-branch")).toBe(payload.commit.sha)
+    // The first commit IS a root commit (the CAS premise of a bootstrap).
+    const commit = await server.handle({
+      method: "GET",
+      path: `/git/commits/${payload.commit.sha}`,
+    })
+    expect(((await body(commit)) as { parents: string[] }).parents).toEqual([])
+    // Once seeded, the git-data API opens up (emptiness is live commit state).
+    const refRead = await server.handle({ method: "GET", path: "/git/ref/heads/fixture-branch" })
+    expect(refRead.status).toBe(200)
+    expect(server.contents("fixture-branch", "src/content/seed.json")?.sha).toBe(
+      payload.content.sha,
+    )
+  })
+
+  it("refuses PUT /contents of an existing path without its sha (422 sha wasn't supplied)", async () => {
+    const server = new FakeGithubServer(emptySpec())
+    const first = await server.handle({
+      method: "PUT",
+      path: "/contents/src/content/seed.json",
+      body: { message: "seed", content: encodeBase64(encodeUtf8(SITE)), branch: "fixture-branch" },
+    })
+    expect(first.status).toBe(201)
+    const seededSha = ((await body(first)) as { commit: { sha: string } }).commit.sha
+    const second = await server.handle({
+      method: "PUT",
+      path: "/contents/src/content/seed.json",
+      body: {
+        message: "collide",
+        content: encodeBase64(encodeUtf8(SITE)),
+        branch: "fixture-branch",
+      },
+    })
+    expect(second.status).toBe(422)
+    // The wire body is the JSON-serialized form: quotes around `sha` escaped —
+    // this exact class is what the write classifier maps to CAS_CONFLICT.
+    expect(JSON.stringify(second.json)).toContain('\\"sha\\" wasn')
+    // The collided PUT mutated nothing: the branch keeps the seed commit.
+    expect(server.ref("fixture-branch")).toBe(seededSha)
   })
 })

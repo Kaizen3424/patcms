@@ -25,7 +25,8 @@ helpers, safety, and status are all re-exported here too.
 
 One save attempt against a backend: fresh head → tree → commit → fast-forward-only ref update →
 verify. On a brand-new (empty) repository the fresh head binds as "no base" and the same attempt
-creates the root commit and the branch. This is the piece `createCMS()` calls; use it directly when
+creates the root commit and the branch — through the file-contents API, because GitHub's git-data
+API refuses every write on a zero-commit repo. This is the piece `createCMS()` calls; use it directly when
 you build your own transaction
 (e.g. media batches joined with an entry in one tree commit):
 

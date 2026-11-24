@@ -4,6 +4,8 @@
  * message map — never inline prose — renders founder-friendly screens (INV-A02).
  */
 
+import { EMPTY_REPO_BODY_SIGNATURE } from "./errors"
+
 export type WriteErrorCode =
   /** FF guard tripped: ref moved / update is not a fast forward (INV-P01). */
   | "CAS_CONFLICT"
@@ -68,11 +70,24 @@ const FAST_FORWARD_HINTS: readonly string[] = [
    * gets a typed conflict and never force-pushes (ADR-0011).
    */
   "already exists",
+  /**
+   * Contents-API PUT of a path that already exists without the required
+   * existing-file `sha`: the only way a save's bootstrap PUT can collide (the
+   * "repository is empty" premise raced false). Same CAS law (ADR-0011). The
+   * body arrives JSON-encoded, so the quotes around `sha` are backslash-
+   * escaped on the wire (real body: "sha" wasn't supplied. → \"sha\" wasn't).
+   */
+  'sha\\" wasn',
 ]
 
 function isFastForwardBody(bodyText: string): boolean {
   const lowered = bodyText.toLowerCase()
   return FAST_FORWARD_HINTS.some((hint) => lowered.includes(hint))
+}
+
+/** The zero-commit discriminator (body-inspected, never surfaced verbatim). */
+function isEmptyRepoBody(bodyText: string): boolean {
+  return EMPTY_REPO_BODY_SIGNATURE.test(bodyText)
 }
 
 /**
@@ -81,7 +96,7 @@ function isFastForwardBody(bodyText: string): boolean {
  * this function reads no network state.
  */
 export function classifyWriteResponse(hints: WriteFailureHints): BackendWriteError {
-  const { status, headers } = hints
+  const { status, headers, bodyText } = hints
   const retryAfter = headers.get("retry-after") ?? undefined
   const remaining = headers.get("x-ratelimit-remaining")
   const resetAt = headers.get("x-ratelimit-reset") ?? undefined
@@ -112,11 +127,19 @@ export function classifyWriteResponse(hints: WriteFailureHints): BackendWriteErr
   if (status === 404) {
     return new BackendWriteError("NOT_FOUND", "GitHub write target not found (404)", { status })
   }
-  // GitHub flags non-fast-forward ref updates with 422 (sometimes 409), and
-  // ref-creates that collide with an existing ref ("already exists"); body
-  // class disambiguates CAS conflicts from transport validation failures.
+  if (status === 409 && isEmptyRepoBody(bodyText)) {
+    // GitHub closes the ENTIRE git-data API (blobs/trees/commits and the ref
+    // routes) on a repository with ZERO commits — writes included (ADR-0011).
+    // A save bootstrapping through an empty premise reported back "still
+    // empty": typed EMPTY_REPO, never VALIDATION-class prose to the host.
+    return new BackendWriteError("EMPTY_REPO", "GitHub repository is empty", { status })
+  }
+  // GitHub flags non-fast-forward ref updates with 422 (sometimes 409), ref
+  // creates that collide with an existing ref, and contents-API puts of an
+  // existing file without its sha; body class disambiguates CAS conflicts
+  // from transport validation failures.
   if (status === 422 || status === 409) {
-    if (isFastForwardBody(hints.bodyText)) {
+    if (isFastForwardBody(bodyText)) {
       return new BackendWriteError(
         "CAS_CONFLICT",
         `GitHub refused the fast-forward guard (422 class)`,

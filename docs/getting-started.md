@@ -127,9 +127,11 @@ configured `tokenStore` — memory-only by default, IndexedDB via `createIdbToke
 
 - Each save is **one commit** on your branch with the subject `chore(cms): save N file(s)`; an
   optional `message` option becomes the commit body. Zero-diff saves produce no commit at all
-  (`status: "noop"`).
-- A **freshly created (empty) repository** works from the very first save: reads show no content,
-  and the first save creates the very first commit and the branch in one go. Every later save is an
+  (`status: "noop"`). (The only exception: a multi-file first save on an empty repository, above.)
+- A **freshly created (empty) repository** works from the very first save: reads show no content, and
+  the first save creates the very first commit and the branch. A first save that writes a single
+  file is that one commit; a first save writing several files lands two — the bootstrap seed plus
+  the save — which is the only documented exception to one-commit-per-save. Every later save is an
   ordinary fast-forward.
 - Saves are **fast-forward-only**: if someone else pushed first, you get a conflict value — the
   client never force-pushes and never merges on its own.

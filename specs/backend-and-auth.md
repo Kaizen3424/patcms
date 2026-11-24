@@ -27,24 +27,32 @@ in core or the pipeline. Hardcoding `main` is a standing veto.
 
 ## The write transaction
 
-`GithubBackend.commitChanges` (`packages/core/src/backends/github/index.ts`):
+`GithubBackend.commitChanges` (`packages/core/src/backends/github/index.ts`) has two regimes:
 
-1. Read the current ref — fresh, on every attempt. A `409` with the empty-repository body class means
-   zero commits: the remaining steps bootstrap instead (ADR-0011 lives in
-   [`specs/saving-content.md`](saving-content.md)); a `404` here names the branch and fails the save
-   before any write.
-2. Create blobs for every added or changed file, pooled at ≤ 5 concurrent uploads.
-3. Create a tree with `base_tree` set to the verified head tree; deletions use `sha: null`. (The
-   bootstrap skips `base_tree` — the new tree is the root tree.)
-4. Create a commit whose parent is the verified head. (The bootstrap has no parents — a root commit.)
-5. Update the ref **fast-forward only** — no `force`. (The bootstrap creates the ref via
-   `POST /git/refs`; that create is its CAS.)
+An EXISTING base head (the ordinary save):
 
-Any stage failing leaves HEAD untouched, and a retry reconciles to exactly one commit. That is the
+1. Create blobs for every added or changed file, pooled at ≤ 5 concurrent uploads.
+2. Create a tree with `base_tree` set to the verified head tree; deletions use `sha: null`.
+3. Create a commit whose parent is the verified head.
+4. Update the ref **fast-forward only** — no `force`. A moved head refuses as `CAS_CONFLICT`.
+
+The ZERO-COMMIT bootstrap (base head `""`, ADR-0011 — full story in
+[`specs/saving-content.md`](saving-content.md)): the driver only gets here when a ref read answered
+the empty-repository signature (GitHub closes the ENTIRE git-data API — blobs, trees, commits, and
+ref routes — on a zero-commit repo, so none of the steps above exist there). The bootstrap writes
+through the REST contents API instead: `PUT /contents/{path}` with no `sha`, one file. GitHub
+creates the root commit AND the branch in that request; a save changing exactly one add/update is
+that single PUT, a multi-file save seeds the lexicographically-first add/update and then runs the
+ordinary pipeline on top (two commits — the documented exception). The CAS is the seed commit's
+parent chain: any parent means the branch raced into existence and the save refuses as
+`CAS_CONFLICT`.
+
+Any stage failing leaves the verified base untouched, and a retry reconciles. That is the
 atomicity guarantee, and it is tested stage by stage.
 
-Why this order: GitHub's git-data API is the only way to make a multi-file change atomic. The
-Contents API commits one file at a time and would produce partial publishes.
+Why the git-data API for ordinary saves: trees with `base_tree` are the only way to make a
+multi-file change atomic. The Contents API commits exactly one file per request — it exists here
+only as the bootstrap's vehicle, where there is nothing to make partial.
 
 ## Reads
 
@@ -68,8 +76,18 @@ Two typed families, both carrying `status`, `retryAfter`, and `resetAt` where av
 | Write | `packages/core/src/backend/write-errors.ts` | The same plus `CAS_CONFLICT`, `VALIDATION` |
 
 `EMPTY_REPO` is reserved for the zero-commit repository signature (HTTP 409 plus the
-"Git Repository is empty" body class on a branch read, ADR-0011). Readers intercept it before it can
-reach a host as UNKNOWN, and the client surfaces it as "no content" / NOT_FOUND semantics.
+"Git Repository is empty" body class, ADR-0011). Both classifiers consult it: reads map it to a
+branch read of a zero-commit repo, the write classifier (`classifyWriteResponse` in
+`packages/core/src/backend/write-errors.ts`) to the git-data writes the API refuses there — a write
+409 carrying that body is `EMPTY_REPO`, never the 422-class VALIDATION, because "the content needs
+attention" would mislead a founder mid-first-save. Readers intercept the code before it can reach a
+host as UNKNOWN, and the client surfaces it as "no content" / NOT_FOUND semantics; the write-side
+code is the bootstrap's trigger, and the save machinery consumes it internally.
+
+Body-class rules also disambiguate the 422/409 CAS family: non-fast-forward ref updates ("is not at",
+"was expected") and ref-create collisions ("already exists") and the bootstrap PUT's collision
+("sha" wasn't supplied — the JSON-escaped form on the wire) are `CAS_CONFLICT`; other 422 bodies
+stay `VALIDATION`.
 
 Response bodies never enter messages. The admin maps codes to prose through the copy deck; the
 transport never writes user-facing text.

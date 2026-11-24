@@ -17,6 +17,13 @@
  *   (INV-P03 idempotent-retry convergence).
  * - Trees accept `base_tree` + changed paths only (deletes = `sha: null`),
  *   and a no-op overlay reproduces the base tree sha exactly (INV-S02 C.1).
+ * - A ZERO-commit repo (the `empty` spec, or any state where no commit exists
+ *   yet — model truth is #commits emptiness, not the spec flag) closes the
+ *   ENTIRE git-data API: blobs/trees/commits and both ref routes answer 409
+ *   "Git Repository is empty" (live-verified; ADR-0011). The only write open
+ *   on an empty repo is the REST contents PUT, which creates the root commit
+ *   AND the branch in one request and needs no `sha` for a new file; PUT of an
+ *   existing path without its sha is the 422 "sha wasn't supplied" collision.
  */
 
 import type { GitTreeEntry } from "../../backend/git-sha"
@@ -38,9 +45,11 @@ export interface FakeGithubSpec {
   readonly files: ReadonlyMap<string, { readonly sha: string; readonly bytes: Uint8Array }>
   /**
    * Empty-repository mode: zero commits, no branch, no ref — the truthful
-   * model of a freshly created repo (GitHub answers branch reads 409
-   * "Git Repository is empty", ADR-0011). The seeded head/tree/files above are
-   * ignored while set.
+   * model of a freshly created repo (GitHub closes the ENTIRE git-data API on
+   * it with 409 "Git Repository is empty"; the contents API is the only open
+   * write until the first commit exists, ADR-0011). The seeded head/tree/files
+   * above are ignored while the repo has no commits — emptiness itself is
+   * modeled by the live commit state, so a bootstrap flips the repo honest.
    */
   readonly empty?: boolean
 }
@@ -152,7 +161,7 @@ export class FakeGithubServer {
     branch: string,
     path: string,
   ): { readonly bytes: Uint8Array; readonly sha: string } | undefined {
-    if (this.#spec.empty === true) return undefined
+    if (this.#commits.size === 0) return undefined
     const head = this.#branches.get(branch) ?? this.#spec.headSha
     const headCommit = this.#commits.get(head)
     if (headCommit === undefined) return undefined
@@ -240,6 +249,23 @@ export class FakeGithubServer {
       return notFoundResponse()
     }
 
+    // The REST contents API is the ONE write open on a zero-commit repo — it
+    // creates the root commit AND the branch (ADR-0011; git-data writes below
+    // are closed on the empty state and 409 with the empty-repo body).
+    const putContentsMatch = method === "PUT" ? /^\/contents\/(.+)$/.exec(request.path) : null
+    if (putContentsMatch !== null) {
+      return this.#putContents(
+        decodeBranchSegment(putContentsMatch[1] as string),
+        asRecord(request.body),
+      )
+    }
+
+    // Truthful GitHub: a ZERO-commit repo rejects every git-data WRITE (blobs,
+    // trees, commits, ref create/update) 409 "Git Repository is empty" — not
+    // just reads. Emptiness is the live commit state, so once the contents PUT
+    // seeded the first commit, git-data writes below work normally.
+    if (this.#commits.size === 0) return emptyRepoResponse()
+
     if (method === "POST" && request.path === "/git/commits") {
       return this.#createCommit(asRecord(request.body))
     }
@@ -267,7 +293,9 @@ export class FakeGithubServer {
       if (sha === undefined) {
         // Truthful GitHub: a ZERO-COMMIT repo answers every branch read 409
         // "Git Repository is empty"; an existing repo 404s a missing branch.
-        return this.#spec.empty === true ? emptyRepoResponse() : notFoundResponse()
+        // Emptiness is the LIVE commit state — after a contents-PUT bootstrap
+        // the same fake answers 200 like a normal repo would.
+        return this.#commits.size === 0 ? emptyRepoResponse() : notFoundResponse()
       }
       return {
         status: 200,
@@ -286,7 +314,13 @@ export class FakeGithubServer {
       if (record === undefined) return notFoundResponse()
       return {
         status: 200,
-        json: { sha, tree: { sha: record.treeSha }, parents: record.parentShas },
+        // GitHub truth: parents arrive as OBJECTS with a sha field (unlike the
+        // internal CommitRecord). The bootstrap CAS check reads them.
+        json: {
+          sha,
+          tree: { sha: record.treeSha },
+          parents: record.parentShas.map((sha2) => ({ sha: sha2 })),
+        },
         headers: RATE_HEADERS,
       }
     }
@@ -410,8 +444,9 @@ export class FakeGithubServer {
       ref === undefined ? this.#branches.get(this.#spec.defaultBranch) : this.#resolveCommitRef(ref)
     if (start === undefined) {
       // Zero-commit repository: the log route 409s like the ref route (and a
-      // sha cursor that names no commit 404s).
-      if (this.#spec.empty === true && ref === undefined) return emptyRepoResponse()
+      // sha cursor that names no commit 404s). Live commit state, same as the
+      // ref route's law above.
+      if (this.#commits.size === 0 && ref === undefined) return emptyRepoResponse()
       return notFoundResponse()
     }
     const perPage = toBoundedInt(query.per_page, 30, 1, 100)
@@ -455,6 +490,104 @@ export class FakeGithubServer {
       if (file.sha === sha) return file.bytes
     }
     return undefined
+  }
+
+  /**
+   * PUT /contents/{path} — the REST contents API, the ONLY write GitHub keeps
+   * open on a zero-commit repository (ADR-0011). Laws modeled from the real
+   * transport:
+   * - On an empty repo (no commits): creates the ROOT commit and the BRANCH in
+   *   this one request (parents-less commit + ref creation, non-forcing).
+   * - file absent on an EXISTING branch: an ordinary commit naming the head as
+   *   parent (the CAS premise raced false — callers verify the parent chain).
+   * - file present: needs the existing file's `sha`; without/mismatched it is
+   *   422 Invalid request "sha" wasn't supplied / mismatched (the collision
+   *   the write classifier maps to CAS_CONFLICT).
+   * - file present with matching sha: ordinary update commit (200).
+   * Response shape mirrors GitHub: { content: {sha…}, commit: {sha, tree:{sha}} }.
+   */
+  async #putContents(
+    path: string,
+    body: Record<string, unknown> | undefined,
+  ): Promise<FakeResponse> {
+    const message = body?.message
+    const content = body?.content
+    const branchRaw = body?.branch
+    const branch =
+      typeof branchRaw === "string" && branchRaw.length > 0 ? branchRaw : this.#spec.defaultBranch
+    if (typeof message !== "string" || typeof content !== "string") {
+      return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+    }
+    const bytes = tryDecodeBase64(content)
+    if (bytes === undefined) {
+      return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+    }
+    const head = this.#branches.get(branch)
+    if (head === undefined && this.#commits.size > 0) {
+      // A branch needs a commit to grow from; on a non-empty repo a missing
+      // branch is a 404 (the ref route's law).
+      return notFoundResponse()
+    }
+    const baseEntries =
+      head === undefined ? [] : (this.#trees.get(this.#commits.get(head)?.treeSha ?? "") ?? [])
+    const existing = baseEntries.find((entry) => entry.path === path && entry.type === "blob")
+    const suppliedSha = body?.sha
+    if (existing !== undefined && suppliedSha !== existing.sha) {
+      return {
+        status: 422,
+        json: {
+          message:
+            suppliedSha === undefined
+              ? 'Invalid request.\n\n"sha" wasn\'t supplied.'
+              : `Invalid request.\n\n"sha" wasn't supplied for ${existing.sha}.`,
+          documentation_url:
+            "https://docs.github.com/rest/contents/contents#create-or-update-file-contents",
+          status: "422",
+        },
+        headers: RATE_HEADERS,
+      }
+    }
+
+    const blobSha = await gitBlobSha(bytes)
+    this.#blobs.set(blobSha, bytes)
+    const byPath = new Map(baseEntries.map((entry) => [entry.path, entry]))
+    byPath.set(path, { path, mode: "100644", type: "blob", sha: blobSha, size: bytes.byteLength })
+    const entries = [...byPath.values()].sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    )
+    const treeSha = await gitTreeSha(entries)
+    this.#trees.set(treeSha, entries)
+    const parentShas = head === undefined ? [] : [head]
+    const commitSha = await gitCommitShaCanonical({ treeSha, parentShas, message })
+    if (!this.#commits.has(commitSha)) {
+      this.#commits.set(commitSha, {
+        treeSha,
+        parentShas,
+        message,
+        authorName: "fixture-author",
+        authoredAt: fixtureTimestamp(this.#commits.size + 1),
+      })
+    }
+    this.#branches.set(branch, commitSha)
+    return {
+      status: existing === undefined ? 201 : 200,
+      json: {
+        content: {
+          name: path.split("/").pop(),
+          path,
+          sha: blobSha,
+          size: bytes.byteLength,
+          type: "file",
+        },
+        commit: {
+          sha: commitSha,
+          tree: { sha: treeSha },
+          message,
+          html_url: `https://github.com/fixture/fixture/commit/${commitSha}`,
+        },
+      },
+      headers: RATE_HEADERS,
+    }
   }
 
   async #createBlob(body: Record<string, unknown> | undefined): Promise<FakeResponse> {

@@ -28,8 +28,9 @@
  * Empty repositories (ADR-0011): a ref read typed EMPTY_REPO (GitHub 409 "Git
  * Repository is empty") binds NO base — base head "" and an empty base tree —
  * and the normal attempt loop runs unchanged: `commitChanges` with a "" base
- * creates the root commit and the branch. A first-wins create-ref collision
- * (CAS_CONFLICT) returns a conflict value; nothing is ever forced.
+ * bootstraps through the REST contents API (the git-data API is closed on a
+ * zero-commit repo). A raced bootstrap returns a conflict value; nothing is
+ * ever forced.
  */
 
 import { BackendReadError } from "../backend/errors"

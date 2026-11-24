@@ -46,8 +46,10 @@ architecture and its CI; breaking one in host code breaks the guarantees the hos
   persisted token — keep it scoped and rotatable.
 - **A fresh empty repository reads as no content.** GitHub answers branch reads of a zero-commit
   repo with 409 "Git Repository is empty" — never surfaced as an error: lists are `[]`, gets are
-  `NOT_FOUND`, and the first save bootstraps the root commit and the branch. A branch missing on a
-  repository that HAS commits is a different thing: a `NOT_FOUND` whose message names the branch.
+  `NOT_FOUND`, and the first save bootstraps the root commit and the branch through the contents API
+  (the git-data API is closed there; a multi-file first save lands two commits). The same body on a
+  *write* classifies as `EMPTY_REPO`, never `VALIDATION`. A branch missing on a repository that HAS
+  commits is a different thing: a `NOT_FOUND` whose message names the branch.
 - **Template links are not token leakage.** The fine-grained PAT creation form accepts pre-fill
   query parameters (`name`, `target_name`, `expires_in`, `contents=write`, …) — they carry no
   secret (see workflows.md). The "token in a URL" veto applies to the created token

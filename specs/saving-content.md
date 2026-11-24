@@ -42,8 +42,8 @@ reference admin was one such consumer; the example panel needs neither and uses 
    save here, before any write, with a branch-named `NOT_FOUND`.
 3. Zero-diff changeset → return `noop` with **zero writes**.
 4. `commitChanges` = blobs → tree with `base_tree` → commit naming the verified head as parent →
-   FF-only ref update. With an empty-string base (zero-commit repo) the same call instead writes a
-   root tree (no `base_tree`), a root commit (no parents), and **creates** the branch ref.
+   FF-only ref update. With an empty-string base (zero-commit repo) the same call instead
+   bootstraps through the contents API (see ADR-0011 below — the git-data API is closed there).
 5. Classify the failure:
 
 | Failure | Verdict | Behaviour |
@@ -61,23 +61,34 @@ reference admin was one such consumer; the example panel needs neither and uses 
 
 ## Empty repositories (ADR-0011)
 
-Gotcha (bit for real): a repository with zero commits — every freshly created one — has no branch to
-read, and **GitHub answers branch-addressed reads of it with HTTP 409, not 404**, carrying a
-"Git Repository is empty" body. Other 409s exist, so the body class is the discriminator
-(`EMPTY_REPO_BODY_SIGNATURE` in `packages/core/src/backend/errors.ts`), never the status alone.
+Gotcha (bit for real, twice): a repository with zero commits — every freshly created one — has no
+branch to read, and **GitHub answers branch-addressed reads of it with HTTP 409, not 404**, carrying
+a "Git Repository is empty" body. The same 409 fires on every branch-addressed WRITE to the entire
+git-data API of that repo — blobs, trees, commits, and both ref routes. Other 409s exist, so the
+body class is the discriminator (`EMPTY_REPO_BODY_SIGNATURE` in `packages/core/src/backend/errors.ts`),
+never the status alone; the read classifier and the write classifier (`classifyWriteResponse` in
+`packages/core/src/backend/write-errors.ts`) must both consult it and change together.
 
 One empty-repo mode everywhere:
 
 - Reads see no content. `entries.listPaths` is `[]`, `entries.get` is a missing entry, the commit log
   is empty, and the client binds no head — the empty snapshot keys under the canonical empty tree sha
   (`GIT_EMPTY_TREE_SHA1`, pinned in `git-sha.test.ts`). Nothing surfaces as UNKNOWN.
-- The first save is the bootstrap. The driver binds base `""` and the attempt loop runs unchanged;
-  `commitChanges` with an empty-string base posts the tree without `base_tree` (a root tree), the
-  commit without parents (a root commit), and then **creates** the ref with `POST /git/refs`. From
-  the second save on, ordinary fast-forwards apply.
-- The ref create is the CAS. Two hosts bootstrapping at once: the loser's create collides
-  ("Reference already exists") and classifies as a conflict value like any CAS loss. Nothing is ever
-  forced.
+- The first save is the bootstrap, and the git-data API is INVISIBLE to it. `commitChanges` with an
+  empty-string base does its work through the REST contents API — `PUT /contents/{path}` with no
+  `sha` — which is the one write GitHub keeps open on a zero-commit repo; GitHub creates the root
+  commit AND the branch in that single request (never patched afterwards, nothing forced).
+- A save that changes exactly one add/update IS that one PUT: one tidy commit per save also on the
+  first save. A multi-file save seeds its lexicographically-first add/update through the PUT and then
+  runs the ordinary pipeline on top of the seed commit — exactly two commits, the documented
+  bootstrap exception to one-commit-per-save; both carry the save message (deploy-muting skip-token
+  law, ADR-0008). Delete-only changesets against an empty repo are a `noop` by the zero-diff law.
+- The bootstrap CAS is the parent chain. The seed commit must BE a root commit: if it has a parent,
+  the branch materialized between the ref read and the PUT (another writer won) and the save refuses
+  as a conflict value. GitHub's contents API has no atomic "create only if the branch is absent", so
+  a disjoint-path race may land its PUT as a child of the winner's head before refusing — the ref is
+  never forced back; the host's next rebind consumes reality. A same-path race never lands: the
+  missing-sha 422 ("sha" wasn't supplied) classifies as CAS_CONFLICT before any mutation.
 - Empty ≠ branchless. A missing branch on a repository that HAS commits is refused with
   `GitHub branch not found: {branch}` before any write — as is a missing repository behind sign-in's
   probe. Only the zero-commit repo takes the bootstrap path.
@@ -167,7 +178,7 @@ Two sources, strict precedence:
 | You want | Touch |
 |---|---|
 | A new failure class | `packages/core/src/backend/write-errors.ts`, the coordinator's verdict map, and the host's UI copy |
-| Different empty-repo detection or read mapping | `packages/core/src/backend/errors.ts` (signature), the classifiers in `packages/core/src/backends/github/index.ts`, and the readers — change all together, the contract suite check holds them to it |
+| Different empty-repo detection or read/write mapping | `packages/core/src/backend/errors.ts` (signature), the write classifier in `packages/core/src/backend/write-errors.ts`, the read classifier in `packages/core/src/backends/github/index.ts`, and the readers — change all together, the contract suite check holds them to it |
 | Different retry or parking policy | `save-controller.ts` and `rate-policy.ts`; keep resume event-driven |
 | Different conflict granularity | `rebase.ts` and `field-paths.ts` — they must agree |
 | Different status timing | `DEFAULT_STATUS_TIMING`; a host passes its own `StatusTiming` to `createStatusWatcher` |
@@ -181,7 +192,7 @@ Two sources, strict precedence:
 |---|---|
 | ADR-0004 | Dirty is decided in the value domain with codepoint-exact `fieldEquals` (list order significant); the merge is performed in the raw domain, so untouched bytes are copied verbatim. Unknown keys come only from the new raw — old unknowns never resurrect — and a no-op is byte equality, never a re-serialisation. One state machine, one transition table, eight phases. A fresh `getRef` runs before every commit. Published is confirmed by content, not by a response code. Boot replay goes through the same invariant engine, and progression is callback-driven. The cross-tab lease is token + heartbeat + TTL + silent steal + full rebaseline; it is UX serialisation only, and the CAS remains the sole correctness mechanism. |
 | ADR-0008 | Check-runs are primary on our exact sha; commit statuses are consulted only for the exact contexts in `deploy.contexts`, and only when the check-run set has no decisive result. Any failure conclusion is `failed` and outranks a still-running sibling; any non-completed run is `building`; all-success is `live`; `neutral` and `skipped` never mask a success. No decisive result inside the grace window is `unavailable`, never `failed`, and any read error is `unavailable` and stops the watcher. Reads use `per_page=100` and surface `total_count`; an incomplete page is unavailable. Generated and editable commit messages reject every skip token. Chips key to the entry's `latestCommitSha`, and head advancement supersedes the old watcher. |
-| ADR-0011 | Empty repositories are usable end-to-end. GitHub's 409 "Git Repository is empty" classifies as a typed `EMPTY_REPO` read error, and every reader treats it as "no content" — it never surfaces as UNKNOWN. The first save binds no base (empty string), writes a root tree without `base_tree` and a root commit without parents, and anchors the branch with a ref CREATE; a collision with a concurrent bootstrap is a CAS conflict, exactly like a moved ref, and nothing is ever forced. A missing branch on a non-empty repository refuses the save before any write with `GitHub branch not found: {branch}`. The FakeGithub model owns the truthful 409 body, ref-create, and root-commit laws; the contract suite's empty-repo check keeps every backend implementation honest. |
+| ADR-0011 | Empty repositories are usable end-to-end. GitHub's 409 "Git Repository is empty" classifies as a typed `EMPTY_REPO` error on reads AND writes (every reader treats it as "no content"; the write classifier maps it to `EMPTY_REPO`, never VALIDATION). The first save binds no base and bootstraps through the REST contents API — the git-data API is closed on a zero-commit repo — as ONE contents PUT when the save changes a single add/update (GitHub creates the root commit and the branch in that request), or a seed PUT plus one ordinary commit for a multi-file save. The bootstrap CAS is the parent chain: the anchored commit must be a root commit, a raced branch refuses as a CAS conflict, and nothing is ever forced. A missing branch on a non-empty repository refuses the save before any write with `GitHub branch not found: {branch}`. The FakeGithub model owns the truthful empty-state laws (closed git-data, contents-PUT bootstrap); the contract suite's empty-repo check keeps every backend implementation honest. |
 
 ### Claims
 
@@ -198,7 +209,7 @@ Two sources, strict precedence:
 | INV-P13 | The cross-tab lease is TTL plus heartbeat with a storage-event fallback, and its payload never carries content or credentials | `packages/core/src/pipeline/__tests__/inv-save-lease.test.ts` |
 | INV-P17 | After an auto-merge the next save diffs against the reconciled tree, so it cannot revert a partner's disjoint edits | `packages/core/src/pipeline/__tests__/save-controller.test.ts` |
 | INV-P18 | A restore lands the historical blob sha as a new commit, returns `noop`/`conflict`/`VALIDATION` without writing when the rules say so, and never forces the ref | `packages/core/src/client/__tests__/history.test.ts` |
-| INV-P19 | On a zero-commit repository reads see no content (`listPaths` is empty, `get` is missing-entry), the first save publishes a root commit and creates the branch, the second save is a ref-PATCH fast-forward, a losing bootstrap is a conflict that never moves the ref, and saving to a missing branch on a non-empty repo fails `NOT_FOUND` naming the branch | `packages/core/src/client/__tests__/empty-repo.test.ts`, `packages/core/src/backends/github/__tests__/empty-repo.test.ts` |
+| INV-P19 | On a zero-commit repository reads see no content (`listPaths` is empty, `get` is missing-entry), the first save publishes through the contents API (one PUT per single-file save; seed + one commit for multi-file), the second save is a ref-PATCH fast-forward, a losing bootstrap is a CAS conflict (same-path before any mutation; disjoint-path may land its child PUT while still refusing), and saving to a missing branch on a non-empty repo fails `NOT_FOUND` naming the branch | `packages/core/src/client/__tests__/empty-repo.test.ts`, `packages/core/src/backends/github/__tests__/empty-repo.test.ts` |
 | INV-D01 | Check-runs are primary, statuses only through `contexts[]`, and only an all-success sha is Live; an absent result inside the 120 s grace is unavailable, never failed | `packages/core/src/status/__tests__/inv-status-truth.test.ts` |
 | INV-D02 | Generated and editable commit messages reject the four skip tokens before any network call | `packages/core/src/pipeline/__tests__/inv-skip-token.test.ts` |
 | INV-D03 | Head advancement annotates "superseded by {sha}" and stops the watcher; a late run never repaints newer state | `packages/core/src/status/__tests__/inv-supersede.test.ts` |

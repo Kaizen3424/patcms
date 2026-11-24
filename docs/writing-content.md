@@ -13,9 +13,12 @@
 
 Two special first-save cases, both refused before anything is written:
 
-- On a brand-new (empty) repository there is no branch head yet. The first save treats "no content"
-  as the base and **bootstraps** the repository: it creates the root commit and the branch in that
-  one commit. Reads before the first save return empty lists and not-found entries.
+- On a brand-new (empty) repository there is no branch head yet, and GitHub's git-data API refuses
+  every write to it. The first save therefore goes through the file-contents API instead: a save
+  writing **one file** creates the root commit and the branch in that single request; a save writing
+  **several files** seeds the first one the same way and then commits the rest on top (two commits —
+  the only exception to one-commit-per-save). From the second save on, ordinary fast-forwards apply.
+  Reads before the first save return empty lists and not-found entries.
 - A branch that exists only in your `repository.branch` config but not on GitHub (on a repository
   that has commits) fails with a not-found error that names the branch — create it on GitHub first.
 

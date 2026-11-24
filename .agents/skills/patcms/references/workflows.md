@@ -211,8 +211,11 @@ if (gone.status === "conflict") console.log(gone.current) // changed on branch â
 
 On a **freshly created (empty) repository** the first `entries.create` also creates the very first
 commit and the branch â€” reads before it are empty lists / `NOT_FOUND`, and no separate "repo init"
-exists. A `NOT_FOUND` whose message names the branch instead means the branch is missing on a
-repository that has commits: create the branch on GitHub first, then save.
+exists. GitHub closes its git-data API (blobs/trees/commits) on zero-commit repos, so the SDK
+bootstraps through the contents API instead: a single-file first save is one commit; when the first
+save touches several files the seed landing is one commit and the rest a second (the one documented
+exception to one-commit-per-save). A `NOT_FOUND` whose message names the branch instead means the
+branch is missing on a repository that has commits: create the branch on GitHub first, then save.
 
 ## Media: upload, reference, delete, restore
 

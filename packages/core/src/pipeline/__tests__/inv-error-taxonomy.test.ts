@@ -120,6 +120,18 @@ const CASES: readonly PatchCase[] = [
     code: "VALIDATION",
   },
   {
+    name: "409 empty-repository body is EMPTY_REPO, never the 422 class",
+    status: 409,
+    body: { message: "Git Repository is empty.", status: "409" },
+    code: "EMPTY_REPO",
+  },
+  {
+    name: "422 contents-PUT collision (missing sha) is the CAS conflict",
+    status: 422,
+    body: { message: 'Invalid request.\n\n"sha" wasn\'t supplied.', status: "422" },
+    code: "CAS_CONFLICT",
+  },
+  {
     name: "429 carries Retry-After",
     status: 429,
     body: { message: "Too Many Requests" },

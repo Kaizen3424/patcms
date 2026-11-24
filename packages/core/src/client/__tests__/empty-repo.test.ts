@@ -82,21 +82,27 @@ describe("createCMS — reads on a zero-commit repository (ADR-0011)", () => {
 })
 
 describe("createCMS — the first save bootstraps the repository (ADR-0011)", () => {
-  it("creates an entry with a root commit and a ref CREATE, then reads back", async () => {
+  it("creates an entry with ONE contents-API PUT (root commit + branch), then reads back", async () => {
     const { harness, cms } = cmsOnEmpty()
     const created = await cms.entries.create("products", { title: "Iris", price: 42 })
     expect(created.status).toBe("saved")
     if (created.status !== "saved") return
     expect(created.entry.path).toBe("src/content/products/iris.json")
 
-    const refOps = harness.server.log.filter((event) => event.path.startsWith("/git/refs"))
-    expect(refOps).toHaveLength(1)
-    expect(refOps[0]).toMatchObject({ method: "POST", path: "/git/refs", status: 201 })
-
-    const root = harness.server.log.find(
-      (event) => event.method === "POST" && event.path === "/git/commits",
+    // A single-file first save is ONE contents PUT: GitHub creates the root
+    // commit AND the branch in that request; no git-data write ever runs.
+    const puts = harness.server.log.filter(
+      (event) => event.method === "PUT" && !event.path.startsWith("/git/"),
     )
-    expect(bodyOf(root).parents).toBeUndefined()
+    expect(puts).toHaveLength(1)
+    expect(puts[0]?.path).toBe("/contents/src/content/products/iris.json")
+    expect(bodyOf(puts[0]).branch).toBe(REPO.branch)
+    expect(
+      harness.server.log.filter(
+        (event) =>
+          (event.method === "POST" || event.method === "PATCH") && event.path.startsWith("/git/"),
+      ),
+    ).toEqual([])
 
     const entry = await cms.entries.get("products", "iris")
     expect(entry.value.price).toBe(42)
@@ -115,15 +121,38 @@ describe("createCMS — the first save bootstraps the repository (ADR-0011)", ()
     if (edited.status !== "saved") return
     expect(edited.entry.value.price).toBe(50)
 
+    // The bootstrap made no ref requests (the contents PUT anchors the branch
+    // server-side); the ordinary save is the standard FF PATCH, force:false.
     const refOps = harness.server.log
       .filter((event) => event.path.startsWith("/git/refs"))
       .map((event) => event.method)
-    expect(refOps).toEqual(["POST", "PATCH"])
+    expect(refOps).toEqual(["PATCH"])
     const patch = harness.server.log.find(
       (event) => event.method === "PATCH" && event.path.startsWith("/git/refs"),
     )
     expect(patch?.path).toBe(`/git/refs/heads/${REPO.branch}`)
     expect(bodyOf(patch).force).toBe(false)
+  })
+
+  it("a MEDIA upload can be the first write ever: bootstrapped through the same save", async () => {
+    // Media has no separate write path — it rides the same runSave→commitChanges
+    // pipeline, so the bootstrap covers it (ADR-0011; the finding is pinned
+    // here because a media-first save is the likeliest founder's first act).
+    const { harness, cms } = cmsOnEmpty()
+    const uploaded = await cms.media.upload({
+      name: "hero.png",
+      bytes: new Uint8Array([137, 80, 78, 71]),
+    })
+    expect(uploaded.path).toBe("public/images/hero.png")
+
+    const puts = harness.server.log.filter(
+      (event) => event.method === "PUT" && !event.path.startsWith("/git/"),
+    )
+    expect(puts).toHaveLength(1)
+    expect(puts[0]?.path).toBe("/contents/public/images/hero.png")
+    // Root commit + branch, and the media file reads back.
+    const blob = await cms.media.get("/images/hero.png")
+    expect(blob.bytes).toEqual(new Uint8Array([137, 80, 78, 71]))
   })
 })
 

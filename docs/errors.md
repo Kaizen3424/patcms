@@ -14,7 +14,7 @@ handling in a host.
 | Zero-diff save | **Value** `{ status: "noop" }` |
 | Delete blocked by references | **Value** `{ status: "referenced", references }` |
 | Missing entry | **Throw** `CMSError` code `NOT_FOUND` |
-| Fresh (empty) repository | Reads see no content — lists are `[]`, gets throw `NOT_FOUND`; the first save creates the very first commit and the branch |
+| Fresh (empty) repository | Reads see no content — lists are `[]`, gets throw `NOT_FOUND`; the first save creates the very first commit and the branch. GitHub's "Git Repository is empty" refusals classify as *repository is empty*, never as a validation error — a stale repo can never render "content needs attention" |
 | Signed out | **Throw** `CMSError` code `AUTH_REQUIRED` |
 | Token lost write access mid-session | **Throw** `CMSError` code `AUTH_EXPIRED` (session wiped, drafts kept) |
 
