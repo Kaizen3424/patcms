@@ -1,5 +1,16 @@
 # patcms
 
+## 0.3.0
+
+### Minor Changes
+
+- 6fef825: Empty repositories are now supported end-to-end. Reads of a freshly created (zero-commit) repository treat it as "no content" — `entries.listPaths` returns `[]`, `entries.get` and the commit log behave as not-found/empty, and the GitHub 409 "Git Repository is empty" response is recognized as typed no-content instead of leaking an UNKNOWN error. The first save on an empty repository now bootstraps the repository: it creates the root commit and the branch in that one save; every later save is an ordinary fast-forward, and a race between two bootstraps resolves as a conflict value (never a force-push). Saving to a branch that does not exist on a repository that has commits now fails fast with a clear `NOT_FOUND` error naming the branch.
+- b4b92ee: Removed three advanced surfaces that had no remaining consumers:
+  
+  - `SnapshotStore` and the `patcms/advanced` cache re-exports — superseded by the client's internal head/tree cache; hosts building a custom read layer should own their own cache.
+  - The recorded-replay helpers (`createReplayFetch`, `buildMatchKey`, `canonicalizeJson`, `normalizeBodyString`, `normalizeRequestPath`, and the `RecordedTape` types) — test-harness machinery that does not belong on a public entry; it stays internal to the repo's recorded-tape tests.
+  - The founder-surface display helpers `formatMoney`, `formatFriendlyDate`, `formatRelativeTime`, and `parseDate` — host UI conveniences with no consumer left; format dates and money in your own UI with `Intl`.
+
 ## 0.2.0
 
 ### Minor Changes
