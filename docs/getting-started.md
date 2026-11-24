@@ -101,9 +101,13 @@ const entry = await cms.entries.get("products", "iris-no-7")
 const result = await cms.entries.save(entry, { ...entry.value, price: 240 })
 if (result.status === "conflict") {
   // Someone pushed first. result.current is the remote entry, result.local is
-  // yours — both are values; decide per field and save again. Never an exception.
+  // yours — both are values; decide per-field and save again. Never an exception.
 }
 ```
+
+On a brand-new (empty) repository the same flow works from the first read: `entries.list` returns an
+empty list, `entries.get` of anything is a not-found error, and your first `entries.create(...)` is
+the save that creates the very first commit and the branch on GitHub.
 
 ### 3. Connect a token
 
@@ -111,8 +115,8 @@ Create a **fine-grained personal access token** scoped to that one repository:
 
 | Permission | Access | Why |
 |---|---|---|
-| Contents | read and write | read entries, publish commits |
-| Checks | read | show deploy status |
+| Contents | read and write | read entries, publish commits — the only required scope |
+| Checks | read | optional; deploy status only (status shows `unavailable` without it) |
 | Administration | read | optional; branch-protection preflight |
 
 Pass it to `auth.signIn(token)`. With `{ remember: true }` the token is persisted through the
@@ -124,6 +128,9 @@ configured `tokenStore` — memory-only by default, IndexedDB via `createIdbToke
 - Each save is **one commit** on your branch with the subject `chore(cms): save N file(s)`; an
   optional `message` option becomes the commit body. Zero-diff saves produce no commit at all
   (`status: "noop"`).
+- A **freshly created (empty) repository** works from the very first save: reads show no content,
+  and the first save creates the very first commit and the branch in one go. Every later save is an
+  ordinary fast-forward.
 - Saves are **fast-forward-only**: if someone else pushed first, you get a conflict value — the
   client never force-pushes and never merges on its own.
 - Media deletes move the file to `_trash/` in the repo (one commit), never a hard delete.

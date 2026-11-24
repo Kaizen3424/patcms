@@ -24,7 +24,9 @@ helpers, safety, and status are all re-exported here too.
 ## `runSave` — the save driver
 
 One save attempt against a backend: fresh head → tree → commit → fast-forward-only ref update →
-verify. This is the piece `createCMS()` calls; use it directly when you build your own transaction
+verify. On a brand-new (empty) repository the fresh head binds as "no base" and the same attempt
+creates the root commit and the branch. This is the piece `createCMS()` calls; use it directly when
+you build your own transaction
 (e.g. media batches joined with an entry in one tree commit):
 
 ```ts

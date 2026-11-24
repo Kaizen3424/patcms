@@ -36,6 +36,13 @@ export interface FakeGithubSpec {
   readonly headSha: string
   readonly treeSha: string
   readonly files: ReadonlyMap<string, { readonly sha: string; readonly bytes: Uint8Array }>
+  /**
+   * Empty-repository mode: zero commits, no branch, no ref — the truthful
+   * model of a freshly created repo (GitHub answers branch reads 409
+   * "Git Repository is empty", ADR-0011). The seeded head/tree/files above are
+   * ignored while set.
+   */
+  readonly empty?: boolean
 }
 
 /** Test input for `setCheckRuns` — ids/names default deterministically. */
@@ -107,6 +114,7 @@ export class FakeGithubServer {
 
   constructor(spec: FakeGithubSpec) {
     this.#spec = spec
+    if (spec.empty === true) return
     this.#branches.set(spec.defaultBranch, spec.headSha)
     for (const file of spec.files.values()) {
       this.#blobs.set(file.sha, file.bytes)
@@ -144,6 +152,7 @@ export class FakeGithubServer {
     branch: string,
     path: string,
   ): { readonly bytes: Uint8Array; readonly sha: string } | undefined {
+    if (this.#spec.empty === true) return undefined
     const head = this.#branches.get(branch) ?? this.#spec.headSha
     const headCommit = this.#commits.get(head)
     if (headCommit === undefined) return undefined
@@ -240,6 +249,9 @@ export class FakeGithubServer {
     if (method === "POST" && request.path === "/git/blobs") {
       return this.#createBlob(asRecord(request.body))
     }
+    if (method === "POST" && request.path === "/git/refs") {
+      return this.#createRef(asRecord(request.body))
+    }
     const refMatch = /^\/git\/refs\/heads\/(.+)$/.exec(request.path)
     if (method === "PATCH" && refMatch !== null) {
       return this.#updateRef(decodeBranchSegment(refMatch[1] as string), asRecord(request.body))
@@ -252,7 +264,11 @@ export class FakeGithubServer {
     if (refMatch !== null) {
       const branch = decodeBranchSegment(refMatch[1] as string)
       const sha = this.#branches.get(branch)
-      if (sha === undefined) return notFoundResponse()
+      if (sha === undefined) {
+        // Truthful GitHub: a ZERO-COMMIT repo answers every branch read 409
+        // "Git Repository is empty"; an existing repo 404s a missing branch.
+        return this.#spec.empty === true ? emptyRepoResponse() : notFoundResponse()
+      }
       return {
         status: 200,
         json: {
@@ -392,7 +408,12 @@ export class FakeGithubServer {
     const ref = query.sha
     const start =
       ref === undefined ? this.#branches.get(this.#spec.defaultBranch) : this.#resolveCommitRef(ref)
-    if (start === undefined) return notFoundResponse()
+    if (start === undefined) {
+      // Zero-commit repository: the log route 409s like the ref route (and a
+      // sha cursor that names no commit 404s).
+      if (this.#spec.empty === true && ref === undefined) return emptyRepoResponse()
+      return notFoundResponse()
+    }
     const perPage = toBoundedInt(query.per_page, 30, 1, 100)
     const path = query.path
     const list: unknown[] = []
@@ -512,6 +533,35 @@ export class FakeGithubServer {
     return { status: 201, json: { sha, tree: entries }, headers: RATE_HEADERS }
   }
 
+  /**
+   * POST /git/refs — create a reference (the bootstrap write, ADR-0011).
+   * Real-GitHub laws: the ref name must be `refs/heads/<branch>`, the target
+   * sha must already exist as a commit, and a SECOND create on the same ref
+   * fails 422 "Reference already exists" (the first-wins race the transport
+   * classifies as CAS_CONFLICT).
+   */
+  #createRef(body: Record<string, unknown> | undefined): FakeResponse {
+    const ref = body?.ref
+    const sha = body?.sha
+    const name = typeof ref === "string" ? /^refs\/heads\/(.+)$/.exec(ref) : null
+    if (name === null || typeof sha !== "string") {
+      return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+    }
+    const branch = name[1] as string
+    if (this.#branches.has(branch)) {
+      return { status: 422, json: { message: "Reference already exists" }, headers: RATE_HEADERS }
+    }
+    if (!/^[0-9a-f]{40}$/.test(sha) || !this.#commits.has(sha)) {
+      return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
+    }
+    this.#branches.set(branch, sha)
+    return {
+      status: 201,
+      json: { ref, object: { sha, type: "commit" } },
+      headers: RATE_HEADERS,
+    }
+  }
+
   async #createCommit(body: Record<string, unknown> | undefined): Promise<FakeResponse> {
     const message = body?.message
     const treeSha = body?.tree
@@ -519,12 +569,15 @@ export class FakeGithubServer {
     if (
       typeof message !== "string" ||
       typeof treeSha !== "string" ||
-      !Array.isArray(parentsInput) ||
-      parentsInput.some((parent) => typeof parent !== "string")
+      (parentsInput !== undefined && !Array.isArray(parentsInput)) ||
+      (parentsInput !== undefined &&
+        (parentsInput as unknown[]).some((parent) => typeof parent !== "string"))
     ) {
       return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
     }
-    const parentShas = parentsInput as string[]
+    // A missing (or empty) parents list is a ROOT commit — the bootstrap of a
+    // zero-commit repository (real GitHub parity; ADR-0011).
+    const parentShas = (parentsInput ?? []) as string[]
     if (this.#trees.get(treeSha) === undefined) {
       return { status: 422, json: { message: "Validation Failed" }, headers: RATE_HEADERS }
     }
@@ -657,6 +710,23 @@ function combinedStatusState(statuses: readonly CommitStatusSummary[]): string {
 
 export function notFoundResponse(): FakeResponse {
   return { status: 404, json: { message: "Not Found" }, headers: RATE_HEADERS }
+}
+
+/**
+ * Real GitHub's empty-repository reply: ALWAYS 409 on a branch/read of a
+ * zero-commit repo, with this exact body line as the classifier signature
+ * (ADR-0011). Kept next to the read dispatch that serves it.
+ */
+function emptyRepoResponse(): FakeResponse {
+  return {
+    status: 409,
+    json: {
+      message: "Git Repository is empty.",
+      documentation_url: "https://docs.github.com/rest/git/refs#get-a-reference",
+      status: "409",
+    },
+    headers: RATE_HEADERS,
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

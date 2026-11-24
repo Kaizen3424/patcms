@@ -12,6 +12,11 @@ export type WriteErrorCode =
   | "AUTH_EXPIRED"
   | "SCOPE"
   | "NOT_FOUND"
+  /**
+   * Ref read said the repository has ZERO commits; the save path bootstraps
+   * the root commit + branch instead (ADR-0011). Never surfaces as UNKNOWN.
+   */
+  | "EMPTY_REPO"
   | "RATE_LIMIT"
   | "NETWORK"
   | "TREE_TRUNCATED"
@@ -57,6 +62,12 @@ const FAST_FORWARD_HINTS: readonly string[] = [
   "was expected",
   "is not at",
   "ref update",
+  /**
+   * A CREATE-ref collision (someone bootstrapped the branch first — the CAS
+   * premise "repository is empty" just became false). Same CAS law: the loser
+   * gets a typed conflict and never force-pushes (ADR-0011).
+   */
+  "already exists",
 ]
 
 function isFastForwardBody(bodyText: string): boolean {
@@ -101,7 +112,8 @@ export function classifyWriteResponse(hints: WriteFailureHints): BackendWriteErr
   if (status === 404) {
     return new BackendWriteError("NOT_FOUND", "GitHub write target not found (404)", { status })
   }
-  // GitHub flags non-fast-forward ref updates with 422 (sometimes 409); body
+  // GitHub flags non-fast-forward ref updates with 422 (sometimes 409), and
+  // ref-creates that collide with an existing ref ("already exists"); body
   // class disambiguates CAS conflicts from transport validation failures.
   if (status === 422 || status === 409) {
     if (isFastForwardBody(hints.bodyText)) {

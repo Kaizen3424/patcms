@@ -42,7 +42,7 @@ Test-only pieces under `packages/core/src/__tests__/support/` (never exported fr
 
 | Piece | Job |
 |---|---|
-| `FakeGithubServer` | In-memory GitHub: refs, trees, blobs, commits, CAS semantics, check-runs |
+| `FakeGithubServer` | In-memory GitHub: refs, trees, blobs, commits, CAS semantics, check-runs; `buildEmptyRepoSpec()` models a fresh zero-commit repo (branch reads 409 "Git Repository is empty", writes may bootstrap) |
 | `fake-github-fetch` | The same fake as a `fetch` handler — point `options.fetch` at it |
 | `contract-suite.ts` | The behavioural contract every backend must satisfy |
 

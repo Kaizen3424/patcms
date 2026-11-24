@@ -5,7 +5,13 @@ import { readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { gitBlobSha, gitCommitShaCanonical, gitTreeSha, sha1Hex } from "../git-sha"
+import {
+  GIT_EMPTY_TREE_SHA1,
+  gitBlobSha,
+  gitCommitShaCanonical,
+  gitTreeSha,
+  sha1Hex,
+} from "../git-sha"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURE_ROOT = resolve(HERE, "../../../../..", "playground", "fixtures", "repo")
@@ -145,5 +151,12 @@ describe("git-sha framing (ADR-0005 P2 addendum)", () => {
         { path: "src/content", mode: "100644", type: "blob", sha: "b1".repeat(20) },
       ]),
     ).rejects.toThrow(/path collision/)
+  })
+
+  it("pins the canonical empty tree to the constant the empty-repo cache keys on", async () => {
+    // GIT_EMPTY_TREE_SHA1 keys the zero-commit repository snapshot (ADR-0011);
+    // a WebCrypto convergence regression would silently fork the cache key.
+    expect(GIT_EMPTY_TREE_SHA1).toBe("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    expect(await gitTreeSha([])).toBe(GIT_EMPTY_TREE_SHA1)
   })
 })

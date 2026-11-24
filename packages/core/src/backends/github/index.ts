@@ -4,7 +4,7 @@
  * The token appears ONLY in the Authorization header; never in a URL.
  */
 
-import { BackendReadError } from "../../backend/errors"
+import { BackendReadError, EMPTY_REPO_BODY_SIGNATURE } from "../../backend/errors"
 import type {
   CheckRunConclusion,
   CheckRunStatus,
@@ -94,7 +94,20 @@ export class GithubBackend implements GitBackend {
     const url = `${this.#repoUrl()}/git/ref/heads/${encodeBranch(branch)}`
     // Branch-addressed and mutable: bypass the browser HTTP cache (GitHub sends
     // max-age=60 here, which would serve a stale head after a foreign commit).
-    const response = await this.#request(url, undefined, undefined, undefined, "no-store")
+    let response: RequestResult
+    try {
+      response = await this.#request(url, undefined, undefined, undefined, "no-store")
+    } catch (error) {
+      // Sign-in's probe owns "repository missing"; a 404 ON THE REF ROUTE names
+      // the branch — say so instead of the generic resource-not-found prose
+      // (ADR-0011: a missing branch is a guided error, never a 422 surprise).
+      if (error instanceof BackendReadError && error.code === "NOT_FOUND") {
+        throw new BackendReadError("NOT_FOUND", `GitHub branch not found: ${branch}`, {
+          status: error.status,
+        })
+      }
+      throw error
+    }
     if (response.kind === "not-modified") {
       throw new BackendReadError(
         "UNKNOWN",
@@ -315,6 +328,14 @@ export class GithubBackend implements GitBackend {
     return parseCommitLog(response.value, limit)
   }
 
+  /**
+   * Transactional write (ADR-0005): blobs → tree on `base_tree` → commit
+   * naming the verified head as parent → FF-only ref update. On an
+   * EMPTY repository (`baseHeadSha === ""`, from a typed EMPTY_REPO ref read)
+   * the same save bootstraps it: tree WITHOUT base_tree, root commit WITHOUT
+   * parents, and a ref CREATE via POST /git/refs — the create then acts as the
+   * CAS: a first-wins race surfaces as CAS_CONFLICT, never a force (ADR-0011).
+   */
   async commitChanges(
     changes: CommitChangeSet,
     baseHeadSha: string,
@@ -338,6 +359,9 @@ export class GithubBackend implements GitBackend {
     })
 
     // 2. Tree changes on top of the verified base tree (NEVER client-assembled).
+    //    Bootstrap ("" base — the repo has no commits): NO base_tree — the new
+    //    tree is the ROOT tree.
+    const isBootstrap = baseHeadSha.length === 0
     const treeInput: Array<{ path: string; mode: string; type: string; sha: string | null }> = [
       ...blobShas.map((entry) => ({
         path: entry.write.path,
@@ -347,29 +371,42 @@ export class GithubBackend implements GitBackend {
       })),
       ...(changes.deletes ?? []).map((path) => ({ path, mode: "100644", type: "blob", sha: null })),
     ]
-    const baseTree = await this.#resolveTreeSha(baseHeadSha)
     const treePayload = asRecord(
-      await this.#requestWrite(`${this.#repoUrl()}/git/trees`, {
-        base_tree: baseTree,
-        tree: treeInput,
-      }),
+      await this.#requestWrite(
+        `${this.#repoUrl()}/git/trees`,
+        isBootstrap
+          ? { tree: treeInput }
+          : { base_tree: await this.#resolveTreeSha(baseHeadSha), tree: treeInput },
+      ),
     )
     const treeSha = treePayload?.sha
     if (typeof treeSha !== "string") {
       throw new BackendWriteError("UNKNOWN", "GitHub tree create returned no sha")
     }
 
-    // 3. Commit naming the verified head as parent.
+    // 3. Commit naming the verified head as parent — a bootstrap has none (ROOT
+    //    commit; the ref create below is what anchors it to a branch).
     const commitPayload = asRecord(
       await this.#requestWrite(`${this.#repoUrl()}/git/commits`, {
         message: options.message ?? defaultCommitMessage(changes),
         tree: treeSha,
-        parents: [baseHeadSha],
+        ...(isBootstrap ? {} : { parents: [baseHeadSha] }),
       }),
     )
     const commitSha = commitPayload?.sha
     if (typeof commitSha !== "string") {
       throw new BackendWriteError("UNKNOWN", "GitHub commit create returned no sha")
+    }
+
+    if (isBootstrap) {
+      // 3b. CREATE the branch (POST /git/refs — never PATCH, never force).
+      //     If another writer bootstrapped first, the collision returns as a
+      //     CAS_CONFLICT per the write classifier (ADR-0011).
+      await this.#requestWrite(`${this.#repoUrl()}/git/refs`, {
+        ref: `refs/heads/${branch}`,
+        sha: commitSha,
+      })
+      return { commitSha, treeSha }
     }
 
     // 4. FF-only ref update (CAS): explicit force:false, always (INV-P01).
@@ -558,7 +595,10 @@ export class GithubBackend implements GitBackend {
       return { kind: "not-modified", ...(responseEtag === undefined ? {} : { etag: responseEtag }) }
     }
     if (!response.ok) {
-      throw classifyResponse(response)
+      // The body is consumed once here — only its error-CLASS keywords are
+      // inspected (never stored, never surfaced; ADR-0005 P1 addendum).
+      const bodyText = await response.text()
+      throw classifyResponse(response, bodyText)
     }
 
     const text = await response.text()
@@ -586,7 +626,7 @@ export class GithubBackend implements GitBackend {
   }
 }
 
-function classifyResponse(response: FetchResponseLike): BackendReadError {
+function classifyResponse(response: FetchResponseLike, bodyText: string): BackendReadError {
   const status = response.status
   const retryAfter = response.headers.get("retry-after") ?? undefined
   const remaining = response.headers.get("x-ratelimit-remaining")
@@ -612,6 +652,11 @@ function classifyResponse(response: FetchResponseLike): BackendReadError {
   }
   if (status === 404)
     return new BackendReadError("NOT_FOUND", "GitHub resource not found", { status })
+  if (status === 409 && EMPTY_REPO_BODY_SIGNATURE.test(bodyText)) {
+    // Fresh repository, zero commits: no branch (and no ref) exists yet
+    // (ADR-0011). Reads must behave as "no content"; the save path bootstraps.
+    return new BackendReadError("EMPTY_REPO", "GitHub repository is empty", { status })
+  }
   return new BackendReadError("UNKNOWN", `GitHub request failed (${status})`, { status })
 }
 

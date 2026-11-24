@@ -6,7 +6,11 @@ import {
   SHAPE_CHECK,
   STATUS_READ_CHECK,
 } from "../../__tests__/support/contract-suite"
-import { buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
+import {
+  buildEmptyRepoSpec,
+  buildSpec,
+  createHarness,
+} from "../../__tests__/support/fake-github-fetch"
 import { FixtureBackend, textFixtureFile } from "../../__tests__/support/reference-fixture-backend"
 import { encodeUtf8 } from "../../safety/encoding"
 import type { GitBackend } from "../types"
@@ -39,17 +43,33 @@ describe("contract suite runner (ADR-0001: one suite for every backend)", () => 
 
   it("the FakeGithubServer harness passes the full suite through a real GithubBackend", async () => {
     // Machine-enforces the harness-spec claim that the reference model stays
-    // behind the SAME contract suite as the real transport (ADR-0001).
+    // behind the SAME contract suite as the real transport (ADR-0001). The
+    // empty-repo bootstrap check (ADR-0011) runs against a second harness
+    // modelling a zero-commit repository.
     const spec = await buildSpec([["src/content/site.json", FILE_TEXT]])
     const harness = createHarness(spec)
     const report = await runContractSuite(harness.backend, CORE_CONTRACT_SUITE, {
       branch: spec.defaultBranch,
       expectedPaths: ["src/content/site.json"],
       expectedFileBytes: encodeUtf8(FILE_TEXT),
+      emptyRepoBackend: () => createHarness(buildEmptyRepoSpec(spec.defaultBranch)).backend,
     })
     expect(report.failures).toEqual([])
     expect(report.passed).toBe(CORE_CONTRACT_SUITE.checks.length)
     expect(report.ok).toBe(true)
+  })
+
+  it("the empty-repo bootstrap check is enforced, not vacuous, when wired", async () => {
+    // A transport that answers ref reads from a "fresh" repo WITH a ref would
+    // be modelling a non-empty repo — the check must fail loudly rather than
+    // silently skate through an empty-model contract (ADR-0011).
+    const report = await runContractSuite(fixtureBackend(), CORE_CONTRACT_SUITE, {
+      emptyRepoBackend: () => fixtureBackend(),
+    })
+    expect(report.ok).toBe(false)
+    expect(report.failures.map((failure) => failure.name)).toContain(
+      "backend-writes/empty-repo-bootstrap",
+    )
   })
 
   it("status reads are required and capability-gated (ADR-0005 P2.8)", async () => {

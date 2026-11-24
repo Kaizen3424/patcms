@@ -51,7 +51,8 @@ These hold in every host, script, and test you write with this package:
 
 1. **A save is one commit, fast-forward-only.** `entries.save` returns `saved` / `noop` / `conflict`
    as a value. `noop` (zero-diff) is success — no commit, no retry. A conflict on your file is a
-   value; a conflict on *other* files is auto-retried once for you.
+   value; a conflict on *other* files is auto-retried once for you. On a fresh empty repository the
+   first save creates the first commit and the branch; reads before it are empty lists / `NOT_FOUND`.
 2. **Untouched keys survive.** JSON keys not declared in the config are preserved verbatim on save
    (`entry.untouched`). Removing a field from config never deletes data. `defaultValue` is metadata
    only — parsing never injects it.

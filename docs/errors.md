@@ -14,6 +14,7 @@ handling in a host.
 | Zero-diff save | **Value** `{ status: "noop" }` |
 | Delete blocked by references | **Value** `{ status: "referenced", references }` |
 | Missing entry | **Throw** `CMSError` code `NOT_FOUND` |
+| Fresh (empty) repository | Reads see no content — lists are `[]`, gets throw `NOT_FOUND`; the first save creates the very first commit and the branch |
 | Signed out | **Throw** `CMSError` code `AUTH_REQUIRED` |
 | Token lost write access mid-session | **Throw** `CMSError` code `AUTH_EXPIRED` (session wiped, drafts kept) |
 
@@ -43,7 +44,7 @@ try {
 | `AUTH_REQUIRED` | No token / signed out | any call before `signIn` |
 | `AUTH_EXPIRED` | Token lost write access mid-session (401) | writes; session is wiped, drafts kept |
 | `FORBIDDEN` | Token lacks the scope (403), incl. probe refusal | sign-in, writes |
-| `NOT_FOUND` | Entry or media path does not exist | `entries.get`, `media.get` |
+| `NOT_FOUND` | Entry or media path does not exist; a branch that does not exist on GitHub (the message names the branch); a fresh empty repository reads as no content | `entries.get`, `entries.create`/`save` onto a missing branch, `media.get` |
 | `CONFLICT` | CAS collision or occupied path | save/create/delete (as a value instead), bulk calls (`conflicts[]`), media upload/delete/restore |
 | `RATE_LIMIT` | GitHub quota exhausted | anything; `retryAt` says when |
 | `NETWORK` | Transport failure | anything |

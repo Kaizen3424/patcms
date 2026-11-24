@@ -89,6 +89,21 @@ export async function buildSpecFromBytes(
   }
 }
 
+/**
+ * Freshly created repository: zero commits, no branch, no ref. The model then
+ * answers every branch read 409 "Git Repository is empty" and the write path
+ * bootstraps root commit + branch (ADR-0011 empty-repo posture).
+ */
+export function buildEmptyRepoSpec(defaultBranch = "fixture-branch"): FakeGithubSpec {
+  return {
+    defaultBranch,
+    headSha: "",
+    treeSha: "",
+    files: new Map(),
+    empty: true,
+  }
+}
+
 export interface FakeGithubHarness {
   readonly server: FakeGithubServer
   readonly backend: GithubBackend

@@ -186,7 +186,9 @@ bootstrap, wipe-on-failure, expiry mid-work, token storage — lives in
    backs the whole listing; file bodies are fetched lazily by `entries.get`.
 2. **Edit → publish.** `drafts.set(...)` before the first network call → `entries.validate` →
    `entries.save(entry, value)` → fresh ref/tree → one commit → ref update → confirm the ref carries
-   the commit → draft deleted. A batch (`entries.saveMany` / `createMany` / `deleteMany`) is the same
+   the commit → draft deleted. On a fresh **empty repository** that same first save bootstraps the
+   root commit and branch (ADR-0011); reads before it see no content. A batch (`entries.saveMany` /
+   `createMany` / `deleteMany`) is the same
    transaction for N files: one fresh tree, every base sha checked, and **any** stale row writes
    nothing and returns conflicts as values. See `saving-content.md`.
    `entries.history` / `atRevision` / `restore` read that same commit log: a restore re-commits an
@@ -227,7 +229,7 @@ exactly once, in the deep-dive that owns that subsystem:
 |---|---|
 | ADR-0003 · ADR-0006 · ADR-0009 · INV-S01–S06 · INV-T01–T03 | [`content-model.md`](content-model.md) |
 | ADR-0001 · ADR-0002 · ADR-0005 · INV-A01–A05 · INV-N01–N02 · INV-N06 · INV-P01–P03 · INV-P06 · INV-P14 | [`backend-and-auth.md`](backend-and-auth.md) |
-| ADR-0004 · ADR-0008 · INV-P04–P05 · INV-P07–P13 · INV-P17–P18 · INV-D01–D03 | [`saving-content.md`](saving-content.md) |
+| ADR-0004 · ADR-0008 · ADR-0011 · INV-P04–P05 · INV-P07–P13 · INV-P17–P19 · INV-D01–D03 | [`saving-content.md`](saving-content.md) |
 | ADR-0007 · INV-M01–M03 · INV-T04 | [`media.md`](media.md) |
 | INV-N05 | [`testing.md`](testing.md) |
 | ADR-0010 | [`npm-release.md`](npm-release.md) |

@@ -24,6 +24,12 @@
  *    are never "cleaned" — no deletion requests exist anywhere in the driver.
  * Rebuild is never a blind replay: every attempt re-enters the CAS primitive
  * whose parent chain pins the verified head.
+ *
+ * Empty repositories (ADR-0011): a ref read typed EMPTY_REPO (GitHub 409 "Git
+ * Repository is empty") binds NO base — base head "" and an empty base tree —
+ * and the normal attempt loop runs unchanged: `commitChanges` with a "" base
+ * creates the root commit and the branch. A first-wins create-ref collision
+ * (CAS_CONFLICT) returns a conflict value; nothing is ever forced.
  */
 
 import { BackendReadError } from "../backend/errors"
@@ -159,14 +165,24 @@ export async function runSave(input: SaveDriverInput): Promise<SaveVerdict> {
   }
   const maxRebuilds = input.maxRebuilds ?? 2
 
-  // Fresh base binding — the ONE authority for this save (ADR-0004).
+  // Fresh base binding — the ONE authority for this save (ADR-0004). An EMPTY
+  // repository has no head to bind: the base is "" and the base tree is empty,
+  // so the SAME attempt loop runs and `commitChanges` bootstraps the root
+  // commit + branch (ADR-0011). Zero-diff still applies — a delete of nothing
+  // commits nothing.
   const baseRef = await tryGetRef(input)
-  if (baseRef instanceof BackendWriteError) return rateOrFailed(baseRef, now)
-  const baseHeadSha = baseRef.sha
-
-  const baseTree = await tryReadTree(input, baseHeadSha)
-  if (baseTree instanceof BackendWriteError) return rateOrFailed(baseTree, now)
-  const baseEntries = new Map(baseTree.entries.map((entry) => [entry.path, entry]))
+  let baseHeadSha: string
+  let baseEntries: ReadonlyMap<string, TreeEntryTuple>
+  if (baseRef instanceof BackendWriteError) {
+    if (baseRef.code !== "EMPTY_REPO") return rateOrFailed(baseRef, now)
+    baseHeadSha = ""
+    baseEntries = new Map()
+  } else {
+    baseHeadSha = baseRef.sha
+    const baseTree = await tryReadTree(input, baseHeadSha)
+    if (baseTree instanceof BackendWriteError) return rateOrFailed(baseTree, now)
+    baseEntries = new Map(baseTree.entries.map((entry) => [entry.path, entry]))
+  }
 
   if (await isZeroDiffChangeSet({ baseEntries, changes: input.changes })) {
     return { kind: "noop" }

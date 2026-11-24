@@ -11,6 +11,14 @@
 4. Commit as one tree commit; update the ref **fast-forward-only**.
 5. Verify the ref actually carries the new commit; then (and only then) the draft is deleted.
 
+Two special first-save cases, both refused before anything is written:
+
+- On a brand-new (empty) repository there is no branch head yet. The first save treats "no content"
+  as the base and **bootstraps** the repository: it creates the root commit and the branch in that
+  one commit. Reads before the first save return empty lists and not-found entries.
+- A branch that exists only in your `repository.branch` config but not on GitHub (on a repository
+  that has commits) fails with a not-found error that names the branch — create it on GitHub first.
+
 If the head moved between step 1 and step 4 (someone else pushed), the ref update fails the
 compare-and-swap. When the foreign commit touched **only other files**, the client retries once
 automatically against the new head. When it touched **your file**, you get a conflict value —

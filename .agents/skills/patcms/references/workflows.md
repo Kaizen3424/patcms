@@ -209,6 +209,11 @@ const gone = await cms.entries.delete(existing)
 if (gone.status === "conflict") console.log(gone.current) // changed on branch — re-read first
 ```
 
+On a **freshly created (empty) repository** the first `entries.create` also creates the very first
+commit and the branch — reads before it are empty lists / `NOT_FOUND`, and no separate "repo init"
+exists. A `NOT_FOUND` whose message names the branch instead means the branch is missing on a
+repository that has commits: create the branch on GitHub first, then save.
+
 ## Media: upload, reference, delete, restore
 
 ```ts

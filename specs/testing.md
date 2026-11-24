@@ -13,6 +13,11 @@ right.
 It passes `CORE_CONTRACT_SUITE`, exactly like `GithubBackend` — machine-enforced by the harness
 driver in `backend/__tests__/contract-suite.test.ts`.
 
+The empty-repository mode (`spec.empty`, built by `buildEmptyRepoSpec()`) models a freshly created
+repo: every branch-addressed ref read 409s with the "Git Repository is empty" body, the commit log
+409s too, and writes may bootstrap root commit + branch (`POST /git/refs`). Semantics live in the
+model, not the adapters (ADR-0011).
+
 The whole cluster is **test-only**: it lives under `src/__tests__/support/`, and no public entry
 (`patcms`, `patcms/advanced`, `patcms/web`) may re-export it. `scripts/check-tarball.mjs` and the
 repo-bans scan both guard this. The playground reaches the reference model through a workspace-only
@@ -102,6 +107,7 @@ Absent or invalid values keep the shipped defaults. No hidden switches exist in 
 |---|---|
 | Asserting on IndexedDB or network after a reload | The fake repo rebuilds from fixtures and no page global survives — assert through the server object in unit tests |
 | Adding git behaviour to a handler instead of the reference model | The contract suite stops covering it; semantics belong in `FakeGithubServer` |
+| Testing code meant for a fresh repo against the default seeded spec | The default spec has a head and branch; only `buildEmptyRepoSpec()` models the zero-commit 409 world |
 | Editing `playground/src/fake-github/server.ts` as if it were a copy | It is a re-export; the model lives in core test-support |
 | Assuming the harness exists in production | It is installed only by the playground build |
 | Editing fixture bytes by hand | `fixtures:check` fails on the manifest; regenerate instead |

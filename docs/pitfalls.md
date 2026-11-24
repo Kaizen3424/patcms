@@ -18,6 +18,16 @@ non-negotiable — the package's own architecture refuses these, and so should y
 
 ## Operational gotchas
 
+### A fresh repository is "empty", not "broken"
+
+GitHub answers branch reads of a zero-commit repository with **HTTP 409 and a
+"Git Repository is empty" body** — not 404 and not an error you need to handle. patcms treats that
+as "no content": `entries.listPaths` returns `[]`, `entries.get` throws the same `NOT_FOUND` a
+missing entry throws, and the **first save creates the very first commit and the branch**. Do not
+gate onboarding on "the repo must have a commit"; do not be surprised that the branch appears only
+after the first save. The lookalike to avoid: a branch that is missing on a repository that **has**
+commits is a real error (`NOT_FOUND` naming the branch) — create that branch on GitHub first.
+
 ### The browser HTTP cache lies about the branch head
 
 GitHub serves `GET /git/ref/heads/main` with `Cache-Control: max-age=60`. The client sends
@@ -73,9 +83,9 @@ save before any network call. The CMS must never silently suppress its own deplo
 
 ### One fine-grained PAT, one repository
 
-Scope the token to the repository it manages (Contents read+write, Checks read, optional
-Administration read). Any same-origin script can read a persisted token — single repo, rotatable,
-never in logs.
+Scope the token to the repository it manages (Contents read+write required; Checks read and
+Administration read optional). Any same-origin script can read a persisted token — single repo,
+rotatable, never in logs.
 
 ### JSON only in v1
 

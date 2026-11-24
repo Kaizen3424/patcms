@@ -7,6 +7,7 @@
  * AFTER read checks and leave HEAD in a coherent state.
  */
 
+import { isEmptyRepoError } from "../../backend/errors"
 import type { GitBackend } from "../../backend/types"
 import { BackendWriteError } from "../../backend/write-errors"
 import { encodeUtf8 } from "../../safety/encoding"
@@ -17,6 +18,12 @@ export interface ContractContext {
   readonly branch: string
   readonly expectedPaths: readonly string[]
   readonly expectedFileBytes?: Uint8Array
+  /**
+   * A SECOND backend instance modelling the same repository with ZERO commits
+   * (fresh repo). When omitted, the empty-repo bootstrap check no-ops — the
+   * transport contract (ADR-0011) is otherwise unenforced for a backend.
+   */
+  readonly emptyRepoBackend?: () => GitBackend
 }
 
 export interface ContractCheck {
@@ -44,6 +51,8 @@ export interface ContractRunOptions {
   readonly branch?: string
   readonly expectedPaths?: readonly string[]
   readonly expectedFileBytes?: Uint8Array
+  /** Wiring for the empty-repo bootstrap check (see ContractContext). */
+  readonly emptyRepoBackend?: () => GitBackend
 }
 
 /** Marks and freezes a check list — the suite cannot grow silently at runtime. */
@@ -69,7 +78,12 @@ export async function runContractSuite(
   let passed = 0
   for (const check of suite.checks) {
     try {
-      await check.run(ctx)
+      await check.run({
+        ...ctx,
+        ...(options.emptyRepoBackend === undefined
+          ? {}
+          : { emptyRepoBackend: options.emptyRepoBackend }),
+      })
       passed += 1
     } catch (error) {
       failures.push({ name: check.name, error })
@@ -361,6 +375,86 @@ export const WRITE_CAS_CHECK: ContractCheck = {
   },
 }
 
+const BOOTSTRAP_PATH = "src/content/contract-bootstrap.json"
+const BOOTSTRAP_BYTES = '{\n  "contract": "bootstrap"\n}\n'
+const BOOTSTRAP_RACE_BYTES = '{\n  "contract": "bootstrap-race-loser"\n}\n'
+
+/**
+ * Empty-repository bootstrap (ADR-0011). A ZERO-commit repository: the ref
+ * read names a typed EMPTY_REPO (409 body class, not 404), the FIRST save with
+ * an empty-string base head creates the root commit AND the branch, a losing
+ * bootstrap race refuses as CAS_CONFLICT (first ref wins, never a force), and
+ * afterwards "" is stale — normal fast-forward rules apply. Applies to any
+ * backend; skipped when the run does not model an empty repo.
+ */
+export const EMPTY_REPO_BOOTSTRAP_CHECK: ContractCheck = {
+  name: "backend-writes/empty-repo-bootstrap",
+  async run(ctx) {
+    const buildEmpty = ctx.emptyRepoBackend
+    if (buildEmpty === undefined) return
+    const backend = buildEmpty()
+
+    // 1. Ref read on an empty repository ⇒ typed EMPTY_REPO, never UNKNOWN/404.
+    const refused = await backend.getRef(ctx.branch).then(
+      () => new Error("an empty repository must not return a ref"),
+      (error: unknown) => error,
+    )
+    if (!isEmptyRepoError(refused)) {
+      throw new Error("empty-repository ref read must reject with BackendReadError EMPTY_REPO")
+    }
+
+    // 2. One save with a "" base: root commit + branch + file, in that order.
+    const result = await backend.commitChanges(
+      { adds: [{ path: BOOTSTRAP_PATH, bytes: encodeUtf8(BOOTSTRAP_BYTES) }] },
+      "",
+      ctx.branch,
+      { message: "chore(cms): contract suite bootstrap" },
+    )
+    const head = await backend.getRef(ctx.branch)
+    if (head.object.sha !== result.commitSha) {
+      throw new Error("empty-repo bootstrap did not point the new branch at its commit")
+    }
+    const tree = await backend.readTree(ctx.branch, result.commitSha)
+    if (tree.kind !== "tree") throw new Error("bootstrap tree read returned 304")
+    if (!tree.tree.entries.some((entry) => entry.path === BOOTSTRAP_PATH)) {
+      throw new Error("empty-repo bootstrap did not create its file")
+    }
+
+    // 3. The branch now exists: a second ""-based save is a CAS collision.
+    let collision: unknown
+    try {
+      await backend.commitChanges(
+        { adds: [{ path: BOOTSTRAP_PATH, bytes: encodeUtf8(BOOTSTRAP_RACE_BYTES) }] },
+        "",
+        ctx.branch,
+        { message: "chore(cms): contract suite bootstrap race" },
+      )
+    } catch (error) {
+      collision = error
+    }
+    if (!(collision instanceof BackendWriteError) || collision.code !== "CAS_CONFLICT") {
+      throw new Error("a losing bootstrap must refuse as CAS_CONFLICT (first ref wins)")
+    }
+    const still = await backend.getRef(ctx.branch)
+    if (still.object.sha !== result.commitSha) {
+      throw new Error("a losing bootstrap moved the branch ref")
+    }
+
+    // 4. From the first commit on, the branch behaves like any other: "" is
+    //    stale forever and a verified-base save fast-forwards.
+    const after = await backend.commitChanges(
+      { updates: [{ path: BOOTSTRAP_PATH, bytes: encodeUtf8(BOOTSTRAP_BYTES) }] },
+      result.commitSha,
+      ctx.branch,
+      { message: "chore(cms): contract suite post-bootstrap save" },
+    )
+    const next = await backend.getRef(ctx.branch)
+    if (next.object.sha !== after.commitSha) {
+      throw new Error("post-bootstrap save did not fast-forward the created branch")
+    }
+  },
+}
+
 export const CORE_CONTRACT_SUITE = defineContractSuite([
   SHAPE_CHECK,
   READ_TREE_CHECK,
@@ -372,4 +466,5 @@ export const CORE_CONTRACT_SUITE = defineContractSuite([
   STATUS_READ_CHECK,
   WRITE_COMMIT_CHECK,
   WRITE_CAS_CHECK,
+  EMPTY_REPO_BOOTSTRAP_CHECK,
 ])

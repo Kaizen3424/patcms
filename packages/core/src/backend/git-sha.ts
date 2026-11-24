@@ -49,6 +49,14 @@ export async function gitBlobSha(bytes: Uint8Array): Promise<string> {
   return sha1Hex(concatBytes(header, bytes))
 }
 
+/**
+ * Git's canonical empty tree — hashing zero entries is deterministic, so this
+ * constant exists without network. `GIT_EMPTY_TREE_SHA1 === gitTreeSha([])` is
+ * pinned in git-sha.test.ts. Git data on GitHub never serves it for a real
+ * repo; the client uses it to key an EMPTY-REPOSITORY snapshot (no commits).
+ */
+export const GIT_EMPTY_TREE_SHA1 = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
 /** Flat tree entry: a repo-relative POSIX path with its git mode/type/sha. */
 export interface GitTreeEntry {
   readonly path: string

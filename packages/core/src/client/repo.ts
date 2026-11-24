@@ -8,12 +8,15 @@
  * single-flight, and entry bodies are addressed by blob SHA (immutable) rather
  * than by path.
  */
+import { isEmptyRepoError } from "../backend/errors"
+import { GIT_EMPTY_TREE_SHA1 } from "../backend/git-sha"
 import { assertNotTruncated } from "../backend/guards"
 import type {
   CommitChangeSet,
   CommitLogEntry,
   CommitLogOptions,
   GitBackend,
+  TreeEntryTuple,
   TreeRead,
 } from "../backend/types"
 import type { BackendWriteError } from "../backend/write-errors"
@@ -22,6 +25,16 @@ import type { ClientCache } from "./cache"
 import { CMSError, toCMSError } from "./errors"
 
 export const DEFAULT_READ_REUSE_MS = 30_000
+
+/**
+ * The stand-in snapshot for a repository with ZERO commits (ADR-0011): reads
+ * must behave exactly like a collection with no files. Git hashes the empty
+ * tree deterministically (`GIT_EMPTY_TREE_SHA1`, pinned in git-sha.test.ts),
+ * so the snapshot keys, caches, and prunes like any other tree.
+ */
+function emptyRepoSnapshot(): TreeRead {
+  return { sha: GIT_EMPTY_TREE_SHA1, truncated: false, entries: [] as TreeEntryTuple[] }
+}
 
 export interface RepoReaderOptions {
   /** How long a verified head may be reused for reads. 0 = always re-check. */
@@ -42,7 +55,7 @@ export class RepoReader {
   readonly #requireToken: () => void
   readonly #readReuseMs: number
   readonly #now: () => number
-  #refInFlight: Promise<string> | undefined
+  #refInFlight: Promise<string | undefined> | undefined
   readonly #treeInFlight = new Map<string, Promise<TreeRead>>()
   readonly #blobInFlight = new Map<string, Promise<Uint8Array>>()
 
@@ -70,6 +83,14 @@ export class RepoReader {
     }
 
     const headSha = await this.#headSha()
+    if (headSha === undefined) {
+      // Empty repository (GitHub answers every branch read 409 "Git Repository
+      // is empty", ADR-0011): reads see zero files. Cached under the canonical
+      // empty-tree sha like any head; a save's invalidateTree clears it.
+      const empty = emptyRepoSnapshot()
+      this.#cache.setTree(empty.sha, empty, now)
+      return empty
+    }
     const cached = this.#cache.getTree(headSha)
     if (cached !== undefined) {
       this.#cache.markVerified(now)
@@ -123,12 +144,14 @@ export class RepoReader {
   /**
    * Commit log for the branch, newest first. Historical data is not cached:
    * a branch's log moves, and a `before`-paged slice is rare enough to fetch.
+   * An empty repository has no commits — an empty log, like empty listings.
    */
   async listCommits(options: CommitLogOptions = {}): Promise<readonly CommitLogEntry[]> {
     this.#requireToken()
     try {
       return await this.#backend.listCommits(this.#branch, options)
     } catch (error) {
+      if (isEmptyRepoError(error)) return []
       throw toCMSError(error)
     }
   }
@@ -165,7 +188,12 @@ export class RepoReader {
     }
   }
 
-  async #headSha(): Promise<string> {
+  /**
+   * The branch head, refreshed through a single-flight ref read. Returns
+   * `undefined` when the repository has zero commits (ADR-0011: reads see "no
+   * content"); every other failure is a `CMSError`.
+   */
+  async #headSha(): Promise<string | undefined> {
     if (this.#refInFlight !== undefined) return this.#refInFlight
 
     const request = (async () => {
@@ -173,9 +201,10 @@ export class RepoReader {
         const ref = await this.#backend.getRef(this.#branch)
         return ref.object.sha
       } catch (error) {
+        if (isEmptyRepoError(error)) return undefined
         throw toCMSError(error)
       }
-    })()
+    })() as Promise<string | undefined>
     this.#refInFlight = request
     try {
       return await request

@@ -95,6 +95,10 @@ function mapBackendCode(code: string): CMSErrorCode {
       return "VALIDATION"
     case "CAS_CONFLICT":
       return "CONFLICT"
+    case "EMPTY_REPO":
+      // Zero-commit repository: "no content" semantics (ADR-0011). The read
+      // paths intercept this before it becomes an error; this is the net.
+      return "NOT_FOUND"
     default:
       return "UNKNOWN"
   }

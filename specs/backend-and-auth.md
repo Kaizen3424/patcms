@@ -29,11 +29,16 @@ in core or the pipeline. Hardcoding `main` is a standing veto.
 
 `GithubBackend.commitChanges` (`packages/core/src/backends/github/index.ts`):
 
-1. Read the current ref — fresh, on every attempt.
+1. Read the current ref — fresh, on every attempt. A `409` with the empty-repository body class means
+   zero commits: the remaining steps bootstrap instead (ADR-0011 lives in
+   [`specs/saving-content.md`](saving-content.md)); a `404` here names the branch and fails the save
+   before any write.
 2. Create blobs for every added or changed file, pooled at ≤ 5 concurrent uploads.
-3. Create a tree with `base_tree` set to the verified head tree; deletions use `sha: null`.
-4. Create a commit whose parent is the verified head.
-5. Update the ref **fast-forward only** — no `force`.
+3. Create a tree with `base_tree` set to the verified head tree; deletions use `sha: null`. (The
+   bootstrap skips `base_tree` — the new tree is the root tree.)
+4. Create a commit whose parent is the verified head. (The bootstrap has no parents — a root commit.)
+5. Update the ref **fast-forward only** — no `force`. (The bootstrap creates the ref via
+   `POST /git/refs`; that create is its CAS.)
 
 Any stage failing leaves HEAD untouched, and a retry reconciles to exactly one commit. That is the
 atomicity guarantee, and it is tested stage by stage.
@@ -59,8 +64,12 @@ Two typed families, both carrying `status`, `retryAfter`, and `resetAt` where av
 
 | Family | File | Codes |
 |---|---|---|
-| Read | `packages/core/src/backend/errors.ts` | `AUTH_EXPIRED`, `SCOPE`, `NOT_FOUND`, `RATE_LIMIT`, `NETWORK`, `TREE_TRUNCATED`, `UNKNOWN` |
+| Read | `packages/core/src/backend/errors.ts` | `AUTH_EXPIRED`, `SCOPE`, `NOT_FOUND`, `EMPTY_REPO`, `RATE_LIMIT`, `NETWORK`, `TREE_TRUNCATED`, `UNKNOWN` |
 | Write | `packages/core/src/backend/write-errors.ts` | The same plus `CAS_CONFLICT`, `VALIDATION` |
+
+`EMPTY_REPO` is reserved for the zero-commit repository signature (HTTP 409 plus the
+"Git Repository is empty" body class on a branch read, ADR-0011). Readers intercept it before it can
+reach a host as UNKNOWN, and the client surfaces it as "no content" / NOT_FOUND semantics.
 
 Response bodies never enter messages. The admin maps codes to prose through the copy deck; the
 transport never writes user-facing text.
@@ -78,9 +87,11 @@ transport never writes user-facing text.
 
 ## Auth lifecycle
 
-The credential is one GitHub **fine-grained PAT**. Its scopes: `Contents: read+write`, `Checks: read`,
-and optional `Administration: read` (branch-protection preflight); consumer-facing setup lives in
-`docs/authentication.md`. A token in a URL or query string is a standing veto.
+The credential is one GitHub **fine-grained PAT**. Only `Contents: read+write` is required. `Checks:
+read` and `Administration: read` are optional: the probe treats their absence as deprioritised
+status reads (deploy status shows `unavailable`) and branch-protection preflight unavailable, never
+as a login failure. Consumer-facing setup lives in `docs/authentication.md`. A token in a URL or
+query string is a standing veto.
 
 `PatProvider` (`packages/core/src/auth/pat-provider.ts`) is the whole state machine:
 
@@ -110,8 +121,9 @@ The reference admin's journal/onboarding/discard stores open their own databases
 `CORE_CONTRACT_SUITE` (`packages/core/src/__tests__/support/contract-suite.ts`) is the admission gate.
 `GithubBackend`, `FakeGithubServer`, and any future backend must all pass it. It pins shape, ref and
 tree reads, byte-identical file reads, ETag revalidation, empty diffs, status read shape, CAS
-behaviour, and commit semantics. It is test-only: it lives under `src/__tests__/support/` and is never
-exported from a public entry.
+behaviour, commit semantics, and the empty-repo bootstrap (wired per run via `emptyRepoBackend`; a
+backend whose run does not model a fresh repository no-ops that check). It is test-only: it lives
+under `src/__tests__/support/` and is never exported from a public entry.
 
 If you add a capability to `GitBackend`, add its check here in the same change — otherwise the suite
 stops being a gate and becomes decoration.

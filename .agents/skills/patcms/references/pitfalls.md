@@ -41,9 +41,13 @@ architecture and its CI; breaking one in host code breaks the guarantees the hos
   `overwrite: true` — prefer delete + re-upload under a new path when freshness matters.
 - **Rate budget is finite.** `session.rateLimit.remaining` is worth rendering; the probe reports
   `quotaBlockedUntil` when GitHub says the window is closed.
-- **One fine-grained PAT, one repository.** Contents read+write, Checks read, optional
-  Administration read. Any same-origin script can read a persisted token — keep it scoped and
-  rotatable.
+- **One fine-grained PAT, one repository.** Contents read+write required; Checks and Administration
+  reads are optional (the probe treats absence as advisory). Any same-origin script can read a
+  persisted token — keep it scoped and rotatable.
+- **A fresh empty repository reads as no content.** GitHub answers branch reads of a zero-commit
+  repo with 409 "Git Repository is empty" — never surfaced as an error: lists are `[]`, gets are
+  `NOT_FOUND`, and the first save bootstraps the root commit and the branch. A branch missing on a
+  repository that HAS commits is a different thing: a `NOT_FOUND` whose message names the branch.
 - **Template links are not token leakage.** The fine-grained PAT creation form accepts pre-fill
   query parameters (`name`, `target_name`, `expires_in`, `contents=write`, …) — they carry no
   secret (see workflows.md). The "token in a URL" veto applies to the created token

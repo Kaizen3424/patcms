@@ -156,7 +156,7 @@ never UI text).
 | `AUTH_REQUIRED` | No token / signed out |
 | `AUTH_EXPIRED` | Token lost write access mid-session (session wiped, drafts kept) |
 | `FORBIDDEN` | Token lacks the scope (403), incl. probe refusal |
-| `NOT_FOUND` | Entry or media path missing |
+| `NOT_FOUND` | Entry or media path missing; a branch that does not exist on GitHub (message names the branch); a fresh empty repository reads as no content (lists are empty, first save bootstraps) |
 | `CONFLICT` | CAS collision or occupied path (saves return conflicts as values instead) |
 | `RATE_LIMIT` | GitHub quota exhausted; `retryAt` says when |
 | `NETWORK` | Transport failure |

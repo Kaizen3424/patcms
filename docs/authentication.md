@@ -8,8 +8,8 @@ repository permissions are the authorization model.
 
 | Permission | Access | Why |
 |---|---|---|
-| Contents | read and write | read entries and media, publish commits |
-| Checks | read | deploy status from check-runs |
+| Contents | read and write | read entries and media, publish commits — required |
+| Checks | read | optional; deploy status from check-runs (status shows `unavailable` without it) |
 | Administration | read | optional; branch-protection preflight |
 
 Keep it single-repository and fine-grained, and treat it as rotatable — the client holds a
