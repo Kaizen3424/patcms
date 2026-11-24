@@ -186,6 +186,16 @@ export function createFakeGithubHandlers(
         HttpResponse.json({ required_status_checks: null }, { headers: rateHeaders() }),
       ),
     ),
+    // REST commit log (history reads): URL query is transport; the
+    // first-parent walk and path filter live in the reference model.
+    http.get(
+      `${repoPath}/commits`,
+      guarded(async ({ request }) => {
+        const query: Record<string, string> = {}
+        for (const [key, value] of new URL(request.url).searchParams) query[key] = value
+        return toHttp(await server.handle({ method: "GET", path: "/commits", query }))
+      }),
+    ),
     // Deploy-status reads delegate to the core model (ADR-0008 P2.8). The
     // single-branch fallback keeps the login probe truthful when the fixture
     // has no explicit ref for the requested branch.

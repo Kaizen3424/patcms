@@ -1,6 +1,6 @@
 ---
 name: patcms
-description: Use when working with patcms — the git-backed, zero-database headless CMS SDK whose createCMS() client manages JSON content in a GitHub repository with a fine-grained PAT (entries, media, drafts, conflicts, deploy status). Use this skill whenever a task involves patcms, createCMS, patcms/advanced, patcms/web, editing website content stored as JSON in a GitHub repo, building an admin panel over GitHub content, GitHub-backed media uploads, or debugging saves/conflicts/media/auth in a patcms integration — even when the user does not name the package.
+description: Use when working with patcms — the git-backed, zero-database headless CMS SDK whose createCMS() client manages JSON content in a GitHub repository with a fine-grained PAT (entries, media, drafts, conflicts, deploy status). Use this skill whenever a task involves patcms, createCMS, patcms/advanced, patcms/web, editing website content stored as JSON in a GitHub repo, building an admin panel over GitHub content, GitHub-backed media uploads, or debugging saves/conflicts/media/auth in a patcms integration — even when the user does not name the package. Also when the user asks for the token setup for a site, or for a pre-filled GitHub fine-grained token URL / link for a project.
 ---
 
 # patcms
@@ -120,7 +120,8 @@ export const config = defineConfig({
 |---|---|
 | Any API call — signatures, result shapes, error codes | [references/api.md](references/api.md) |
 | Describing content — collections, all 12 field types, validation | [references/configuration.md](references/configuration.md) |
-| Multi-step tasks — sign-in, save, conflict resolution, media ladder, drafts, deploy status | [references/workflows.md](references/workflows.md) |
+| Multi-step tasks — sign-in, token template URLs, save, conflict resolution, media ladder, drafts, deploy status | [references/workflows.md](references/workflows.md) |
+| The user asks for the pre-filled token-creation URL for a project | [references/workflows.md](references/workflows.md), "Recipe: producing a custom token URL" |
 | Before unusual code — vetoes, failure modes, gotchas | [references/pitfalls.md](references/pitfalls.md) |
 | Testing an integration without a real PAT | [references/testing.md](references/testing.md) |
 

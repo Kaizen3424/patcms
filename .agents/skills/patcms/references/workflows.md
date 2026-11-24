@@ -25,6 +25,73 @@ If the probe fails (revoked token), the stored token is wiped and the host shows
 A 401 mid-write marks the session expired, keeps drafts, and calls the `onAuthExpired` callback
 passed to `createCMS()`.
 
+## Guide the user to a suitable token
+
+Hosts that show a "how do I make a token?" helper can pre-fill the fine-grained personal access
+token form with a template URL (documented under "Pre-filling fine-grained token details using URL
+parameters" in GitHub Docs):
+
+```http
+https://github.com/settings/personal-access-tokens/new
+  ?name=My+site+editor
+  &description=Content+and+media+access
+  &target_name=my-org
+  &expires_in=90
+  &contents=write
+```
+
+| Parameter | Pre-fills |
+| --- | --- |
+| `name` | token display name (≤ 40 chars, URL-encoded) |
+| `description` | token description (≤ 1024 chars, URL-encoded) |
+| `target_name` | resource owner — user or organization slug |
+| `expires_in` | days until expiration: integer 1–366, or `none` |
+| `<permission>=read\|write\|admin` | one query parameter per permission, e.g. `contents=write` |
+
+- **Required permissions:** `contents=write` (which includes read) is the only mandatory
+  permission — commits, ref updates, git blob reads, and media uploads all use Contents.
+  `metadata:read` is included automatically with any fine-grained token.
+- **Optional read-only extras:** `checks=read` and `administration=read` back the deploy-status
+  feature and the probe's branch-protection check. The sign-in probe treats both as advisory —
+  login and saving work without them — but adding them keeps the capability report fully green
+  instead of `forbidden`/`missing`.
+- **Repository selection cannot be pre-filled:** the URL pre-fills name/owner/expiry/permissions,
+  but there is no query parameter for the repository list. Always instruct the user to choose
+  **Only select repositories** and select only the content repository — never **All
+  repositories**. Without the selection the token can access nothing.
+- For an organization, `target_name` must be an organization the token's creator is a member of,
+  and the organization's PAT policy must allow the token (an org owner may need to approve it).
+  An organization token-lifetime policy can also cap `expires_in=none` to a shorter maximum.
+- Template parameters carry no secret — this does not violate the "never put the token in a URL"
+  rule. Never append a created token to any URL.
+
+### Recipe: producing a custom token URL (on request)
+
+When the user asks for the token link / pre-filled token URL for a project (new or existing),
+produce it from the project's content repository details — never hardcode one project's URL into
+another:
+
+1. **Read the project's repository details** — the owner (user or organization), repo name, and
+   branch from the host's connection config, defaults, or README. If they are not set anywhere,
+   ask the user for the GitHub URL before inventing values.
+2. **Build the URL**, one `&`-separated parameter per field, URL-encoded:
+   - `name=[site]+[purpose]+editor` (≤ 40 chars, e.g. `Casa+Kryz+content+editor`)
+   - `description=[short purpose note for the content repo]`
+   - `target_name=[owner slug]`
+   - `expires_in=none` for a long-lived client-facing editor; a number of days (e.g. `90`) for
+     automation or tooling — when the choice isn't obvious, ask in the same reply, don't stall
+   - `contents=write` (mandatory), `checks=read` and `administration=read` (optional read-only
+     extras, keep them so the capability probe reports green)
+3. **Always state, in the same reply:**
+   - the token is shown once after **Generate token** — copy immediately;
+   - repository selection cannot be pre-filled — instruct them to choose **Only select
+     repositories** and select **only** the content repository, never **All repositories**;
+   - for an organization: the creator must be a member of the org, its PAT policy must allow
+     tokens, and the token may need org-owner approval; the org's maximum-lifetime policy can cap
+     `none`.
+4. If the host has an admin page with token instructions, update its help text to use the new
+   URL (with `&` escaped as `&amp;` in HTML attributes) instead of leaving the generic page link.
+
 ## List and render a library
 
 ```ts

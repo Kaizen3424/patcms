@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { compareText, formatMoney } from "../index"
+import { compareText } from "../index"
 import { readPath } from "../mustache"
 import { isSafePath, safePath } from "../safe-path"
 import { isSafeUrl, safeUrl } from "../safe-url"
@@ -34,6 +34,5 @@ describe("safety edge coverage", () => {
   it("covers UTF-8 2-byte counting and locale overrides", () => {
     expect(utf8ByteLength("é")).toBe(2)
     expect(compareText("a", "b", "en-US")).toBeLessThan(0)
-    expect(formatMoney(1475, { maximumFractionDigits: 2 })).toContain("1.475")
   })
 })

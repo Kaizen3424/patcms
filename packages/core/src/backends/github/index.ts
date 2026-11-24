@@ -823,19 +823,5 @@ function parseTreeEntries(record: Record<string, JsonValue> | undefined): TreeEn
     }))
 }
 
-export type {
-  RecordedInteraction,
-  RecordedRequest,
-  RecordedResponse,
-  RecordedTape,
-  RecordedTapeMeta,
-  ReplayFetch,
-  ReplayFetchOptions,
-} from "./recorded-replay"
-export {
-  buildMatchKey,
-  canonicalizeJson,
-  createReplayFetch,
-  normalizeBodyString,
-  normalizeRequestPath,
-} from "./recorded-replay"
+// The recorded-replay helpers (`./recorded-replay`) stay test-internal, driven
+// by `__tests__`: test doubles never ship from a public entry.

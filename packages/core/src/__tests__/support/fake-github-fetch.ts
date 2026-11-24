@@ -152,7 +152,7 @@ export function createHarness(
       body,
       headers: safeRequestHeaders(init?.headers),
     } satisfies FakeRequest)
-    return toResponse(response)
+    return toResponse(withConditional304(method, init?.headers, response))
   }
 
   const backend = new GithubBackend({
@@ -187,6 +187,32 @@ function splitUrl(
     query[decodeURIComponent(rawKey)] = decodeURIComponent(rawValue)
   }
   return { path, query }
+}
+
+/**
+ * Transport ETag/304 law: the model returns an `etag` response header on tree
+ * and contents reads; a GET whose If-None-Match matches it becomes a 304 with
+ * no body — the same law the playground's MSW handlers own at their transport
+ * layer, so conditional reads through the harness behave like real GitHub.
+ */
+function withConditional304(
+  method: string,
+  headers: unknown,
+  response: FakeResponse,
+): FakeResponse {
+  const etag = response.headers?.etag
+  if (etag === undefined || (method !== "GET" && method !== "HEAD")) return response
+  return headerValue(headers, "if-none-match") === etag
+    ? { status: 304, headers: { etag } }
+    : response
+}
+
+function headerValue(headers: unknown, name: string): string | undefined {
+  if (typeof headers !== "object" || headers === null) return undefined
+  for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (key.toLowerCase() === name && typeof value === "string") return value
+  }
+  return undefined
 }
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import type { EntrySummary, FolderCollectionDescriptor } from "patcms"
-import { compareValues, mustacheLite } from "patcms"
+import { compareText, compareValues, mustacheLite } from "patcms"
 
 /** The summary template when present, else the identifier field, else the slug. */
 export function entryTitle(entry: EntrySummary, collection: FolderCollectionDescriptor): string {
@@ -27,7 +27,7 @@ export function sortSummaries(
 ): EntrySummary[] {
   const sorted = [...summaries].sort((left, right) => {
     if (sortField === undefined) {
-      return compareStrings(entrySlug(left), entrySlug(right))
+      return compareText(entrySlug(left), entrySlug(right))
     }
     return compareValues(left.value[sortField], right.value[sortField])
   })
@@ -36,10 +36,6 @@ export function sortSummaries(
 
 function entrySlug(entry: EntrySummary): string {
   return entry.slug
-}
-
-function compareStrings(left: string, right: string): number {
-  return left.localeCompare(right)
 }
 
 export function filterSummaries(

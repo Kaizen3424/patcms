@@ -44,6 +44,11 @@ architecture and its CI; breaking one in host code breaks the guarantees the hos
 - **One fine-grained PAT, one repository.** Contents read+write, Checks read, optional
   Administration read. Any same-origin script can read a persisted token — keep it scoped and
   rotatable.
+- **Template links are not token leakage.** The fine-grained PAT creation form accepts pre-fill
+  query parameters (`name`, `target_name`, `expires_in`, `contents=write`, …) — they carry no
+  secret (see workflows.md). The "token in a URL" veto applies to the created token
+  (`github_pat_…`), never to template parameters. Repository selection itself cannot be
+  pre-filled; always tell the user to pick the content repository.
 - **JSON only in v1.** No Markdown/MDX collections, no GitLab backend, no OAuth, no PR-review mode.
 - **0.x breaks.** A minor release may change the API; pin the version.
 

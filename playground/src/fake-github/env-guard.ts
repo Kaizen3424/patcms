@@ -1,8 +1,9 @@
 /**
- * Env-kill guard — master-plan §8.11: real GitHub is DISABLED unless
- * PATCMS_ALLOW_REAL_GITHUB is set to exactly "1" (INV-A05-adjacent; unit test
- * asserts the refusal). When enabled outside tests, the harness must render
- * the RED TARGET banner (REAL_TARGET_BANNER) — never silently talk to a real repo.
+ * Env-kill guard — real GitHub is DISABLED unless PATCMS_ALLOW_REAL_GITHUB is
+ * set to exactly "1" (INV-A05-adjacent; unit test asserts the refusal). main.ts
+ * consults this before installing the MSW fake: when enabled the harness skips
+ * MSW entirely and renders the RED TARGET banner (REAL_TARGET_BANNER) — never
+ * silently talk to a real repo.
  */
 
 /** Exactly the env var name that must equal "1" to unlock a real target. */

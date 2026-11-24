@@ -1,0 +1,18 @@
+# Audit waivers — P0.3 (AGENTS.md §7; ADR-0010 §2.6 supply-chain law)
+#
+# Rules (enforced by scripts/audit-waiver-filter.mjs in the scheduled CI audit job):
+#   * An entry past its `expires` date fails CI — never silence a stale waiver.
+#   * `expires` must be ≤ 90 days out from the day it was added (auto-fail otherwise).
+#   * Every entry carries: reason, owner, upstream link, and the exact advisory id.
+#   * Zero entries = healthy supply chain. Do NOT add blanket/undated waivers.
+#
+# Schema (one entry per advisory):
+#   - id: GHSA-xxxx-xxxx-xxxx      # advisory id (exact)
+#     package: <npm package name>  # affected module
+#     range: <vulnerable range>    # the vulnerable range matched by the audit
+#     reason: '<one sentence, business justified>'
+#     owner: '<person accountable>'
+#     expires: 'YYYY-MM-DD'        # hard limit; CI fails after this date
+#     upstream: 'https://…'        # tracking link (issue/PR upstream)
+
+waivers: []

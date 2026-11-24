@@ -6,6 +6,7 @@ import {
   SHAPE_CHECK,
   STATUS_READ_CHECK,
 } from "../../__tests__/support/contract-suite"
+import { buildSpec, createHarness } from "../../__tests__/support/fake-github-fetch"
 import { FixtureBackend, textFixtureFile } from "../../__tests__/support/reference-fixture-backend"
 import { encodeUtf8 } from "../../safety/encoding"
 import type { GitBackend } from "../types"
@@ -34,6 +35,21 @@ describe("contract suite runner (ADR-0001: one suite for every backend)", () => 
     expect(report.ok).toBe(true)
     expect(report.passed).toBe(CORE_CONTRACT_SUITE.checks.length)
     expect(report.failures).toEqual([])
+  })
+
+  it("the FakeGithubServer harness passes the full suite through a real GithubBackend", async () => {
+    // Machine-enforces the harness-spec claim that the reference model stays
+    // behind the SAME contract suite as the real transport (ADR-0001).
+    const spec = await buildSpec([["src/content/site.json", FILE_TEXT]])
+    const harness = createHarness(spec)
+    const report = await runContractSuite(harness.backend, CORE_CONTRACT_SUITE, {
+      branch: spec.defaultBranch,
+      expectedPaths: ["src/content/site.json"],
+      expectedFileBytes: encodeUtf8(FILE_TEXT),
+    })
+    expect(report.failures).toEqual([])
+    expect(report.passed).toBe(CORE_CONTRACT_SUITE.checks.length)
+    expect(report.ok).toBe(true)
   })
 
   it("status reads are required and capability-gated (ADR-0005 P2.8)", async () => {

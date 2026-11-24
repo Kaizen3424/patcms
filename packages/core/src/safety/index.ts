@@ -10,12 +10,9 @@ export {
   sortBy,
 } from "./collator"
 export { mapConcurrent } from "./concurrency"
-export { formatFriendlyDate, formatRelativeTime, parseDate } from "./dates"
 export { decodeBase64, decodeUtf8, encodeBase64, encodeUtf8 } from "./encoding"
 export type { Logger, LogLevel, LogRecord } from "./logger"
 export { createLogger, isSensitiveKey, maskData, maskString } from "./logger"
-export type { MoneyFormatOptions } from "./money"
-export { formatMoney } from "./money"
 export type { TemplateValues } from "./mustache"
 export { mustacheLite, readPath } from "./mustache"
 export type { SafePathFailureCode, SafePathOptions, SafePathResult } from "./safe-path"

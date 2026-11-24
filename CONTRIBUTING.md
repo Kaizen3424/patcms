@@ -4,7 +4,7 @@
 
 - **Trunk-based**: `main` is the one long-lived branch. All work lands as short-lived feature branches off `main`, merged fast (or a single direct conventional commit for small changes).
 - Never work on long-lived topic branches; rebase or merge `main` back into your branch at least at completion time.
-- `main` is always green: the CI gate (install → typecheck → lint → test → build → e2e) must pass before a push.
+- `main` is always green: the CI gate (install → typecheck → lint → test → build → docs:check → pack:check) must pass before a push.
 
 ## Commit conventions
 

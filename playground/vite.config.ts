@@ -22,9 +22,9 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
 }
 
 /**
- * Vite serves the fixture repository from disk in dev AND preview. The preview
- * server is what Playwright uses; keeping one handler for both avoids a second
- * copied fixture tree (the manifest is the single source of truth).
+ * Vite serves the fixture repository from disk in dev AND preview. One
+ * handler for both avoids a second copied fixture tree (the manifest is the
+ * single source of truth).
  */
 function fixtureServer(): Plugin {
   const mount = (middlewares: ViteDevServer["middlewares"] | PreviewServer["middlewares"]) => {

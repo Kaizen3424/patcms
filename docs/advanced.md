@@ -156,13 +156,12 @@ Also exported from `patcms/advanced`:
 | `composeEntryDocument` | Value + untouched → document bytes |
 | `safePath` / `safeUrl` / `parseUntrustedJson` / `slugify` / `mustacheLite` / `compareValues` | The safety and text toolkit (see [pitfalls.md](./pitfalls.md) for why they are non-optional) |
 | `calculateMediaBudget` / `isUploadSizeBlocked` / `findReferences` / `trashMediaPath` / `restoreMediaPath` | Media math behind the client's guards |
-| `SnapshotStore` | The snapshot cache seam |
 | `createOneFlightQueue` | One-request-at-a-time queue seam |
 | `fieldEquals` / `computeDirtyPaths` / `resolveConflictPaths` | Value-domain diffing (never compare serialized strings) |
 | `SAVE_PHASE_ORDER` / `transitionSaveState` / `isRetryableWriteCode` | The save state machine |
 | `composeCommitMessage` / `containsSkipToken` | Commit message law |
 | `PatProvider` / `MemoryTokenStore` / `CapabilityProbeError` | Auth seams |
-| `parseDate` / `createLogger` / `StagedMediaTileRecord` | Misc: date parsing, masked logging, staged media tiles |
+| `createLogger` / `StagedMediaTileRecord` | Misc: masked logging, staged media tiles |
 
 ## When *not* to use advanced
 

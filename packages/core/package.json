@@ -15,6 +15,7 @@
     ".": "./src/index.ts",
     "./advanced": "./src/advanced.ts",
     "./web": "./src/web/index.ts",
+    "./test-support": "./src/__tests__/support/fake-github-server.ts",
     "./package.json": "./package.json"
   },
   "files": [
